@@ -9,7 +9,7 @@
  */
 import { expect, test } from 'vitest';
 import { ALIASES, GROUPS, commandWords, resolveCommand } from './groups.ts';
-import { HELP, groupHelp } from './help.ts';
+import { HELP, INDEX, commandHelp, groupHelp, groupSection, helpTopic } from './help.ts';
 import { DEFAULT_WINDOW_DAYS } from '../vocabulary.ts';
 import { WITH_PEOPLE, cli, seed } from '../testing/cli.ts';
 
@@ -33,10 +33,44 @@ test('every old name runs as the command it now is, and help teaches only the ne
 
 // `judge` dispatched for ten days with ten subcommands, and neither `help --all`
 // nor `ambit plan` named it, while a typo near it was offered the word.
-test('every verb a group owns is taught under that group', () => {
-  for (const [group, verbs] of Object.entries(GROUPS))
-    for (const verb of verbs)
-      expect([verb, groupHelp(group).includes(`${group} ${verb}`)]).toEqual([verb, true]);
+test('every verb a group owns is taught under that group, and indexed there', () => {
+  for (const [group, verbs] of Object.entries(GROUPS)) {
+    const indexed = INDEX[group].map(([usage]) => usage.split(' ')[0]);
+    for (const verb of verbs) {
+      expect([verb, groupSection(group)?.includes(`${group} ${verb}`)]).toEqual([verb, true]);
+      expect([group, verb, indexed.includes(verb)]).toEqual([group, verb, true]);
+      // And `ambit help <verb>` finds its entry in the full list.
+      expect([verb, commandHelp(verb)?.includes(`${group} ${verb}`)]).toEqual([verb, true]);
+    }
+    // An index names nothing its group does not dispatch, except `graph` itself.
+    for (const word of indexed)
+      expect([group, word, verbs.includes(word) || word === group]).toEqual([group, word, true]);
+  }
+});
+
+test('a group index is one line a verb, never the whole section', () => {
+  const plan = groupHelp('plan');
+  expect(plan.split('\n').length).toBeLessThan(INDEX.plan.length + 7);
+  expect(plan).not.toContain('--judge');
+  expect(plan).toContain('ambit help <verb>');
+});
+
+test('help names a command, a group, or neither', () => {
+  // A verb's entry, and only that verb's: `init` is not `init-rules`.
+  const init = commandHelp('init');
+  expect(init).toContain('check init <cap>');
+  expect(init).not.toContain('init-rules');
+  // Every form of it: the plain run and --failing.
+  expect(commandHelp('verify')).toContain('check verify --failing');
+  // A group alone is its index; a group and its verb is the verb; an old name
+  // is the one it became.
+  expect(helpTopic(['plan'])?.text).toBe(groupHelp('plan'));
+  expect(helpTopic(['plan', 'next'])).toEqual({ text: commandHelp('next'), verb: 'next' });
+  expect(helpTopic(['Brief'])?.verb).toBe('briefing');
+  // The standalone ones, and the two the wrapper runs.
+  for (const verb of ['seed', 'status', 'web', 'mcp']) expect(commandHelp(verb)).toBeDefined();
+  // Not a command: the glossary's to answer.
+  expect(helpTopic(['frontier'])).toBeUndefined();
 });
 
 test('a decision is taken by --by, or by the one person declared, and a mistyped name is refused', () => {

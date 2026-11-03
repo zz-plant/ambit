@@ -4553,6 +4553,26 @@ button.app-sample-tag:hover {
   font-size: var(--fs-base);
 }
 
+.app-loading p {
+  max-width: 60ch;
+  margin: 0;
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* What a view threw, for the person to read out in a report. */
+.app-loading-error {
+  max-width: min(80ch, calc(100% - 32px));
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .app-loading-ring {
   width: 24px;
   height: 24px;

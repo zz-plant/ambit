@@ -6,7 +6,7 @@ Ambit is a personal project. Questions get answered, in days and not in hours, s
 
 | I want to… | Go to |
 | :--- | :--- |
-| Understand a command or a house word | `ambit help <term>`, or `ambit help --all` for the full command surface |
+| Understand a command or a house word | `ambit help <command>` or `ambit help <word>`, or `ambit help --all` for the full command surface |
 | Work out whether something is a bug or a property of my own graph | [The hosted demo](https://zz-plant.github.io/ambit/?demo=1) runs on example data |
 | Report something Ambit does that it shouldn't | [Bug report](https://github.com/zz-plant/ambit/issues/new?template=bug.md) |
 | Argue that a capability, era, or prerequisite is modeled wrong | [Capability model issue](https://github.com/zz-plant/ambit/issues/new?template=capability-model.md) |

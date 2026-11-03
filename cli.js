@@ -43,11 +43,15 @@ const mcpEntry = existsSync(resolve(ROOT, 'src', 'mcp', 'server.ts'))
   ? resolve(ROOT, 'src', 'mcp', 'server.ts')
   : resolve(ROOT, 'dist-cli', 'mcp', 'server.js');
 
-const cmd = process.argv[2];
-const args = process.argv.slice(3);
-// `--help` or `-h` after a command asks for its usage and never runs it; the
-// engine prints it, except for the commands this file runs itself.
-const asksHelp = args.includes('--help') || args.includes('-h');
+// `--help` or `-h` after a command asks about it, and never runs it: `ambit
+// verify --help` ran every declared check, `ambit mcp --help` started a server
+// that waited on stdin, and `ambit web --help` opened the map. The engine
+// answers the same flag the same way when it is started directly.
+const HELP_FLAGS = new Set(['--help', '-h']);
+const typed = process.argv.slice(2);
+const asked = typed[0] !== 'help' && typed.some(a => HELP_FLAGS.has(a));
+const cmd = asked ? 'help' : typed[0];
+const args = asked ? typed.filter(a => !HELP_FLAGS.has(a)) : typed.slice(1);
 
 /**
  * The status line, answered in this process. Claude Code runs it after every
@@ -60,7 +64,7 @@ const asksHelp = args.includes('--help') || args.includes('-h');
  * fails prints nothing and exits 0: a broken status line must not clutter the
  * screen. src/engine/statusline.ts says what the line holds.
  */
-if (cmd === 'statusline' && !asksHelp) {
+if (cmd === 'statusline') {
   let line = '';
   try {
     process.removeAllListeners('warning');
@@ -84,7 +88,7 @@ if (cmd === 'statusline' && !asksHelp) {
  * answer cli.ts's `gate` gives, and a failure is no answer and exit 0, so the
  * runtime's own permissions decide (AGENTS.md rule 20).
  */
-if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet') && !asksHelp) {
+if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
   let out = '';
   try {
     process.removeAllListeners('warning');
@@ -106,35 +110,16 @@ if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet') && !as
  * engine grew `share`, `credentials`, `opportunities`, `roi`, `audit`, `work`
  * and `usage`, the list here did not, and `ambit help` claimed to be the full
  * surface while hiding seven working commands. Worse, intercepting `help`
- * swallowed its arguments, so `help --all` and `help <term>` — both of which
- * the engine implements — could never run.
- *
- * The engine derives its list from the same groups the dispatcher routes on,
- * so it cannot fall behind. `web` and `mcp` are the exception: they are
- * implemented here, never reach the engine, and so cannot appear in a list the
- * engine builds. They are appended after the full list.
+ * swallowed its arguments, so `help --all` and `help <term>`, both of which
+ * the engine implements, could never run. `web`, `mcp` and `--version` are
+ * answered here and never reach the engine, and the engine's list names them
+ * all the same, so `ambit help web` finds it.
  */
-const WRAPPER_HELP = {
-  web: `  ambit web [--port=N] [--no-open]   Open the map on localhost: the built
-                         page from an install, Vite from a checkout`,
-  mcp: `  ambit mcp              Run the MCP server, exposing the same questions to an
-                         agent session: claude mcp add ambit -- ambit mcp`,
-  version: `  ambit --version        The installed version, for a bug report`,
-};
-// The short list already names `web`, and a term or a command's usage is not
-// a list, so only `help --all` ends on these three.
-if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
-  const helpArgs = cmd === 'help' ? args : [];
-  const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...helpArgs], {
+if (cmd === 'help') {
+  const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...args], {
     stdio: 'inherit',
   });
-  if (helpArgs.includes('--all'))
-    console.log(`\n${D}${Object.values(WRAPPER_HELP).join('\n')}${R}\n`);
   process.exit(engineHelp.status ?? 0);
-}
-if (asksHelp && (cmd === 'web' || cmd === 'mcp')) {
-  console.log(WRAPPER_HELP[cmd]);
-  process.exit(0);
 }
 
 // The version a bug report asks for. It answers here, before the engine

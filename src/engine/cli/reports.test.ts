@@ -534,23 +534,14 @@ describe('the glossary', () => {
 
   // `help verified` printed every entry whose text held the word, two other
   // concepts first, fifty lines before the one asked for.
-  it('prints the entry by that name first, and only names the ones that mention it', () => {
+  it('prints the entry by that name alone', () => {
     const verified = asked('verified');
     expect(verified.startsWith('Verified —')).toBe(true);
     expect(verified.match(/Where you see it/g)).toHaveLength(1);
-    expect(verified).toMatch(/Also mentioned in: .*Recovering \(ambit help recovering\)/);
-  });
-
-  it('prints a command verb as its usage', () => {
-    const verify = asked('verify');
-    expect(verify).toContain('ambit verify\n  check verify [cap]');
-    expect(verify).not.toContain('Where you see it');
   });
 
   it('finds the entry a word the CLI uses is mentioned in', () => {
-    expect(asked('bottlenecks')).toBe(
-      'No concept is called "bottlenecks". Mentioned in: Keystone (ambit help keystone)'
-    );
+    expect(asked('bottlenecks')).toContain('Keystone —');
   });
 });
 
@@ -751,7 +742,7 @@ describe('the short screen bare ambit shows', () => {
       const lines = renderBrief(briefReport(db), PLAIN, npx);
       const said = lines.join('\n');
       expect(said).toContain('npx ambit-cli verify runs their checks');
-      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|--help)/m);
+      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|help|--help)/m);
       // One line marked as the thing to do, after everything else it says.
       const close = lines.filter(l => l.trim().startsWith('› npx ambit-cli'));
       expect(close).toEqual(['  › npx ambit-cli web  the same, on the map']);

@@ -22,8 +22,9 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
-import { commandHelp } from './help.ts';
-import { ALIASES, commandWords } from './groups.ts';
+import { HELP_SHORT, helpTopic } from './help.ts';
+import { commandWords } from './groups.ts';
+import { nearest } from '../../shared/nearest.ts';
 import type { DoctorReport } from '../doctor.ts';
 import { markSeen, movedLines, unseenSince } from './seed.ts';
 import { seedSources } from '../discovery.ts';
@@ -580,7 +581,7 @@ function renderBrief(
   const close = [
     '',
     `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${typed('ambit web')}${c.reset}  ${c.grey}the same, on the map${c.reset}`,
-    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit --help')} for the commands${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit help')} for the other commands${c.reset}`,
     '',
   ];
 
@@ -591,7 +592,7 @@ function renderBrief(
       `${GUTTER}Nothing of yours is in the graph yet.`,
       `${GUTTER}${c.grey}Add an agent config and run ${typed('ambit seed')}, which lists where it looks.${c.reset}`,
       '',
-      `${GUTTER}${c.grey}${typed('ambit --help')} for the commands${c.reset}`,
+      `${GUTTER}${c.grey}${typed('ambit help')} for the commands${c.reset}`,
       '',
     ];
   }
@@ -1369,79 +1370,119 @@ function renderFix(report: any, c: Palette = C): string[] {
   return lines;
 }
 
+type Concept = { key: string; term: string; short: string; long: string; seen: string };
+
+/** The concept glossary, shared with the visualiser so the two cannot drift. */
+function concepts(): Concept[] {
+  return JSON.parse(readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8'))
+    .concepts;
+}
+
+/** The words a concept is called by: its key, and each word of its term. */
+function namesOf(c: Concept): string[] {
+  return [c.key, ...c.term.toLowerCase().split(/[^a-z]+/)].filter(Boolean);
+}
+
+/** The word to type for a concept on its own: the first of its term. */
+function lookupWord(c: Concept): string {
+  return c.term.toLowerCase().split(/[^a-z]+/)[0];
+}
+
 /**
- * `ambit help <word>`: the glossary entry by that name, and the command by
- * that name, each printed whole; then the entries that only mention it, named.
+ * The concept a command rests on, if one does: `verify` and Verified,
+ * `propose` and Proposal, `weigh` and Carry weight. Matched on the first five
+ * letters of a word of its name, so a verb finds the noun it acts on.
+ */
+function conceptOf(verb: string): Concept | undefined {
+  const stem = (w: string) => (w.length >= 5 ? w.slice(0, 5) : w);
+  return concepts().find(c =>
+    namesOf(c).some(w => w === verb || (verb.length >= 5 && stem(w) === stem(verb)))
+  );
+}
+
+/** Text wrapped at a width, each line indented. */
+function wrapText(text: string, width = 76, indent = '  '): string {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if ((line + word).length > width) {
+      out.push(indent + line.trim());
+      line = '';
+    }
+    line += word + ' ';
+  }
+  if (line.trim()) out.push(indent + line.trim());
+  return out.join('\n');
+}
+
+/**
+ * One word from the glossary, or every one that mentions it.
  *
- * Every entry whose text held the word was printed in full, so `help
- * verified` opened on two other concepts and ran to fifty lines before the
- * one asked for. A concept the CLI and the map call different things still
- * finds its entry: keystone on the map is bottlenecks in `ambit status`, and
- * the entry says so, so `help bottlenecks` names Keystone. A command verb
- * prints its usage, the lines `help --all` holds for it.
+ * A word that names a concept shows that concept alone: "frontier" printed
+ * Ambit's entry first, because Ambit's text says frontier, and a reader asking
+ * one word had three to read. Only when no name matches is the whole entry
+ * searched, because a concept the CLI and the map call different things
+ * (keystone on the map, bottlenecks in `ambit status`) says so in its own
+ * text, and looking up either word should find it.
  */
 function explain(wanted: string): void {
-  const { concepts } = JSON.parse(
-    readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8')
+  const all = concepts();
+  const singular = wanted.replace(/s$/, '');
+  const named = all.filter(
+    c => c.term.toLowerCase() === wanted || namesOf(c).some(w => w === wanted || w === singular)
   );
-  const words = (text: string) => text.toLowerCase().split(/[^a-z0-9-]+/);
-  const exact = concepts.filter(
-    (c: any) => c.key === wanted || String(c.term).toLowerCase() === wanted
-  );
-  const named = exact.length ? exact : concepts.filter((c: any) => words(c.term).includes(wanted));
-  const verb = ALIASES[wanted]?.to ?? wanted;
-  const usage = wanted && (commandWords().includes(verb) ? commandHelp(verb) : undefined);
-  const mentioned = wanted
-    ? concepts.filter(
-        (c: any) =>
-          !named.includes(c) &&
+  const picked = !wanted
+    ? all
+    : named.length
+      ? named
+      : all.filter(c =>
           [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
-      )
-    : [];
-  const picked = wanted ? named : concepts;
+        );
   // An agent asks what a term means as readily as a person does, and reads
   // the answer through a pipe.
   const paint = terminalPalette();
-  if (!picked.length && !usage && !mentioned.length) {
-    console.log(`${paint.yellow}No concept matching "${wanted}".${paint.reset}`);
-    console.log(`Try: ${concepts.map((c: any) => c.key).join(', ')}`);
+  if (picked.length === 0) {
+    const meant = nearest(wanted, [...commandWords(), ...all.map(lookupWord)], 3);
+    console.log(`${paint.yellow}No command or concept matching "${wanted}".${paint.reset}`);
+    if (meant.length) console.log(`Did you mean ${meant.map(m => `ambit help ${m}`).join(', ')}?`);
+    console.log(`Words: ${all.map(lookupWord).join(', ')}`);
+    console.log(`${paint.grey}ambit help --all lists every command.${paint.reset}`);
     return;
   }
-  const wrap = (text: string, width = 76, indent = '  ') => {
-    const out: string[] = [];
-    let line = '';
-    for (const word of text.split(' ')) {
-      if ((line + word).length > width) {
-        out.push(indent + line.trim());
-        line = '';
-      }
-      line += word + ' ';
-    }
-    if (line.trim()) out.push(indent + line.trim());
-    return out.join('\n');
-  };
   console.log('');
   for (const c of picked) {
     console.log(`${paint.bold}${c.term}${paint.reset} ${paint.grey}— ${c.short}${paint.reset}`);
-    console.log(wrap(c.long));
+    console.log(wrapText(c.long));
     console.log(`  ${paint.grey}Where you see it: ${c.seen}${paint.reset}`);
     console.log('');
   }
-  if (usage) {
-    console.log(`${paint.bold}ambit ${verb}${paint.reset}`);
-    console.log(usage);
-    console.log('');
-  }
-  if (mentioned.length) {
-    const lead =
-      picked.length || usage
-        ? 'Also mentioned in'
-        : `No concept is called "${wanted}". Mentioned in`;
-    const names = mentioned.map((c: any) => `${c.term} (ambit help ${c.key})`).join(', ');
-    console.log(`${paint.grey}${lead}: ${names}${paint.reset}\n`);
-  }
   if (!wanted)
     console.log(`${paint.grey}ambit help <term> for one of these on its own.${paint.reset}\n`);
+}
+
+/**
+ * `ambit help <words>`: a group's index, a command in full with the word it
+ * rests on, or the glossary. `ambit help verify` explained the word Verified
+ * and never said how the command is typed.
+ */
+function help(words: string[]): void {
+  if (!words.length) {
+    console.log(HELP_SHORT);
+    return;
+  }
+  const topic = helpTopic(words);
+  if (!topic) {
+    explain(words.join(' ').toLowerCase());
+    return;
+  }
+  console.log(topic.text);
+  const word = topic.verb && conceptOf(topic.verb);
+  if (word) {
+    const paint = terminalPalette();
+    console.log(
+      `  ${paint.grey}${word.term}: ${word.short.charAt(0).toLowerCase()}${word.short.slice(1)}. ambit help ${lookupWord(word)}${paint.reset}`
+    );
+  }
 }
 
 function renderPort(result: any, c: Palette = C): string[] {
@@ -1579,6 +1620,7 @@ export {
   renderFix,
   worries,
   explain,
+  help,
   type BriefReport,
   type ImpactReport,
   type NextReport,

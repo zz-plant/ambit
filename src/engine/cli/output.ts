@@ -264,6 +264,14 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
   return lines;
 }
 
+/**
+ * Whether a person at a terminal reads what is printed: nothing has taken the
+ * result in-process, stdout is a TTY, and --json was not asked for.
+ */
+function toTerminal(): boolean {
+  return !sink && Boolean(process.stdout.isTTY) && !process.argv.includes('--json');
+}
+
 /** Swap the destination — `capture` uses this to take the data instead. */
 export function setSink(next: ((data: unknown) => void) | null): ((data: unknown) => void) | null {
   const previous = sink;
@@ -281,5 +289,6 @@ export {
   formatGeneric,
   raiseExitCode,
   terminalPalette,
+  toTerminal,
   type Palette,
 };

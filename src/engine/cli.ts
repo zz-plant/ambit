@@ -12,11 +12,12 @@ import {
   raiseExitCode,
   setSink,
   terminalPalette,
+  toTerminal,
 } from './cli/output.ts';
-import { HELP, HELP_SHORT, commandHelp, groupHelp } from './cli/help.ts';
+import { HELP, groupHelp } from './cli/help.ts';
 import {
   briefReport,
-  explain,
+  help,
   renderBrief,
   renderCarry,
   renderImpact,
@@ -272,12 +273,19 @@ async function runCommand(
       else if (arg === 'affordances') emit(affordanceDomains(db));
       else if (arg === 'capacity') emit(capacityReport());
       else if (arg === 'unmapped') emit(unmappedUse(db, days(positional[1])));
-      // The whole graph as JSON is a view like the others, and named as one.
-      // It was what bare `graph` printed, forty kilobytes on a terminal, where
-      // every other group named alone lists what it owns.
+      // The whole graph as JSON is a view like the others, and named as one,
+      // so a script can ask for it the same on a terminal and through a pipe.
       else if (arg === 'export') emitRaw(exportGraph(db), false);
-      else if (!arg) emitText(groupHelp('graph'));
-      else {
+      // The whole graph is one line of JSON, a hundred kilobytes on a real
+      // setup: what a pipe or a file wants, and what a person typing the
+      // group's name to see what it holds did not. A terminal gets the index.
+      else if (!arg) {
+        if (toTerminal())
+          emitText(
+            `${groupHelp('graph')}\n  ambit graph export > graph.json writes the whole graph, which the map draws when the file is dropped on it.`
+          );
+        else emitRaw(exportGraph(db), false);
+      } else {
         const views = ['surface', 'combos', 'affordances', 'capacity', 'unmapped', 'export'];
         const meant = nearest(arg, [...views, ...GROUPS.graph], 2);
         emit({
@@ -1315,27 +1323,21 @@ function runGate(db: Db | null, flags: Set<string>): void {
 }
 
 async function main() {
-  // `-h` and `--help` alone are `help`; after a command they are that
-  // command's usage, printed before the graph is opened, so asking how a
-  // command is used never runs it, and never seeds a first graph either.
-  const first = process.argv[2] === '-h' || process.argv[2] === '--help' ? 'help' : process.argv[2];
-  const resolved = resolveCommand(first, process.argv.slice(3));
-  const cmd = resolved.cmd;
-  if (cmd && cmd !== 'help' && (resolved.argv.includes('--help') || resolved.argv.includes('-h'))) {
-    const usage = commandHelp(cmd);
-    if (usage) {
-      console.log(usage);
-      return;
-    }
-  }
-  // Help reads the lists and the glossary and nothing in the graph, so it
-  // answers before one is opened, or created where there was none.
-  if (!cmd || cmd === 'help') {
-    const word = resolved.argv.find(a => !a.startsWith('--'));
-    if (cmd === 'help' && word) explain(word.toLowerCase());
-    else console.log(resolved.argv.includes('--all') ? HELP : HELP_SHORT);
+  // Help reads no graph, so it is answered before one is opened: it used to
+  // wait on the spools and the session logs before printing a word, and on a
+  // fresh machine opening the graph created it. `--help` after a command asks
+  // about that command: `ambit verify --help` ran every declared check, and
+  // `ambit approve <id> --help` approved, because the flag every other tool
+  // reads as "say what this does" was one more flag the command ignored.
+  const typed = process.argv.slice(2);
+  if (!typed[0] || typed[0] === 'help' || typed.some(isHelpFlag)) {
+    const words = (typed[0] === 'help' ? typed.slice(1) : typed).filter(a => !a.startsWith('-'));
+    if (!words.length && typed.includes('--all')) console.log(HELP);
+    else help(words);
     return;
   }
+  const resolved = resolveCommand(typed[0], typed.slice(1));
+  const cmd = resolved.cmd ?? typed[0];
   // The gate runs inside someone else's tool call, so it is answered before
   // the graph is opened for anything else. A graph it cannot open printed a
   // stack trace and exited 1, and an empty one was seeded on the spot, with
@@ -1396,7 +1398,7 @@ async function main() {
     'init-rules',
     'rules',
   ]);
-  if (cmd && !ledgerCommands.has(cmd) && cmd !== 'seed' && cmd !== 'where' && cmd !== 'help') {
+  if (cmd && !ledgerCommands.has(cmd) && cmd !== 'seed' && cmd !== 'where') {
     const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
     if (!seeded?.n) {
       // Seed rather than instruct. A fresh Homebrew install
@@ -1446,6 +1448,11 @@ async function main() {
   }
   await runCommand(db, cmd, positional, flags, mappingOverride);
   db.close();
+}
+
+/** `--help`, or `-h`, anywhere after a command. */
+function isHelpFlag(word: string): boolean {
+  return word === '--help' || word === '-h';
 }
 
 /** The error when no one can be taken to decide: who could, or how to become one. */

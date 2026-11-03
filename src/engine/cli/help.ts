@@ -1,47 +1,65 @@
+import { ALIASES, GROUPS } from './groups.ts';
+
 /**
  * What `ambit help` prints.
  *
- * Two lists on purpose: forty verbs on first contact taught nothing, so the
- * short one covers a first session and names the five groups, and `--all` is
- * the full surface.
+ * Three depths, each a step down from the last. The short list is a first
+ * session, eight commands in the order a person meets them, and names the
+ * five groups. `ambit help <group>`, or the group's name alone, is that
+ * group's index: one line a verb. `ambit help <command>` is that command's
+ * entry from `--all`, every option included. The short list once grew to
+ * seventeen verbs with their flags, and a group named alone printed sixty
+ * lines of the judge's options, so a reader met everything before anything.
  */
-import { GROUPS } from './groups.ts';
 
-// Eight commands cover a first session: where you stand, what to reach next
-// and how, whether an agent may act, whether it works, and the map. It listed
-// eighteen with their flags, which was the full list again under a shorter
-// name. Everything else is a group away, or `help --all`.
 const HELP_SHORT = `ambit - what your setup can do, what it costs, what to change
 
-  status            what is reached and verified, what fails, what to type next
-  next              the capabilities worth reaching next, and why
-  goal <cap-or-sentence>   the steps to a capability, in the order they close
-  can <cap>         whether an agent may use it: yes, ask first, or no
-  verify [cap]      run the declared checks, and record what passes
-  doctor            setup health: what works, what fails, what rests on one piece
-  connect [runtime] register Ambit's MCP server in each agent config it can write
-  web               the map, in a browser on this machine
+A first session
+  ambit                 where you stand, and the one step worth taking next
+  ambit web             the same, on a map in the browser
+  ambit next            the three capabilities worth reaching next, and why
+  ambit goal <what>     the steps to a capability: ambit goal "search the web"
+  ambit verify          check that what is configured actually works
+  ambit connect         let your agents ask the same questions, over MCP
+  ambit status          the full report: what fails, and what waits on you
+  ambit seed            read your agent configs again after you change one
 
-  Grouped: graph · plan · check · govern · report. \`ambit plan\` lists what
-  plan owns, and so on for each.
-  help --all        every command
-  help <word>       one concept explained, or one command's usage
-  <command> --help  that command's usage`;
+The rest sits in five groups; ambit help <group> lists one
+  graph                 the structure, and what losing a piece would break
+  plan                  what to acquire next, and whether it paid
+  check                 what is verified, what is permitted, what is broken
+  govern                proposals, approvals, and the trail they leave
+  report                what the setup costs to operate
+
+  ambit help <command>  one command in full: ambit help goal
+  ambit help <word>     one word explained: ambit help frontier
+  ambit help --all      every command at once`;
 
 const HELP = `ambit - what your setup can do, what it costs, what to change
 
 Five groups. Every verb also works on its own — \`ambit impact x\` and
-\`ambit graph impact x\` are the same command.
+\`ambit graph impact x\` are the same command. A decision is taken
+--by=<person>, or by the one person declared. A report over the ledger
+looks back --days=30 unless told otherwise.
 
   seed              seed from the agent config
   briefing [--json] [--peek]   what an agent should know before its first tool
                     call — broken, waiting, blocked, next. --peek does not
                     move the "since last briefing" mark
-  status            health · failing · sole providers · deficits · waiting approvals
+  status [--brief]  health · failing · sole providers · deficits · waiting approvals;
+                    --brief is the short screen bare \`ambit\` shows
+  web [--port=N] [--no-open]   open the map on localhost: the built page from
+                    an install, Vite from a checkout
+  mcp [--profile=agent]   run the MCP server, exposing the same questions to an
+                    agent session: claude mcp add ambit -- ambit mcp
+  --version         the installed version, for a bug report
 
 graph — the structure, and what it would cost to lose a piece
-  graph [surface|combos|affordances|unmapped|capacity]   a view of the graph
-  graph export            the whole graph as JSON, the file the map takes dropped
+  graph [surface|combos|affordances|unmapped|capacity]   one view of the graph;
+                          with no view, this list on a terminal, and the whole
+                          graph as JSON through a pipe or with --json, which
+                          the map draws when the file is dropped on it
+  graph export            the whole graph as JSON, the same through a pipe or not
   graph impact <id>       what actually breaks if a capability goes away
   graph catalog <cap>     the ways to acquire a capability, compared by cost
   graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
@@ -257,49 +275,174 @@ report — what the setup cost to operate
                           its check, the proposals to decide, the verified count.
                           Reads the graph and writes nothing
 
-  help [word]       this list, or one concept explained, or one command's usage`;
+  help [group|command|word]   the first-session list, or a group's index, one
+                    command in full, or one word explained
+  help --all        this list`;
 
 /**
- * What one group owns, as `help --all` prints it.
+ * Each group's index: one line a verb, in the order a person reaches for them.
  *
- * `ambit help` ends "try `ambit plan`", and a group named with no verb after it
- * was an unknown command, so the one piece of advice the short help gives led
- * to an error. Sections are separated by a blank line and none contains one,
- * so the group's is the chunk that opens with its name.
+ * Written apart from the full list and not cut from it, because an entry
+ * there opens on its options and a line cut to fit stopped mid-clause. A
+ * test holds every verb a group dispatches to a line here.
+ */
+const INDEX: Record<string, [string, string][]> = {
+  graph: [
+    ['graph [view]', 'one view: surface, combos, affordances, unmapped, capacity'],
+    ['impact <id>', 'what stops working if this piece goes away'],
+    ['catalog <cap>', 'the ways to acquire a capability, compared by cost'],
+    ['share', 'the map as one HTML file, safe to post'],
+    ['where', 'which graph file is open'],
+    ['skills', 'what the agent built itself and registered'],
+    ['objects [target]', 'what may be done to a thing, and what is proved there'],
+    ['sync export|import', 'the graph and ledger as one file, for a rebuilt machine'],
+  ],
+  plan: [
+    ['next [n]', 'the capabilities worth reaching next, and why'],
+    ['goal <what>', 'the steps to a capability, in order'],
+    ['council', 'the first next step, read five ways'],
+    ['propose <cap>', 'draft a change for a person to approve'],
+    ['opportunities', 'structural changes worth making, ranked and priced'],
+    ['roi', 'whether the changes you applied paid'],
+    ['reversible', 'what could be acquired without a person'],
+    ['repo [dir]', "a project's stack, and what to add for it"],
+    ['portfolio', 'the same questions across imported environments'],
+    ['judge', 'ask a model on this machine which node a sentence means'],
+  ],
+  check: [
+    ['verify [cap]', 'run the declared checks and record what passed'],
+    ['fix <cap>', 'what to type for something failing or not reached'],
+    ['doctor', 'what works, what fails, what rests on one piece'],
+    ['connect [runtime]', "register Ambit's MCP server with your agents"],
+    ['authority [cap]', 'what may run without asking, and what asks first'],
+    ['can <cap>', 'one decision: allow, confirm or deny'],
+    ['budget', 'a ceiling on what a capability may spend'],
+    ['gate', 'the Claude Code hook that asks or denies before a tool runs'],
+    ['weigh', "what each tool server's tool list costs in context"],
+    ['toggle <server>', 'turn a tool server off or on across runtimes'],
+    ['port [server]', 'copy a tool server from one runtime to another'],
+    ['credentials', 'what revoking each credential would end'],
+    ['init <cap>', 'scaffold a declared check to paste'],
+    ['init-rules', "add Ambit's pre-flight guidance to your agent rules"],
+    ['incidents', 'probe the declared services and record what answered'],
+    ['receipt [hours]', 'what the ledger recorded in the last hours'],
+    ['ci', 'the capability checks a CI pipeline runs'],
+  ],
+  govern: [
+    ['proposals [id]', 'the drafts, and what waits on a decision'],
+    ['approve <id>', 'say yes to a draft; apply is what writes it'],
+    ['reject <id>', 'say no, with a reason the next draft learns from'],
+    ['apply <id>', "write an approved change into a runtime's config"],
+    ['rollback <id>', 'undo an applied change'],
+    ['people', 'who may approve and set budgets'],
+    ['dispatch <id>', 'send a proposal to Slack, Discord, ntfy or a webhook'],
+    ['history', 'how the frontier moved over time'],
+    ['audit', 'who approved what, what ran, and whether it held'],
+    ['delegation', 'grants that narrowed when what they rest on failed'],
+  ],
+  report: [
+    ['work', 'recent runs, each with what it cost'],
+    ['usage', 'where effort and tokens went'],
+    ['attention', 'how much work still runs through a person'],
+    ['economics', 'declared costs and goal values'],
+    ['record <cap>', 'record a blocked task, or a skill the agent wrote'],
+    ['signals', 'failures observed without anyone recording them'],
+    ['preferences', 'what someone declared, or what they actually approve'],
+    ['notify <topic>', "push the week's digest to ntfy"],
+    ['federation', 'the signed summary a portfolio layer reads'],
+    ['statusline', "one line for Claude Code's status line"],
+  ],
+};
+
+/** A group's heading, as the full list writes it: "plan — what to acquire next…". */
+function heading(group: string): string {
+  return HELP.split('\n').find(line => line.startsWith(`${group} — `)) ?? group;
+}
+
+/**
+ * What a group owns, one line a verb, and how to run and read one.
+ *
+ * `ambit help` sends a reader to a group, and a group named with no verb
+ * after it was an unknown command, so the one piece of advice the short help
+ * gave led to an error. It then printed the group's whole section of
+ * `--all`, which for plan was sixty lines.
  */
 function groupHelp(group: string): string {
-  return HELP.split('\n\n').find(part => part.startsWith(`${group} — `)) ?? HELP_SHORT;
+  const rows = INDEX[group];
+  if (!rows) return HELP_SHORT;
+  const width = Math.max(...rows.map(([usage]) => usage.length));
+  return [
+    heading(group),
+    '',
+    ...rows.map(([usage, says]) => `  ${usage.padEnd(width)}   ${says}`),
+    '',
+    `  Each runs as ambit <verb>, or ambit ${group} <verb>.`,
+    '  ambit help <verb> shows one in full, with its options.',
+  ].join('\n');
 }
 
 /**
- * One command's entries from the full list, as `<verb> --help` and
- * `ambit help <verb>` print them.
- *
- * `--help` after a verb ran the verb, or failed on the flag, and the usage was
- * only in the full list. It is read from that list and not written twice, so
- * the two cannot disagree. An entry opens on a line indented two spaces and
- * continues on the lines indented further; every entry that names the verb,
- * under its group or on its own, is the verb's.
+ * A group's section of the full list. Sections are separated by a blank line
+ * and none contains one, so the group's is the chunk that opens with its name.
  */
-function usageOf(verb: string): string | undefined {
-  const group = Object.entries(GROUPS).find(([, verbs]) => verbs.includes(verb))?.[0];
-  const word = verb.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const opens = new RegExp(`^  (${group ? `${group} ` : ''})?${word}(\\s|$)`);
+function groupSection(group: string): string | undefined {
+  return HELP.split('\n\n').find(part => part.startsWith(`${group} — `));
+}
+
+/**
+ * Every entry of the full list: a line at the two-space margin and the lines
+ * indented under it. A heading or a blank line closes one.
+ */
+function entries(): string[] {
   const out: string[] = [];
-  let taking = false;
+  let open = false;
   for (const line of HELP.split('\n')) {
-    if (/^ {2}\S/.test(line)) taking = opens.test(line);
-    else if (!/^ {3,}\S/.test(line)) taking = false;
-    if (taking) out.push(line);
+    if (/^ {2}\S/.test(line)) {
+      out.push(line);
+      open = true;
+    } else if (open && /^ {3,}\S/.test(line)) out[out.length - 1] += `\n${line}`;
+    else open = false;
   }
-  return out.length ? out.join('\n') : undefined;
+  return out;
 }
 
-/** What `<command> --help` prints: a group's section, or the command's entries. */
-function commandHelp(cmd: string): string | undefined {
-  if (cmd in GROUPS) return groupHelp(cmd);
-  if (cmd === 'help') return HELP_SHORT;
-  return usageOf(cmd);
+/**
+ * A command's entries from the full list, every form of it, or nothing for a
+ * word that is no command. `init` is not `init-rules`: the word has to end
+ * where the verb does.
+ */
+function commandHelp(verb: string): string | undefined {
+  const group = Object.keys(GROUPS).find(g => GROUPS[g].includes(verb));
+  const opens = group ? `${group} ${verb}` : verb;
+  const found = entries().filter(entry => {
+    const rest = entry.slice(2);
+    return rest.startsWith(opens) && /^(\s|$)/.test(rest.slice(opens.length));
+  });
+  if (!found.length) return undefined;
+  const runs = group ? `ambit ${verb}, or ambit ${group} ${verb}: the same command` : '';
+  return [...found, ...(runs ? ['', `  ${runs}`] : [])].join('\n');
 }
 
-export { HELP, HELP_SHORT, commandHelp, groupHelp, usageOf };
+/**
+ * What `ambit help <words>` is about, when it is a command or a group: a
+ * group alone is its index, a group and one of its verbs is that verb, and an
+ * old name is read as the one it became. Anything else is no topic here, and
+ * the caller looks the words up in the glossary.
+ */
+function helpTopic(words: string[]): { text: string; verb?: string } | undefined {
+  const named = (word: string | undefined) => {
+    const lower = word?.toLowerCase();
+    return lower && lower in ALIASES ? ALIASES[lower].to : lower;
+  };
+  let verb = named(words[0]);
+  if (!verb) return undefined;
+  if (verb in GROUPS) {
+    const sub = named(words[1]);
+    if (!sub || !GROUPS[verb].includes(sub)) return { text: groupHelp(verb) };
+    verb = sub;
+  }
+  const text = commandHelp(verb);
+  return text ? { text, verb } : undefined;
+}
+
+export { HELP, HELP_SHORT, INDEX, commandHelp, groupHelp, groupSection, helpTopic };
