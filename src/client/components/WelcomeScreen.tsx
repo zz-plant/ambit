@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useConfigImport } from '../hooks/useConfigImport';
 import { useCopied } from '../hooks/useCopied';
-import { mergeGraphs } from '../store/ambitStore';
+import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { INSTALL } from '../utils/copy';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -38,6 +38,9 @@ export const RUNTIMES = [
  * this to them, since the hand-written "four more" outlived a fifth.
  */
 export const RUNTIMES_READ = 16;
+
+/** What the owner of an empty graph runs, which the page copies and never runs. */
+const SEED = 'ambit seed';
 
 /** The published docs, beside the app on the hosted site. */
 const DOCS = `${import.meta.env.BASE_URL}docs/`;
@@ -105,6 +108,10 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
   const [dropping, setDropping] = useState(false);
   const [copied, copy] = useCopied();
   const next = useMemo(demoNextStep, []);
+  // Served by `ambit web` against a graph nothing has been read into: the
+  // person here already has Ambit, so the visitor's install line and sample
+  // pitch answer a question they did not ask. The demo stays one link away.
+  const owner = useAmbitStore(s => s.backend === 'live' && !s.demo);
 
   return (
     // The whole page takes a dropped file, so there is no target to aim at;
@@ -140,7 +147,34 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           reach is your <em>ambit</em>.
         </p>
 
-        {next && (
+        {owner && (
+          <div className="app-welcome-yours">
+            <h2>Nothing has been read on this machine yet</h2>
+            <p className="app-welcome-local">
+              The graph this page reads is empty, which means Ambit has not run here, not that your
+              setup can do nothing. Run this in a terminal: it reads every agent runtime&apos;s
+              config on this machine into the local graph, and this page draws the map once it is
+              done. <code>ambit</code> on its own does the same on a first run, then says where you
+              stand.
+            </p>
+            <div className="app-welcome-install">
+              <code className="app-welcome-cmd">{SEED}</code>
+              <button
+                type="button"
+                className="app-welcome-copy"
+                onClick={() => copy('seed', SEED)}
+                aria-label="Copy the seed command"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+            <button type="button" className="app-welcome-link" onClick={onExploreDemo}>
+              Look at the sample setup meanwhile
+            </button>
+          </div>
+        )}
+
+        {next && !owner && (
           <button type="button" className="app-welcome-fact" onClick={onExploreDemo}>
             <span className="app-welcome-fact-figure">{next.reaches}</span>
             <span className="app-welcome-fact-text">
@@ -151,34 +185,41 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           </button>
         )}
 
-        <div className="app-welcome-yours">
-          <h2>Or map your own config</h2>
-          <ConfigIntake onMapped={onMapped} />
-          {dropError && (
-            <p className="intake-error" role="alert">
-              {dropError}
-            </p>
-          )}
-        </div>
+        {!owner && (
+          <div className="app-welcome-yours">
+            <h2>Or map your own config</h2>
+            <ConfigIntake onMapped={onMapped} />
+            {dropError && (
+              <p className="intake-error" role="alert">
+                {dropError}
+              </p>
+            )}
+          </div>
+        )}
 
-        <div className="app-welcome-install">
-          <code className="app-welcome-cmd">{INSTALL}</code>
-          <button
-            type="button"
-            className="app-welcome-copy"
-            onClick={() => copy('install', INSTALL)}
-            aria-label="Copy the install command"
-          >
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
-        </div>
-        <p className="app-welcome-local">
-          No install needed: npx fetches it for the run, and it maps every runtime on this machine.
-          To keep the command, install with Homebrew or <code>npm install -g ambit-cli</code>.
-        </p>
+        {!owner && (
+          <>
+            <div className="app-welcome-install">
+              <code className="app-welcome-cmd">{INSTALL}</code>
+              <button
+                type="button"
+                className="app-welcome-copy"
+                onClick={() => copy('install', INSTALL)}
+                aria-label="Copy the install command"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+            <p className="app-welcome-local">
+              No install needed: npx fetches it for the run, and it maps every runtime on this
+              machine. To keep the command, install with Homebrew or{' '}
+              <code>npm install -g ambit-cli</code>.
+            </p>
+          </>
+        )}
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>
-            Time &amp; authority
+            Time &amp; cost
           </button>
           <a href={`${DOCS}guide/`}>Get started</a>
           <a href={`${DOCS}faq/`}>What stays on your machine</a>
@@ -193,7 +234,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
       {/* On a wide screen, the step the fact names, already lit: the button
           beside it plays it on the live map. Hidden on a narrow one, where
           the hero is the whole width. */}
-      {next && (
+      {next && !owner && (
         <button
           type="button"
           className="app-welcome-still"

@@ -65,8 +65,8 @@ test('a step with no inverse is marked, and the tally says the plan is not rever
 
   expect(text(html)).toContain('2 steps · not reversible · 30m of setup');
   expect(html.match(/gov-step-mark/g)).toHaveLength(1);
-  expect(stepNamed(html, 'C')).toContain('no inverse');
-  expect(stepNamed(html, 'A')).not.toContain('no inverse');
+  expect(stepNamed(html, 'C')).toContain('cannot be undone');
+  expect(stepNamed(html, 'A')).not.toContain('cannot be undone');
 });
 
 test('reversible and not a config change says apply refuses it, and offers no apply command', () => {
@@ -85,7 +85,7 @@ test('reversible and not a config change says apply refuses it, and offers no ap
   const plain = text(render());
 
   expect(plain).toContain('1 step · reversible');
-  expect(plain).toContain('cannot be applied by ambit apply: a step is not a config change');
+  expect(plain).toContain('ambit apply will not run it: a step is not a config change');
   expect(plain).not.toContain('Copy: ambit apply');
 });
 
@@ -94,7 +94,7 @@ test('a plan apply can run keeps the command to run it', () => {
   const plain = text(render());
 
   expect(plain).toContain('1 step · reversible · 30m of setup');
-  expect(plain).toContain('every step is a config change with an inverse');
+  expect(plain).toContain('ambit apply can make every change');
   expect(plain).toContain('Copy: ambit apply prop-offline-semantic-search');
 });
 

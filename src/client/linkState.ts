@@ -11,7 +11,7 @@
 
 /**
  * The views, one question each: `map` is where you stand, `setup` is what this
- * machine has, `cost` is Time & authority, `audit` is the trail, `proposals` is
+ * machine has, `cost` is Time & cost, `audit` is the trail, `proposals` is
  * what waits on your decision. The words are the labels' own, so a link reads
  * as it lands. Links written before the rename read the old words
  * (`tree`, `config`, `loop`) as aliases, so they still open where they did.

@@ -124,27 +124,27 @@ The commands above read the capability graph. A second group (`attention`, `work
 ```console
 $ ambit status
 
-    15 of 46 reached, and 24 of your own · 0 verified · 8 with a single provider
+    15 of 46 reached, and 20 of your own · 0 verified · 8 with a single provider
     ────────────────────────────────────────────────────────────────────────
     verified        0
   › unverified     15  11 provable now · 4 with no check
     failing         0
-    entries        24  from your config; checks run on what they provide
+    entries        24  from your config, and 4 built into the runtime
     last check  never
 
-    actions: 18/66 reached
-    provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution and 3 more
-    reach: 15 of 46 capabilities reached, and 24 of your own
-    domains:
+    Provable now  Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution and 3 more
+
+    By domain
       ████░░░░░░ ai-ml     5/13
       ██████░░░░ backend   7/11
+      █████░░░░░ devops    4/8
     …
 
     Next  ambit verify · turns 11 of the unverified into evidence
 ```
 <!-- /example -->
 
-This is a fresh graph, before any check has run: reached and verified lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the `›` marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
+This is a fresh graph, before any check has run: reached and verified lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together with the four built-ins every runtime brings, the `›` marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
 
 ### ambit impact — downstream dependency impact
 
@@ -271,7 +271,7 @@ Both clients assume `ambit` is on your PATH. Homebrew and `npm install -g ambit-
 > the capability. On `yes`, act. On `ask`, put it to the person. On `no`, it has
 > already recorded the deficit, so do not retry it under another name.
 
-The server sends this instruction in the MCP handshake. For clients that do not expose server instructions to the model context, `ambit init-rules` writes the guidance into `CLAUDE.md`, `AGENTS.md`, or `.cursorrules`. Agents with shell access but no MCP connection can check permissions using `ambit can <capability> --exit-code`. A refusal is recorded as a deficit in the work ledger, and a deficit that recurs moves up the ranking of what to set up next.
+The server sends this instruction in the MCP handshake. For clients that do not expose server instructions to the model context, `ambit init-rules` writes the guidance into `CLAUDE.md`, `AGENTS.md`, or `.cursorrules`. Agents with shell access but no MCP connection can check permissions using `ambit can <capability> --exit-code --record`. With `--record` a refusal is recorded as a deficit in the work ledger, and a deficit that recurs moves up the ranking of what to set up next; a person typing `ambit can` records nothing.
 
 <div align="center">
 <img src="docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">
@@ -286,7 +286,7 @@ The server sends this instruction in the MCP handshake. For clients that do not 
 
 - **Map**: The curated tree with your reach drawn on it. The line on top names what the map found: a failing check, or else the next step that opens the most.
 - **My Setup**: The entries your configs declare, their check history, and the capabilities each provides, closing with what the agents used that no node on the map accounts for. The Briefing section displays the context payload provided to agents on connection, and the Environment section draws the repository and infrastructure scans. Each section is part of the address, so a link can open on it.
-- **Time & authority**: The work ledger, what may act without asking, what to reach next, and frontier evolution over the past week.
+- **Time & cost**: The work ledger, what runs without asking, what to reach next, and frontier evolution over the past week.
 - **Audit**: Reverse-chronological audit log of proposals, approvals, check executions, and work sessions, searchable by query.
 - **Proposals**: The decision queue, one card per change an agent has drafted, several decidable together.
 

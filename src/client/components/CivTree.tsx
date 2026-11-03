@@ -490,6 +490,12 @@ export default function CivTree({
               sym: AUTHORITY_SYM[m],
               label: AUTHORITY_LABEL[m],
               hatch: m === 'forbidden',
+              // Stripes mean one thing on every lens, something that refuses,
+              // and the standard map draws a failing check with them. Said
+              // here, a reader who met them as failing reads them right.
+              ...(m === 'forbidden' && {
+                hint: 'Forbidden: a grant refuses it. Stripes mark what refuses, which on the standard map is a failing check.',
+              }),
             })
           )
         : activeLens === 'attention'
@@ -675,6 +681,8 @@ export default function CivTree({
   // At rest, a tree shorter than the canvas sat at the top of it, 170px over
   // the key at 1440 by 900; it is centred between the controls and the key.
   const KEY_STRIP = 56;
+  // The minimap's height and the gap under it, as .civ-minimap places it.
+  const MINIMAP_ROOM = 120;
   const centring =
     !narrow && boxHeight !== null
       ? Math.max(
@@ -787,9 +795,20 @@ export default function CivTree({
   React.useEffect(() => {
     const el = containerRef.current;
     if (narrow || !el) return;
+    // An outage is framed on what stops: its root and what was working. What
+    // was never set up is cut off too, and taking it in zoomed the tour's
+    // outage card out to 46%, where no name on the map could be read.
+    const stops =
+      simulationMode === 'outage'
+        ? [...simSet].filter(
+            id => id === simulatedNodeId || items.some(i => i.id === id && i.status === 'built')
+          )
+        : [];
     const subject =
       simulationMode !== 'none'
-        ? [...simSet]
+        ? stops.length
+          ? stops
+          : [...simSet]
         : selectedId
           ? [selectedId, ...needs, ...enables]
           : [];
@@ -1004,6 +1023,7 @@ export default function CivTree({
     centring,
     headlinePad,
     outageCallout,
+    items,
   ]);
 
   // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
@@ -1264,28 +1284,35 @@ export default function CivTree({
       )}
 
       {/* Hidden while a panel is open, a node's or an era's ladder: the panel
-          is then what is being read, and the headline sat on the lens switch. */}
-      {!narrated && !asOf && simulationMode === 'none' && !selectedId && selectedEra === null && (
-        <MapFinding
-          wrapRef={measureHeadline}
-          findings={findings}
-          since={rangeSince}
-          onShow={id => onSelect(id)}
-          onSimulate={id => {
-            onSelect(id);
-            startOutage(id);
-          }}
-          onSpotlight={key => setSpotlight(spotlight === key ? null : key)}
-          onPreview={id => {
-            onSelect(id);
-            startAcquisition(id);
-          }}
-          where={where}
-          leftInset={leftInset}
-          rightInset={rightInset}
-          reachFirst={reachFirst}
-        />
-      )}
+          is then what is being read, and the headline sat on the lens switch.
+          Hidden while the key is open too, which is then what is being read:
+          the headline was drawn over the key's first line. */}
+      {!narrated &&
+        !asOf &&
+        !keyOpen &&
+        simulationMode === 'none' &&
+        !selectedId &&
+        selectedEra === null && (
+          <MapFinding
+            wrapRef={measureHeadline}
+            findings={findings}
+            since={rangeSince}
+            onShow={id => onSelect(id)}
+            onSimulate={id => {
+              onSelect(id);
+              startOutage(id);
+            }}
+            onSpotlight={key => setSpotlight(spotlight === key ? null : key)}
+            onPreview={id => {
+              onSelect(id);
+              startAcquisition(id);
+            }}
+            where={where}
+            leftInset={leftInset}
+            rightInset={rightInset}
+            reachFirst={reachFirst}
+          />
+        )}
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable. */}
       <div
@@ -1313,7 +1340,14 @@ export default function CivTree({
             // And on a phone, room below for whatever covers the bottom: the
             // map is shorter than the screen there, so a node under the sheet
             // describing it had nowhere to scroll up to.
-            paddingBottom: narrow ? covered : 0,
+            // On a wide one the minimap sits over the bottom right of a map
+            // taller than the screen, and the last row's node there had
+            // nowhere to scroll out from under it.
+            paddingBottom: narrow
+              ? covered
+              : boxHeight !== null && centring === 0 && contentHeight * zoom > boxHeight - 88
+                ? MINIMAP_ROOM
+                : 0,
             cursor: isDragging ? 'grabbing' : 'default',
             userSelect: isDragging ? 'none' : 'auto',
             '--headline-pad': `${headlinePad}px`,
@@ -1497,7 +1531,7 @@ export default function CivTree({
                       <text
                         x={27}
                         y={headH + saidH + 12}
-                        fill="var(--warn)"
+                        fill="var(--text-primary)"
                         fontSize={11}
                         fontWeight={600}
                         fontFamily="var(--font-sans)"

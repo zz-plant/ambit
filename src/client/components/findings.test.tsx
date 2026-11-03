@@ -118,14 +118,18 @@ test('My Setup leads with what is failing and what provides nothing', () => {
   expect(html).toContain('check passed');
 });
 
-test('Time & cost opens on the saving and the move that pays back soonest', () => {
+test('Time & cost opens on the saving and the step the map and the council name', () => {
   seed({ ...merged, loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard onShowOnMap={() => {}} />);
-  const soonest = [...demoSnapshot().opportunities]
-    .filter(o => o.payback_months != null)
-    .sort((a, b) => (a.payback_months as number) - (b.payback_months as number))[0];
+  // One next step on the page: the engine's first, which the council reads and
+  // the map's best next step names. The opportunity that paid back soonest
+  // used to head it, a third answer by a rule the page never stated.
+  const [first] = demoSnapshot().next;
   expect(html).toContain('loop-lead');
-  expect(text(html)).toContain(`Next: ${soonest.title}`);
+  expect(text(html)).toContain(`Next: ${first.capability}`);
+  expect(text(html)).toContain(`on ${first.capability}, the first step to reach`);
+  const ranked = demoSnapshot().next.map(n => n.id);
+  expect(mapFindings(merged.items, merged.connections, ranked).best?.item.id).toBe(first.id);
   // Something configured and not working is an alert above the figures.
   expect(html.indexOf('fig--alert')).toBeGreaterThan(-1);
   expect(html.indexOf('fig--alert')).toBeLessThan(html.indexOf('fig-kpis'));
@@ -383,7 +387,9 @@ test('an outage fills what stopped and outlines what was never set up', () => {
   expect(impact.cutOff.length).toBeGreaterThan(0);
   for (const item of impact.cutOff) {
     expect(disc(item.name)).toContain('fill="var(--bg-canvas)"');
-    expect(disc(item.name)).toContain('stroke="var(--error)"');
+    // Muted and dashed: red belongs to what stops.
+    expect(disc(item.name)).toContain('stroke="var(--text-muted)"');
+    expect(disc(item.name)).toContain('stroke-dasharray="5,4"');
   }
 });
 

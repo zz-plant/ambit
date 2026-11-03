@@ -867,7 +867,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * Two shapes arrive here. An agent config — the `opencode.json` a person can
    * drop on the welcome screen — goes through the same importer the live
    * `/api/config` path uses, so a visitor sees their own setup mapped without
-   * an engine. A `{ items, connections }` export (`ambit graph`) is drawn as
+   * an engine. A `{ items, connections }` export (`ambit graph export`) is drawn as
    * it stands. Everything happens in the tab: nothing is uploaded, and the
    * file is not kept.
    */
@@ -883,7 +883,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     const data = parsed as Record<string, unknown>;
 
     if (Array.isArray(data.items)) {
-      // An `ambit graph` export is taken at its word, with the fields an
+      // An `ambit graph export` file is taken at its word, with the fields an
       // older export may lack filled in.
       const items: Item[] = (data.items as Item[]).map(i => ({
         ...i,

@@ -212,7 +212,7 @@ test('the views are destinations, found by their own words and by their question
   for (const [view, label] of [
     ['map', 'the map'],
     ['setup', 'My Setup'],
-    ['cost', 'Time & authority'],
+    ['cost', 'Time & cost'],
     ['audit', 'Audit'],
     ['proposals', 'Proposals'],
   ] as const) {

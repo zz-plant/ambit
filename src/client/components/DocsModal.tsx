@@ -29,7 +29,7 @@ const HOTKEYS = [
   },
   {
     key: '[ / ]',
-    desc: 'Step through the views: the map, My Setup, Time & authority, Audit and Proposals',
+    desc: 'Step through the views: the map, My Setup, Time & cost, Audit and Proposals',
   },
   {
     key: 'J / K',

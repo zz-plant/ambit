@@ -123,7 +123,7 @@ export function useConfigImport(onMapped?: () => void, agent?: TabRuntime | null
       );
     else
       setError(
-        'Nothing to map: this is neither an agent config nor the output of ambit graph. ' +
+        'Nothing to map: this is neither an agent config nor the output of ambit graph export. ' +
           'Paste JSON with an mcpServers or mcp block.'
       );
   };

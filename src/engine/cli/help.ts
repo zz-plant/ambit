@@ -27,7 +27,7 @@ A first session
 The rest sits in five groups; ambit help <group> lists one
   graph                 the structure, and what losing a piece would break
   plan                  what to acquire next, and whether it paid
-  check                 what is proven, what is permitted, what is broken
+  check                 what is verified, what is permitted, what is broken
   govern                proposals, approvals, and the trail they leave
   report                what the setup costs to operate
 
@@ -59,6 +59,7 @@ graph — the structure, and what it would cost to lose a piece
                           with no view, this list on a terminal, and the whole
                           graph as JSON through a pipe or with --json, which
                           the map draws when the file is dropped on it
+  graph export            the whole graph as JSON, the same through a pipe or not
   graph impact <id>       what actually breaks if a capability goes away
   graph catalog <cap>     the ways to acquire a capability, compared by cost
   graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
@@ -84,10 +85,10 @@ plan — what to acquire next, and whether it paid
   plan goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]]   route a
                           goal, plan the delta, compare acquisition paths, check
                           preferences; --judge asks a judgment model on this
-                          machine (AMBIT_JUDGE_URL, or Kev on 127.0.0.1:8009)
-                          when no words match, then an embedding model there
-                          (AMBIT_EMBED_URL, or Ollama on 127.0.0.1:11434) when
-                          no judge answers, and suggests without writing
+                          machine (AMBIT_JUDGE_URL, or a default loopback
+                          port) when no words match, then an embedding model
+                          there (AMBIT_EMBED_URL, Ollama's port by default)
+                          when no judge answers, and suggests without writing
   plan goal --spec <dir|tasks.md> [--judge[=url]]   a spec's tasks, each routed
                           as a sentence is: what they need, which is reached,
                           a next step, blocked or failing, the steps in order,
@@ -123,13 +124,13 @@ plan — what to acquire next, and whether it paid
   plan judge history [--limit=N] · review <id> accepted|rejected · plan <id>
                           the receipts kept, a person's one review of each, and
                           the plans an accepted one asks for, from the graph now
-  plan judge … --provider=cloudflare [--model=clef|clef-flash|clef-omni]
+  plan judge … --provider=cloudflare [--model=<name>]
                           send the request to Workers AI, with
                           CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN. The
-                          default is a model on this machine, loopback only:
-                          AMBIT_JUDGE_URL, or 127.0.0.1:8009
+                          default is a model on this machine, loopback only,
+                          at AMBIT_JUDGE_URL or a default port
 
-check — what is proven, what is permitted, what is currently broken
+check — what is verified, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
                           declared check, or past verification; --target files
                           the evidence against that object rather than the verb
@@ -160,9 +161,12 @@ check — what is proven, what is permitted, what is currently broken
                           a ceiling on spend per period, in dollars; a spend
                           past it is refused, and within it the grant's own
                           mode decides
-  check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
-                          ALLOW/CONFIRM/DENY; --spend is in dollars, as
-                          --amount is; --exit-code also exits 0/1/2
+  check can <cap> [--target=X] [--spend=N] [--exit-code] [--record]   the
+                          decision API: ALLOW/CONFIRM/DENY; --spend is in
+                          dollars, as --amount is; --exit-code also exits
+                          0/1/2. --record files a refusal as a deficit, for an
+                          agent asking from a shell; a person's question files
+                          nothing
   check gate              the Claude Code PreToolUse hook: denies what is forbidden,
                           asks about what asks first or has no grant, and never allows;
                           run it in a terminal for the settings entry to paste

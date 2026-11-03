@@ -618,6 +618,11 @@ function AuthorityFigure({
   const items = useAmbitStore(s => s.items);
   const [copied, copy] = useCopied();
   const total = authority.autonomous + authority.confirm + authority.forbidden;
+  // Runs without asking and asks first count actions on what is reached;
+  // forbidden counts every refusal, reached or not. So the share is of the
+  // first two, and a refusal is said apart, and none of it is a count of
+  // capabilities: one can carry a grant for several actions.
+  const granted = authority.autonomous + authority.confirm;
   const segments = [
     { key: 'autonomous', n: authority.autonomous, label: 'without asking' },
     { key: 'confirm', n: authority.confirm, label: 'ask first' },
@@ -630,16 +635,27 @@ function AuthorityFigure({
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What runs without asking</span>
         <span className="fig-caption-note">
-          {total
-            ? `${authority.autonomous} of ${total} reached capabilities run without asking`
-            : 'no authority declared yet'}
+          {total ? (
+            <>
+              {granted > 0 && (
+                <>
+                  {authority.autonomous} of {granted} actions on what is reached run without asking,
+                  by their <Term name="grant">grants</Term>
+                </>
+              )}
+              {granted > 0 && authority.forbidden > 0 && ' · '}
+              {authority.forbidden > 0 && `${authority.forbidden} forbidden`}
+            </>
+          ) : (
+            'no authority declared yet'
+          )}
         </span>
       </figcaption>
       {total > 0 && <StackedBar segments={segments} />}
 
       {authority.promotable.length > 0 && (
         <div className="fig-block">
-          <h4 className="fig-subtitle">Earned enough to stop asking</h4>
+          <h3 className="fig-subtitle">Earned enough to stop asking</h3>
           <ul className="fig-promote">
             {authority.promotable.map(p => (
               <li key={`${p.id}/${p.action}`} className="fig-promote-item">
@@ -670,15 +686,18 @@ function AuthorityFigure({
             ))}
           </ul>
           <p className="fig-note">
-            A threshold is a person saying "stop asking me once this has proved itself". The grant
-            widens when the evidence holds and narrows again on one failing check.
+            A <Term name="threshold">threshold</Term> is a person saying "stop asking me once this
+            has proved itself". The grant widens when the evidence holds and narrows again on one
+            failing check.
           </p>
         </div>
       )}
 
       {authority.budgets.length > 0 && (
         <div className="fig-block">
-          <h4 className="fig-subtitle">Spend ceilings</h4>
+          <h3 className="fig-subtitle">
+            Spend <Term name="ceiling">ceilings</Term>
+          </h3>
           <ul className="fig-bars">
             {authority.budgets.map(b => (
               <BudgetRow key={`${b.capability}/${b.action}`} budget={b} />
@@ -827,17 +846,16 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
       <span className="loop-since-from">Since {from}:</span>
       {parts.length === 0 && <span className="loop-since-part">nothing moved</span>}
       {parts.map(p => (
-        <span
-          key={p.key}
-          className={`loop-since-part is-${p.tone}`}
-          title={
-            p.key === 'emergent' ? 'Emergent: reached without anything new providing it' : undefined
-          }
-        >
+        <span key={p.key} className={`loop-since-part is-${p.tone}`}>
           <span className="loop-since-n" style={NUM}>
             {p.names.length}
           </span>{' '}
-          {p.key} · {p.names.slice(0, 3).join(', ')}
+          {p.key === 'emergent' || p.key === 'diminished' ? (
+            <Term name={p.key}>{p.key}</Term>
+          ) : (
+            p.key
+          )}{' '}
+          · {p.names.slice(0, 3).join(', ')}
           {p.names.length > 3 ? ` and ${p.names.length - 3} more` : ''}
         </span>
       ))}
@@ -1196,14 +1214,13 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
   // and a paragraph of method, and its best number sat in the first of five
   // equal cards.
   const saved = attention.interventions > 0 || roi.monthly_hours.length > 1;
-  const topMove = [...opportunities]
-    .filter(o => o.payback_months != null)
-    .sort((a, b) => (a.payback_months as number) - (b.payback_months as number))[0];
-  const topPayback = topMove && payback(topMove.payback_months as number);
-  const topNode =
-    topMove?.capability_id && items.some(i => i.id === topMove.capability_id)
-      ? topMove.capability_id
-      : null;
+  // The step is the engine's first, by the one rule `ambit next`, the map's
+  // best next step and the council read (src/shared/nextSteps.ts). It used to
+  // be the opportunity that paid back soonest, so the page named one step at
+  // the top, another in the council and the ranking under it, and a third in
+  // What would pay back, each by a rule it did not state.
+  const topMove = next[0];
+  const topNode = topMove && items.some(i => i.id === topMove.id) ? topMove.id : null;
   const filters: [typeof confidenceFilter, string][] = [
     ['all', 'All'],
     ['high', 'High confidence'],
@@ -1230,9 +1247,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             {topMove && (
               <div className="loop-move">
                 <p>
-                  Next: <strong>{topMove.title}</strong>. Pays back in {topPayback?.n}{' '}
-                  {topPayback?.unit} and recovers {money(topMove.expected.savings_dollars_month)} a
-                  month.
+                  Next: <strong>{topMove.capability}</strong>
+                  {topMove.cost ? ` · ${topMove.cost}` : ''}. {topMove.why}
                 </p>
                 {onShowOnMap && topNode && (
                   <button type="button" className="fig-cta" onClick={() => onShowOnMap(topNode)}>
@@ -1247,7 +1263,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               </summary>
               <p>
                 Each time someone had to step in for an agent is logged against the capability it
-                was waiting on, priced, and ranked by how soon fixing it would pay back.
+                was waiting on and priced at what an hour of your time is worth.
               </p>
             </details>
             <SinceStrip since={since} />
@@ -1336,7 +1352,16 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
         <section>
           <div className="loop-section-head">
-            <h3 className="loop-section-title">What would pay back</h3>
+            <div>
+              <h3 className="loop-section-title">What would pay back</h3>
+              {/* A second ranking on the page, so it says what it ranks by: the
+                  engine orders these by what the interruptions cost a month,
+                  and the step at the top by blocked work, then leverage. */}
+              <p className="loop-section-note">
+                Ranked by what stepping in costs you a month. The next step above is ranked by
+                blocked work, then by what it opens up.
+              </p>
+            </div>
             <div className="loop-filter-tabs" role="tablist" aria-label="Filter by confidence">
               {filters.map(([key, label]) => (
                 <button

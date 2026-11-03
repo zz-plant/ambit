@@ -569,15 +569,24 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           {ladder.rung !== 'forbidden' && ladder.note && (
             <p className="sp-grant-note">{ladder.note}</p>
           )}
+          {/* The command is on the button, as the failing check's is: "copy
+              the command" named none, so what it would do was a hover away
+              and no tap reached it. */}
           {ladder.next && (
-            <button
-              type="button"
-              className={`sp-cli-copy-btn sp-grant-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
-              title={ladder.next.command}
-              onClick={() => copy('ladder', ladder.next!.command)}
-            >
-              {copiedCmd === 'ladder' ? 'Copied ✓' : `${ladder.next.label}: copy the command`}
-            </button>
+            <>
+              <p className="sp-grant-note">{ladder.next.label}:</p>
+              <button
+                type="button"
+                className="sp-verdict-btn sp-grant-next"
+                onClick={() => copy('ladder', ladder.next!.command)}
+                aria-label={`Copy command ${ladder.next.command}`}
+              >
+                <code>
+                  <Command text={ladder.next.command} />
+                </code>
+                <span>{copiedCmd === 'ladder' ? 'Copied ✓' : 'Copy'}</span>
+              </button>
+            </>
           )}
         </div>
       )}

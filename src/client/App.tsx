@@ -704,7 +704,7 @@ export default function App() {
           </div>
         )}
         {view === 'cost' ? (
-          <Lazy what="Time & authority">
+          <Lazy what="Time & cost">
             <LoopDashboard onShowOnMap={showOnMap} onShow={show} />
           </Lazy>
         ) : view === 'audit' ? (
@@ -766,6 +766,9 @@ export default function App() {
             onSample={
               reading
                 ? () => {
+                    // A step pressed in the readout plays its unlock, and the
+                    // sample's map drew it on over its own finding.
+                    useAmbitStore.getState().clearSimulation();
                     seedDemo();
                     setReadoutOpen(false);
                     showView('map');
@@ -781,6 +784,7 @@ export default function App() {
               onShowProposals={showProposals}
               onMapped={mapped}
               start={tourStart}
+              covered={mapYoursOpen || showApprovalModal || showDocs || finderOpen}
             />
           )
         )}

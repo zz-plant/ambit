@@ -14,6 +14,7 @@
  */
 
 import { shellQuote } from '../shared/shell.ts';
+import { BUILT_INS } from '../shared/runtimes.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
 
 /** States that mean the system can reach a capability. */
@@ -191,16 +192,37 @@ function graphCounts(
  * person's own, their servers, models, runtimes, devices and skills. The readout, the map and the hosted page
  * measure against the tree, and `ambit status`, the briefing and `ambit
  * doctor` called the same setup "18 of 55" where the readout said "9 of 46".
- * Both were true; a sentence holding both agrees with each, and the evidence
- * rows under it still add up to the two together.
+ * Both were true; a sentence holding both agrees with each.
+ *
+ * What every runtime brings (`BUILT_INS`) is seeded on every machine, with or
+ * without a config, so counting it as the person's own made an empty home read
+ * "4 of your own" on the screen that also said nothing of theirs was found. It
+ * is left out of the second figure.
  */
 function reachPhrase(db: { prepare(sql: string): { get(...p: unknown[]): any } }): string {
   const tree = graphCounts(db, 'tree');
-  const more = graphCounts(db).reached - tree.reached;
+  const own = ownReached(db);
   return (
     `${tree.reached} of ${tree.total} capabilities reached` +
-    (more > 0 ? `, and ${more} of your own` : '')
+    (own > 0 ? `, and ${own} of your own` : '')
   );
+}
+
+/** The reached nodes that are the person's own: not the tree's, and not what every runtime brings. */
+function ownReached(db: { prepare(sql: string): { get(...p: unknown[]): any } }): number {
+  const builtIn = BUILT_INS.map(b => `'${b.id}'`).join(', ');
+  try {
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM capabilities
+         WHERE ${COUNTED_SQL} AND kind != 'capability' AND ${REACHED_SQL}
+           AND id NOT IN (${builtIn})`
+      )
+      .get();
+    return row?.n ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -324,7 +346,7 @@ const TOKEN_SOURCES: Readonly<Record<string, string>> = {
  * attention, the audit trail, failure signals, usage, unmapped use, token
  * counts, the council and the opportunity ranking, and the loop page that
  * shows them. They had settled on 30 days apiece, except `attention` and
- * `audit`, at 7, so `ambit attention` and the Time & authority page read the same
+ * `audit`, at 7, so `ambit attention` and the Time & cost page read the same
  * ledger over different months. A window that means something else keeps its
  * own: ROI compares before and after over 60, a receipt covers the last hour,
  * and `usage --windows` the last day.
@@ -353,6 +375,7 @@ export {
   DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,
+  ownReached,
   reachPhrase,
   type GraphCounts,
   NOT_SEEDED,

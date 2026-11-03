@@ -35,7 +35,7 @@ const pointer = (pointerType: string) => ({ pointerType }) as PointerEvent;
 
 test('at rest it says how to use it, and no entry carries a tooltip', () => {
   const html = renderToStaticMarkup(view(null));
-  expect(text(html)).toContain('Press a key to light its nodes.');
+  expect(text(html)).toContain('Choose an entry to light its nodes.');
   expect(html).not.toContain('title=');
   expect(html).not.toContain('civ-key-said');
 });

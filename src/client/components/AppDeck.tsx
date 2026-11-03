@@ -96,6 +96,19 @@ const SEGMENTS: [keyof MapCounts, string][] = [
   ['next', 'Next step'],
 ];
 
+/**
+ * The glossary entry each segment's tooltip defines it by. A glossary popover
+ * is a button and a segment is one already, so the definition rides on the
+ * tooltip: a failing node is the other face of verified, and a next step is
+ * one of the three states.
+ */
+const DEFINED_BY: Partial<Record<keyof MapCounts, string>> = {
+  verified: 'evidence',
+  failing: 'evidence',
+  reached: 'state',
+  next: 'state',
+};
+
 /** The same count for an observation with no lifecycles, where reached is not split. */
 const UNSPLIT: [keyof MapCounts, string][] = [
   ['reached', 'Reached'],
@@ -248,7 +261,7 @@ export default function AppDeck(p: AppDeckProps) {
                   title={
                     p.spotlight === group
                       ? 'Show every node again'
-                      : `Highlight ${group} on the map${key === 'verified' ? `. ${termTitle('evidence')}` : ''}`
+                      : `Highlight ${group} on the map. ${termTitle(DEFINED_BY[key] ?? 'state')}`
                   }
                 >
                   <span className="app-status-n">{p.counts![key]}</span>
@@ -283,7 +296,8 @@ export default function AppDeck(p: AppDeckProps) {
             className={tab(p.view === 'map')}
             aria-current={p.view === 'map' ? 'page' : undefined}
             onClick={() => p.onShowView('map')}
-            // The name, for where the tab shows only its icon.
+            // The full name, for a phone, where the tab shows only its icon,
+            // and for the short word it shows from 1024px to 1270px.
             aria-label="Map"
             title="The curated capability tree, with your position on it"
           >
@@ -311,7 +325,8 @@ export default function AppDeck(p: AppDeckProps) {
             className={tab(p.view === 'setup')}
             aria-current={p.view === 'setup' ? 'page' : undefined}
             onClick={() => p.onShowView('setup')}
-            // The name, for where the tab shows only its icon.
+            // The full name, for a phone, where the tab shows only its icon,
+            // and for the short word it shows from 1024px to 1270px.
             aria-label="My Setup"
             title="The servers, agents and models found on this machine, and what each one provides"
           >
@@ -332,15 +347,17 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
               <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
             </svg>
-            <span className="app-deck-tab-label">My Setup</span>
+            <span className="app-deck-tab-label app-deck-tab-label--long">My Setup</span>
+            <span className="app-deck-tab-label app-deck-tab-short">Setup</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'cost')}
             aria-current={p.view === 'cost' ? 'page' : undefined}
             onClick={() => p.onShowView('cost')}
-            // The name, for where the tab shows only its icon.
-            aria-label="Time & authority"
+            // The full name, for a phone, where the tab shows only its icon,
+            // and for the short word it shows from 1024px to 1270px.
+            aria-label="Time & cost"
             title="Where your time and your agents' spend go, what may run without asking, and what would pay back fastest"
           >
             <svg
@@ -358,14 +375,16 @@ export default function AppDeck(p: AppDeckProps) {
               <path d="M2 12 L6 8 L9 11 L14 4" />
               <circle cx="14" cy="4" r="1.5" fill="currentColor" />
             </svg>
-            <span className="app-deck-tab-label">Time &amp; authority</span>
+            <span className="app-deck-tab-label app-deck-tab-label--long">Time &amp; cost</span>
+            <span className="app-deck-tab-label app-deck-tab-short">Cost</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'audit')}
             aria-current={p.view === 'audit' ? 'page' : undefined}
             onClick={() => p.onShowView('audit')}
-            // The name, for where the tab shows only its icon.
+            // The full name, for a phone, where the tab shows only its icon,
+            // and for the short word it shows from 1024px to 1270px.
             aria-label="Audit"
             title="Who approved what, and what ran"
           >
@@ -393,7 +412,8 @@ export default function AppDeck(p: AppDeckProps) {
             className={tab(p.view === 'proposals')}
             aria-current={p.view === 'proposals' ? 'page' : undefined}
             onClick={() => p.onShowView('proposals')}
-            // The name, for where the tab shows only its icon. It stays the
+            // The full name, for a phone, where the tab shows only its icon,
+            // and for the short word it shows from 1024px to 1270px. It stays the
             // word on screen, so a voice command finds it; the label also hid
             // the count, so the count is the description.
             aria-label="Proposals"

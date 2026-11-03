@@ -104,6 +104,23 @@ test('help teaches the groups on first contact and lists every verb under --all'
   }
 });
 
+test('the whole graph is graph export, through a pipe or not, and an unknown view is refused', () => {
+  // Bare `graph` is the index on a terminal and the JSON through a pipe;
+  // `graph export` names the JSON, so a script asks for it the same either way.
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-graph-'));
+  try {
+    writeFileSync(join(dir, 'config.json'), JSON.stringify({ mcp: { fs: { type: 'local' } } }));
+    run(dir, 'seed');
+    expect(JSON.parse(run(dir, 'graph', 'export'))).toHaveProperty('items');
+    expect(JSON.parse(piped(dir, 'graph').stdout)).toHaveProperty('items');
+    const typo = piped(dir, 'graph', 'exprt');
+    expect(typo.status).toBe(1);
+    expect(typo.stdout + typo.stderr).toContain('ambit graph export');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('nothing a pipe receives is painted', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ambit-pipe-'));
   try {
@@ -244,7 +261,7 @@ test('a result taken in-process leaves the exit code to whoever took it', () => 
     expect(said).toHaveBeenCalledWith(expect.stringContaining('Unknown command: nonsense'));
     expect(process.exitCode).toBe(before);
     // Nor do the flags that ask for a code outright.
-    expect(capture(db, ['can', 'nothing-here', '--exit-code']).decision).toBe('DENY');
+    expect(capture(db, ['can', 'nothing-here', '--exit-code', '--record']).decision).toBe('DENY');
     expect(capture(db, ['verify', 'nothing-here', '--exit-code']).error).toBeDefined();
     expect(process.exitCode).toBe(before);
   } finally {
@@ -274,8 +291,9 @@ test('can --exit-code puts the decision in the exit code and changes nothing els
       ['svc:postgres', 'CONFIRM', 1],
       ['device:nuc', 'DENY', 2],
     ] as const) {
+      // Asked as an agent asks from a shell, so a refusal is filed.
       const ask = (...flags: string[]) =>
-        piped(dir, 'can', 'offline-capable', `--target=${target}`, '--json', ...flags);
+        piped(dir, 'can', 'offline-capable', `--target=${target}`, '--json', '--record', ...flags);
       const plain = ask();
       const gated = ask('--exit-code');
       expect(JSON.parse(gated.stdout).decision).toBe(decision);

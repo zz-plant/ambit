@@ -97,30 +97,23 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
     [
       'Undo',
       d.reversible
-        ? 'every step has an inverse, computed before anything runs'
+        ? 'every step can be undone, and how is worked out before anything runs'
         : d.requires_person
-          ? 'a step is work only a person can do, so it has no inverse'
-          : 'a step has no computed inverse',
+          ? 'Ambit cannot undo it: a person does one of the steps'
+          : 'Ambit cannot undo it: one step has no known way back',
     ],
     [
       'Apply',
       d.applicable
-        ? 'every step is a config change with an inverse; apply rolls back on a failed check'
+        ? 'ambit apply can make every change, and undoes them if the check then fails'
         : d.reversible
-          ? 'cannot be applied by ambit apply: a step is not a config change, and apply edits only configuration'
-          : 'cannot be applied by ambit apply, which runs nothing without an inverse, so this stays a document',
+          ? 'ambit apply will not run it: a step is not a config change, and apply edits only config'
+          : 'ambit apply will not run what it cannot undo, so a person follows these steps',
     ],
   ];
   if (d.unlocks.length) rows.push(['Unlocks', d.unlocks.join(', ')]);
   if (d.precedent.length) {
-    rows.push([
-      'Precedent',
-      d.precedent
-        .map(
-          l => `${l.trait.replace(':', ' ')} ${l.leans} ${l.approved} of ${l.approved + l.rejected}`
-        )
-        .join(' · '),
-    ]);
+    rows.push(['Before', d.precedent.map(precedentLine).join(' · ')]);
   }
   return (
     <dl className="gov-decision">
@@ -132,6 +125,33 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
       ))}
     </dl>
   );
+}
+
+/** A trait the record of decisions counts, as a person would name it. */
+function traitWords(trait: string): string {
+  const [kind, value] = trait.split(':');
+  if (kind === 'privacy') return `${value} changes`;
+  if (kind === 'via') return `changes through ${value}`;
+  if (trait === 'cost:recurring') return 'changes with a recurring cost';
+  if (trait === 'cost:one-off') return 'changes with a one-off cost';
+  return trait.replace(':', ' ');
+}
+
+/**
+ * How this person decided on drafts like this one: "local changes: you
+ * approved 4 of 4". It printed the record's own shape, "privacy local
+ * accepted 4 of 4", which a first reader could not parse.
+ */
+function precedentLine(l: ProposalDecision['precedent'][number]): string {
+  const total = l.approved + l.rejected;
+  const said =
+    l.leans === 'refused'
+      ? `you turned down ${l.rejected} of ${total}`
+      : l.leans === 'contested'
+        ? `you approved ${l.approved} of ${total} and turned down the rest`
+        : `you approved ${l.approved} of ${total}`;
+  const words = traitWords(l.trait);
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}: ${said}`;
 }
 
 /** What the last queue decision did, one line per id. */
@@ -427,7 +447,9 @@ export function ProposalsDesk() {
                                   via {step.chosen || step.provider}
                                 </span>
                               )}
-                              {!step.inverse && <span className="gov-step-mark">no inverse</span>}
+                              {!step.inverse && (
+                                <span className="gov-step-mark">cannot be undone</span>
+                              )}
                             </span>
                           </div>
                         ))}
@@ -536,31 +558,28 @@ export function ProposalsDesk() {
                       </button>
                     </>
                   ) : (
-                    <>
-                      <span className="gov-hint">Approving signs a receipt; nothing runs yet.</span>
-                      <span className="gov-actions">
-                        <button
-                          type="button"
-                          className="tp-btn-sm"
-                          onClick={() => setDeclining({ id: p.id, reason: '' })}
-                        >
-                          Turn down
-                        </button>
-                        {/* It names what it approves: with several cards
+                    <span className="gov-actions">
+                      <button
+                        type="button"
+                        className="tp-btn-sm"
+                        onClick={() => setDeclining({ id: p.id, reason: '' })}
+                      >
+                        Turn down
+                      </button>
+                      {/* It names what it approves: with several cards
                             open, "approve" alone does not say which. */}
-                        <button
-                          type="button"
-                          className="tp-btn tp-btn--primary"
-                          disabled={approvingId === p.id}
-                          onClick={() => handleApprove(p.id)}
-                          aria-label={
-                            approvingId === p.id ? undefined : `Approve this proposal, ${p.id}`
-                          }
-                        >
-                          {approvingId === p.id ? 'Signing…' : 'Approve this proposal'}
-                        </button>
-                      </span>
-                    </>
+                      <button
+                        type="button"
+                        className="tp-btn tp-btn--primary"
+                        disabled={approvingId === p.id}
+                        onClick={() => handleApprove(p.id)}
+                        aria-label={
+                          approvingId === p.id ? undefined : `Approve this proposal, ${p.id}`
+                        }
+                      >
+                        {approvingId === p.id ? 'Signing…' : 'Approve this proposal'}
+                      </button>
+                    </span>
                   )}
                 </div>
               </div>
