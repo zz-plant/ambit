@@ -114,7 +114,7 @@ For the architectural foundation, economic loop, and comparison to prior work, s
 | `ambit history [since <when> [<until>]]` | How the frontier moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
-`ambit help` covers a first session, `ambit help --all` the full surface, and `ambit help <term>` one concept.
+`ambit help` covers a first session. `ambit help plan`, or any of the five group names, lists what that group holds, one line a command; `ambit help goal` shows one command with its options, `ambit help frontier` explains one word, and `ambit help --all` is the full surface. `--help` after any command says what it does without running it.
 
 The commands above read the capability graph. A second group (`attention`, `work`, `usage`, `opportunities`, `roi`, `audit`) reads a local work ledger: the human time and cost of running the stack. Until sessions are recorded they say which data is missing instead of printing a number, and they say more once a few weeks are recorded. [The FAQ](./docs/faq.md#i-ran-ambit-attention-and-it-says-nothing-is-recorded-is-it-broken) explains how to start recording.
 

@@ -10,7 +10,7 @@
 import { test, expect, vi } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { capture } from './cli.ts';
 import { getDb, migrate } from './db.ts';
@@ -90,7 +90,10 @@ test('help teaches the groups on first contact and lists every verb under --all'
   const dir = mkdtempSync(join(tmpdir(), 'ambit-groups-'));
   try {
     const short = run(dir, 'help');
-    expect(short).toContain('graph · plan · check · govern · report');
+    for (const group of ['graph', 'plan', 'check', 'govern', 'report'])
+      expect(short).toMatch(new RegExp(`^  ${group} `, 'm'));
+    // A first session, not the surface: no option of any command.
+    expect(short).not.toMatch(/--(judge|spec|rank|history)/);
 
     const all = run(dir, 'help', '--all');
     for (const verb of ['graph impact', 'plan roi', 'check can', 'govern approve', 'report work']) {
@@ -113,9 +116,9 @@ test('nothing a pipe receives is painted', () => {
       [['seed'], 'Written to'],
       [['nonsense'], 'Unknown'],
       [['help', 'frontier'], 'Where you see it'],
-      [['help', 'no-such-term'], 'No concept matching'],
+      [['help', 'no-such-term'], 'No command or concept matching'],
       [['sync'], 'Usage: ambit sync'],
-      [[WRAPPER, 'help'], 'ambit mcp'],
+      [[WRAPPER, 'help'], 'ambit web'],
       [[WRAPPER], 'Where you are'],
     ] as const) {
       const { stdout, stderr } = piped(dir, ...argv);
@@ -162,9 +165,9 @@ test('a group named on its own lists what it owns, as `ambit help` says to try',
   try {
     run(dir, 'seed');
     for (const [group, verb] of [
-      ['plan', 'plan propose <cap>'],
-      ['govern', 'govern approve <id>'],
-      ['report', 'report signals [days]'],
+      ['plan', 'propose <cap>'],
+      ['govern', 'approve <id>'],
+      ['report', 'signals'],
     ]) {
       const r = piped(dir, group);
       expect(r.status, group).toBe(0);
@@ -175,6 +178,50 @@ test('a group named on its own lists what it owns, as `ambit help` says to try',
     }
     // A word that is no group is still no command.
     expect(piped(dir, 'planning').status).toBe(2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('--help after a command says what it does, and runs nothing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-help-flag-'));
+  try {
+    // An empty graph: had the command run, it would have seeded one first.
+    for (const argv of [
+      ['verify', '--help'],
+      ['approve', 'prop-1', '--help'],
+      ['plan', 'goal', '-h'],
+      [WRAPPER, 'verify', '--help'],
+      [WRAPPER, 'mcp', '--help'],
+      [WRAPPER, 'web', '-h'],
+    ]) {
+      const r = piped(dir, ...argv);
+      expect([argv.join(' '), r.status]).toEqual([argv.join(' '), 0]);
+      const verb = argv.filter(a => a !== WRAPPER && a !== 'plan')[0];
+      expect(r.stdout).toMatch(new RegExp(`^  (\\w+ )?${verb} `, 'm'));
+      expect(r.stdout + r.stderr).not.toContain('First run');
+    }
+    expect(existsSync(join(dir, 'graph.db'))).toBe(false);
+    // `help` names the concept a command rests on.
+    expect(piped(dir, 'help', 'verify').stdout).toContain('ambit help verified');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a word that names a concept shows that concept alone', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-help-word-'));
+  try {
+    const frontier = piped(dir, 'help', 'frontier').stdout;
+    expect(frontier).toContain('Frontier');
+    // Ambit's own entry mentions the frontier, and is not what was asked.
+    expect(frontier).not.toContain('Ambit —');
+    // A word no concept is called still finds the one whose text uses it.
+    expect(piped(dir, 'help', 'bottlenecks').stdout).toContain('Keystone');
+    // A plural is the word.
+    expect(piped(dir, 'help', 'combos').stdout).toContain('Combo');
+    // A slip is offered what it was probably meant to be.
+    expect(piped(dir, 'help', 'plna').stdout).toContain('ambit help plan');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

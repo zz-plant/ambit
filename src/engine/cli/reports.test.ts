@@ -590,7 +590,7 @@ describe('the short screen bare ambit shows', () => {
       const lines = renderBrief(briefReport(db), PLAIN, npx);
       const said = lines.join('\n');
       expect(said).toContain('npx ambit-cli verify runs their checks');
-      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|--help)/m);
+      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|help|--help)/m);
       // One line marked as the thing to do, after everything else it says.
       const close = lines.filter(l => l.trim().startsWith('› npx ambit-cli'));
       expect(close).toEqual(['  › npx ambit-cli web  the same, on the map']);
