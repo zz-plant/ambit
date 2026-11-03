@@ -719,6 +719,8 @@ button.app-sample-tag:hover {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   border-bottom-color: var(--border-subtle);
+  /* The whole row selects its entry, as the hover across its width says. */
+  cursor: pointer;
 }
 
 .setup-row:hover {
@@ -3469,6 +3471,32 @@ button.app-sample-tag:hover {
 .audit-action {
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* A line's actor, action or target as the filter it is: drawn as before, and
+   underlined when the pointer says it can be pressed. */
+.audit-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.audit-field:hover,
+.audit-field:hover code {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.audit-field[aria-pressed='true'],
+.audit-field[aria-pressed='true'] code {
+  color: var(--accent);
 }
 
 .audit-summary {
@@ -7920,7 +7948,6 @@ button.app-sample-tag:hover {
 
 .sp-grant-rung {
   position: relative;
-  padding: 8px 0 0;
   /* Narrow, as the map's other short labels are: at the panel's width a
      fifth of it is 61px, and "Unattended" in the text face is wider. */
   font-family: var(--font-display);
@@ -7944,6 +7971,41 @@ button.app-sample-tag:hover {
   height: 4px;
   border-radius: 2px;
   background: var(--border);
+  /* The bar is part of the rung's button underneath it. */
+  pointer-events: none;
+}
+
+/* The rung's label and its bar are one press, which says what the rung means. */
+.sp-grant-rung-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 0 2px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+  overflow-wrap: inherit;
+  cursor: pointer;
+}
+
+.sp-grant-rung-btn:hover,
+.sp-grant-rung-btn[aria-pressed='true'] {
+  color: var(--text-primary);
+}
+
+.sp-grant-meaning {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.sp-grant-meaning:empty {
+  margin: 0;
 }
 
 .sp-grant-rung.is-past::before {

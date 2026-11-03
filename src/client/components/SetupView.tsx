@@ -104,6 +104,13 @@ export function setupSummary(entries: Item[], provides: Map<string, Item[]>): st
   return said.length ? `${head}: ${said.join(', ')}.` : `${head}.`;
 }
 
+/**
+ * What inside a row answers a press of its own: the name, the switch, a copy
+ * button, a chip, a glossary word and its card. A press anywhere else on the
+ * row is a press on the row.
+ */
+const OWN_PRESS = 'button, a, input, label, summary, [role="button"], [role="switch"], .term-wrap';
+
 /** "a", "a and b", "a, b and 3 more": names in a sentence, never a wall of them. */
 const nameList = (names: string[]) =>
   names.length <= 2
@@ -499,9 +506,16 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                     const on = item.status === 'built';
                     const selected = selectedId === item.id;
                     return (
+                      // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: The row lights up across its width, and a press on it selects what its name button selects; that button is the keyboard's way to the same thing.
                       <div
                         key={item.id}
                         className={`setup-row ${selected ? 'setup-row--sel' : ''}`}
+                        onClick={e => {
+                          if ((e.target as Element).closest(OWN_PRESS)) return;
+                          // Dragging across a row to copy its text is not a press on it.
+                          if (window.getSelection()?.toString()) return;
+                          selectItem(item.id);
+                        }}
                       >
                         <button
                           type="button"

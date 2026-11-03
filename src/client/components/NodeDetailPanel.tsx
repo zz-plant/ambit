@@ -34,12 +34,28 @@ import { Command } from './Command';
 
 /** The rungs a grant climbs, bottom first, as the panel draws them. */
 const RUNGS = ['ungranted', 'confirm', 'threshold', 'autonomous', 'budgeted'] as const;
-const RUNG_LABEL: Record<(typeof RUNGS)[number], string> = {
+type Rung = (typeof RUNGS)[number];
+const RUNG_LABEL: Record<Rung, string> = {
   ungranted: 'No grant',
   confirm: 'Asks',
   threshold: 'Threshold',
   autonomous: 'Without asking',
   budgeted: 'Ceiling',
+};
+/**
+ * What a rung means, said when it is pressed. The ladder drew five labelled
+ * segments, which read as a switch, and a press on "Without asking" did
+ * nothing. A grant moves one rung at a time, by the command under the ladder.
+ */
+const RUNG_MEANING: Record<Rung, string> = {
+  ungranted: 'No grant: nobody has decided yet whether it may run.',
+  confirm: 'Asks: it runs only when a person approves the run.',
+  threshold:
+    'Threshold: it asks until it has the passing checks and successful uses a person set, then stops asking.',
+  autonomous:
+    'Without asking: it runs unattended until a check fails, which puts it back to asking.',
+  budgeted:
+    'Ceiling: it runs unattended, and is refused once its spend passes the most a person set for the period.',
 };
 
 /** How many steps of a route the panel lists before it counts the rest. */
@@ -128,6 +144,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const [copiedCmd, copy] = useCopied();
   const [toggling, setToggling] = React.useState(false);
   const [toggleError, setToggleError] = React.useState<string | null>(null);
+  // The rung whose meaning is showing, for the node it was pressed on: a
+  // different node opens with none.
+  const [rungPick, setRungPick] = React.useState<{ node: string; rung: Rung } | null>(null);
 
   // An era header opens its ladder in the same panel, where a node would be,
   // counted from the same observation as the header it was opened from.
@@ -551,20 +570,33 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           {ladder.rung === 'forbidden' ? (
             <p className="sp-grant-note">{ladder.note}</p>
           ) : (
-            <ol className="sp-grant-rungs" aria-label="How far its grant has climbed">
-              {RUNGS.map((r, i) => {
-                const at = RUNGS.indexOf(ladder.rung as (typeof RUNGS)[number]);
-                return (
-                  <li
-                    key={r}
-                    className={`sp-grant-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
-                    aria-current={i === at ? 'step' : undefined}
-                  >
-                    {RUNG_LABEL[r]}
-                  </li>
-                );
-              })}
-            </ol>
+            <>
+              <ol className="sp-grant-rungs" aria-label="How far its grant has climbed">
+                {RUNGS.map((r, i) => {
+                  const at = RUNGS.indexOf(ladder.rung as Rung);
+                  const shown = rungPick?.node === item.id && rungPick.rung === r;
+                  return (
+                    <li
+                      key={r}
+                      className={`sp-grant-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
+                      aria-current={i === at ? 'step' : undefined}
+                    >
+                      <button
+                        type="button"
+                        className="sp-grant-rung-btn"
+                        aria-pressed={shown}
+                        onClick={() => setRungPick(shown ? null : { node: item.id, rung: r })}
+                      >
+                        {RUNG_LABEL[r]}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+              <p className="sp-grant-meaning" aria-live="polite">
+                {rungPick?.node === item.id ? RUNG_MEANING[rungPick.rung] : ''}
+              </p>
+            </>
           )}
           {ladder.rung !== 'forbidden' && ladder.note && (
             <p className="sp-grant-note">{ladder.note}</p>
