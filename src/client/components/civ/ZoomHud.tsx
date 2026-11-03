@@ -7,7 +7,9 @@
  * the map.
  */
 import type React from 'react';
+import { Fragment, useId } from 'react';
 import type { ActiveLens } from '../../linkState';
+import { termTitle } from '../Term';
 import { ZOOM_MIN } from './viewport';
 
 export const LENSES: readonly [ActiveLens, string, string][] = [
@@ -68,6 +70,7 @@ export function ZoomHud({
   tools,
   popover,
 }: ZoomHudProps) {
+  const whyId = useId();
   const fit = () => {
     const el = containerRef.current;
     if (!el) return;
@@ -121,7 +124,11 @@ export function ZoomHud({
               className="civ-zoom-badge"
               onClick={() => {
                 setZoom(1);
-                containerRef.current?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+                containerRef.current?.scrollTo({
+                  left: 0,
+                  top: 0,
+                  behavior: 'smooth',
+                });
               }}
               title="Actual size (0)"
               aria-label={`Zoom ${Math.round(zoom * 100)}%. Actual size`}
@@ -186,26 +193,39 @@ export function ZoomHud({
           const unavailable =
             (lens === 'attention' && !attentionAvailable) ||
             (lens === 'authority' && !authorityAvailable);
+          const why = !unavailable
+            ? null
+            : lensNote
+              ? lensNote
+              : lens === 'authority'
+                ? 'Nothing reached has an authority mode yet. Install Ambit and run ambit seed on your machine to read them from your configs.'
+                : 'Nothing recorded yet. This lens shades each capability by how often you had to step in, and fills once the Claude Code plugin or OpenCode telemetry plugin records your sessions.';
+          // The lens keeps its own name, and the reason it is off is its
+          // description: a disabled button cannot take focus, so the reason
+          // sat in a tooltip no keyboard or screen reader ever reached.
           return (
-            <button
-              key={lens}
-              type="button"
-              className={`app-deck-tab ${activeLens === lens ? 'app-deck-tab--active' : ''}`}
-              aria-pressed={activeLens === lens}
-              disabled={unavailable}
-              onClick={() => onSetLens(lens)}
-              title={
-                unavailable && lensNote
-                  ? lensNote
-                  : unavailable && lens === 'authority'
-                    ? 'Nothing reached has an authority mode yet. Install Ambit and run ambit seed on your machine to read them from your configs.'
-                    : unavailable
-                      ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in, and fills once the Claude Code plugin or OpenCode telemetry plugin records your sessions.'
-                      : `${label} lens (${hotkey})`
-              }
-            >
-              {label}
-            </button>
+            <Fragment key={lens}>
+              <button
+                type="button"
+                className={`app-deck-tab ${activeLens === lens ? 'app-deck-tab--active' : ''}`}
+                aria-pressed={activeLens === lens}
+                aria-disabled={unavailable || undefined}
+                aria-describedby={why ? `${whyId}-${lens}` : undefined}
+                onClick={() => {
+                  if (!unavailable) onSetLens(lens);
+                }}
+                title={why ?? `${label} lens (${hotkey}). ${termTitle('lens')}`}
+              >
+                {label}
+              </button>
+              {/* Beside the button, not in it: inside, it would be read as
+                part of the name. */}
+              {why && (
+                <span id={`${whyId}-${lens}`} className="sr-only">
+                  {why}
+                </span>
+              )}
+            </Fragment>
           );
         })}
       </div>

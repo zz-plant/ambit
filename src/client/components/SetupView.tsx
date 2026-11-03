@@ -560,7 +560,12 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                                   : undefined
                             }
                           >
-                            {evidence?.text ?? ''}
+                            {/* The one word here a reader has not met elsewhere. */}
+                            {evidence?.recovering ? (
+                              <Term name="recovering">{evidence.text}</Term>
+                            ) : (
+                              (evidence?.text ?? '')
+                            )}
                           </span>
                           {trail && <HistoryStrip runs={trail.runs} of={trail.node.name} />}
                           {carry && (

@@ -91,20 +91,23 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
 test('the time-and-cost view is offered on a real machine, not only in the demo', () => {
   // The tab was rendered behind `demo &&`, so the half of the product that
   // prices your time was invisible to anyone running it on their own setup.
-  expect(deck()).toContain('Time &amp; authority');
+  expect(deck()).toContain('Time &amp; cost');
 });
 
-test('each view tab keeps its name where it shows only its icon', () => {
+test('each view tab keeps its name where it shows a short word or only its icon', () => {
   // Between a phone and a wide screen the tabs give up their words, as the
   // buttons beside them already did, or Docs was pushed past the right edge
   // (at 1024px Docs started at x=1035).
   const html = deck();
-  for (const name of ['Map', 'My Setup', 'Time &amp; authority', 'Audit', 'Proposals']) {
+  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit', 'Proposals']) {
     expect(html).toMatch(
       new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
     );
   }
-  expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(5);
+  // Every tab has a word; two have a shorter one for the width where the
+  // icons go (Setup, Cost).
+  expect(html.match(/class="app-deck-tab-label[ "]/g)).toHaveLength(7);
+  expect(html.match(/app-deck-tab-short/g)).toHaveLength(2);
   // And the one on screen says so: only a class marked it.
   expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
@@ -242,7 +245,9 @@ test('nothing fragile draws no finding', () => {
     loopEmpty: false,
   });
 
-  expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('What could break');
+  // The fragility line, by its class: the council's seat on the same
+  // question is named "What could break" too.
+  expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('fig--line');
 });
 
 test("a machine's own figures are not labelled as samples", () => {
@@ -555,8 +560,8 @@ test('a proposal card carries what deciding on it needs', () => {
   expect(html).toContain('Forecast');
   expect(html).toContain('Costs');
   expect(html).toContain('Undo');
-  expect(html).toContain('every step is a config change with an inverse');
-  expect(html).toContain('privacy local accepted 4 of 4');
+  expect(html).toContain('ambit apply can make every change');
+  expect(html).toContain('Local changes: you approved 4 of 4');
 });
 
 test('a blocked node says what it is blocked by, and prices the gap', () => {

@@ -523,9 +523,9 @@ describe('ambit receipt', () => {
   test('counts what the ledger recorded: use, refusals and blocks, and failures', () => {
     const db = seed(LOCAL_ONLY);
     db.close();
-    // Two refusals from the decision API, which file themselves.
-    cli('can', 'quantum-teleportation', '--tool=qtp');
-    cli('can', 'quantum-teleportation-two', '--tool=qtp2');
+    // Two refusals from the decision API, asked as an agent asks, which files them.
+    cli('can', 'quantum-teleportation', '--tool=qtp', '--record');
+    cli('can', 'quantum-teleportation-two', '--tool=qtp2', '--record');
     const graph = getDb(join(dir, 'graph.db'));
     const { run } = beginRun(graph, { goal: 'receipt' });
     addEvent(graph, run, { kind: 'intercept', actor: 'ambit:control_plane', action: 'block' });

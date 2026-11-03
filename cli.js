@@ -45,6 +45,9 @@ const mcpEntry = existsSync(resolve(ROOT, 'src', 'mcp', 'server.ts'))
 
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
+// `--help` or `-h` after a command asks for its usage and never runs it; the
+// engine prints it, except for the commands this file runs itself.
+const asksHelp = args.includes('--help') || args.includes('-h');
 
 /**
  * The status line, answered in this process. Claude Code runs it after every
@@ -57,7 +60,7 @@ const args = process.argv.slice(3);
  * fails prints nothing and exits 0: a broken status line must not clutter the
  * screen. src/engine/statusline.ts says what the line holds.
  */
-if (cmd === 'statusline') {
+if (cmd === 'statusline' && !asksHelp) {
   let line = '';
   try {
     process.removeAllListeners('warning');
@@ -81,7 +84,7 @@ if (cmd === 'statusline') {
  * answer cli.ts's `gate` gives, and a failure is no answer and exit 0, so the
  * runtime's own permissions decide (AGENTS.md rule 20).
  */
-if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
+if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet') && !asksHelp) {
   let out = '';
   try {
     process.removeAllListeners('warning');
@@ -109,21 +112,29 @@ if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
  * The engine derives its list from the same groups the dispatcher routes on,
  * so it cannot fall behind. `web` and `mcp` are the exception: they are
  * implemented here, never reach the engine, and so cannot appear in a list the
- * engine builds. They are appended after it.
+ * engine builds. They are appended after the full list.
  */
-if (cmd === '--help' || cmd === 'help') {
+const WRAPPER_HELP = {
+  web: `  ambit web [--port=N] [--no-open]   Open the map on localhost: the built
+                         page from an install, Vite from a checkout`,
+  mcp: `  ambit mcp              Run the MCP server, exposing the same questions to an
+                         agent session: claude mcp add ambit -- ambit mcp`,
+  version: `  ambit --version        The installed version, for a bug report`,
+};
+// The short list already names `web`, and a term or a command's usage is not
+// a list, so only `help --all` ends on these three.
+if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
   const helpArgs = cmd === 'help' ? args : [];
   const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...helpArgs], {
     stdio: 'inherit',
   });
-  console.log(`
-  ${D}ambit web [--port=N] [--no-open]   Open the map on localhost: the built
-                         page from an install, Vite from a checkout
-  ambit mcp              Run the MCP server, exposing the same questions to an
-                         agent session: claude mcp add ambit -- ambit mcp
-  ambit --version        The installed version, for a bug report${R}
-`);
+  if (helpArgs.includes('--all'))
+    console.log(`\n${D}${Object.values(WRAPPER_HELP).join('\n')}${R}\n`);
   process.exit(engineHelp.status ?? 0);
+}
+if (asksHelp && (cmd === 'web' || cmd === 'mcp')) {
+  console.log(WRAPPER_HELP[cmd]);
+  process.exit(0);
 }
 
 // The version a bug report asks for. It answers here, before the engine

@@ -5,43 +5,28 @@
  * short one covers a first session and names the five groups, and `--all` is
  * the full surface.
  */
+import { GROUPS } from './groups.ts';
 
-// Six commands cover most first sessions. Everything else is `help --all` —
-// forty verbs on first contact taught nothing; depth should be discovered.
+// Eight commands cover a first session: where you stand, what to reach next
+// and how, whether an agent may act, whether it works, and the map. It listed
+// eighteen with their flags, which was the full list again under a shorter
+// name. Everything else is a group away, or `help --all`.
 const HELP_SHORT = `ambit - what your setup can do, what it costs, what to change
 
-  seed              seed from the agent config
-  briefing          what an agent should know before its first tool call
-  status            health · failing · sole providers · deficits · waiting approvals
-  next              the three capabilities worth reaching next, and why
-  council           five readings of the first of those, and whether they agree
-  graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
-  goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
-                    delta, compare acquisition paths, or check preferences
-                    --judge[=url] asks a judgment model on this machine when
-                    no words match, or an embedding model there when no
-                    judge answers; it suggests and writes nothing
-  goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
-                    and the gap; the file is read as data, nothing in it runs
-  opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                    ranked opportunities, or one in full
-  verify [cap] [--history]   run the declared check, or show past verification;
-                             --failing re-runs only the checks now failing
-                             or recovering
-  fix <cap>         what to type for a failing or unreached capability, and
-                    the ways to acquire it. Prints only
-  impact <id>       what actually breaks if a capability goes away
+  status            what is reached and verified, what fails, what to type next
+  next              the capabilities worth reaching next, and why
+  goal <cap-or-sentence>   the steps to a capability, in the order they close
+  can <cap>         whether an agent may use it: yes, ask first, or no
+  verify [cap]      run the declared checks, and record what passes
   doctor            setup health: what works, what fails, what rests on one piece
-  connect [runtime] register Ambit's MCP server in each runtime config it can write
-  port [server]     port MCP tools between agent runtimes (Claude, Cursor, Codex, etc.)
-  toggle <server>   toggle an MCP server on or off across agent runtimes to manage context
-  repo [dir]        detect project stack and recommend tailored agent superpowers
+  connect [runtime] register Ambit's MCP server in each agent config it can write
+  web               the map, in a browser on this machine
 
-  Grouped: graph · plan · check · govern · report — try \`ambit plan\`
-  A decision is taken --by=<person>, or by the one person declared. A report
-  over the ledger looks back --days=30 unless told otherwise.
+  Grouped: graph · plan · check · govern · report. \`ambit plan\` lists what
+  plan owns, and so on for each.
   help --all        every command
-  help [term]       one concept explained`;
+  help <word>       one concept explained, or one command's usage
+  <command> --help  that command's usage`;
 
 const HELP = `ambit - what your setup can do, what it costs, what to change
 
@@ -55,7 +40,8 @@ Five groups. Every verb also works on its own — \`ambit impact x\` and
   status            health · failing · sole providers · deficits · waiting approvals
 
 graph — the structure, and what it would cost to lose a piece
-  graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
+  graph [surface|combos|affordances|unmapped|capacity]   a view of the graph
+  graph export            the whole graph as JSON, the file the map takes dropped
   graph impact <id>       what actually breaks if a capability goes away
   graph catalog <cap>     the ways to acquire a capability, compared by cost
   graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
@@ -81,10 +67,10 @@ plan — what to acquire next, and whether it paid
   plan goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]]   route a
                           goal, plan the delta, compare acquisition paths, check
                           preferences; --judge asks a judgment model on this
-                          machine (AMBIT_JUDGE_URL, or Kev on 127.0.0.1:8009)
-                          when no words match, then an embedding model there
-                          (AMBIT_EMBED_URL, or Ollama on 127.0.0.1:11434) when
-                          no judge answers, and suggests without writing
+                          machine (AMBIT_JUDGE_URL, or a default loopback
+                          port) when no words match, then an embedding model
+                          there (AMBIT_EMBED_URL, Ollama's port by default)
+                          when no judge answers, and suggests without writing
   plan goal --spec <dir|tasks.md> [--judge[=url]]   a spec's tasks, each routed
                           as a sentence is: what they need, which is reached,
                           a next step, blocked or failing, the steps in order,
@@ -120,13 +106,13 @@ plan — what to acquire next, and whether it paid
   plan judge history [--limit=N] · review <id> accepted|rejected · plan <id>
                           the receipts kept, a person's one review of each, and
                           the plans an accepted one asks for, from the graph now
-  plan judge … --provider=cloudflare [--model=clef|clef-flash|clef-omni]
+  plan judge … --provider=cloudflare [--model=<name>]
                           send the request to Workers AI, with
                           CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN. The
-                          default is a model on this machine, loopback only:
-                          AMBIT_JUDGE_URL, or 127.0.0.1:8009
+                          default is a model on this machine, loopback only,
+                          at AMBIT_JUDGE_URL or a default port
 
-check — what is proven, what is permitted, what is currently broken
+check — what is verified, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
                           declared check, or past verification; --target files
                           the evidence against that object rather than the verb
@@ -157,9 +143,12 @@ check — what is proven, what is permitted, what is currently broken
                           a ceiling on spend per period, in dollars; a spend
                           past it is refused, and within it the grant's own
                           mode decides
-  check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
-                          ALLOW/CONFIRM/DENY; --spend is in dollars, as
-                          --amount is; --exit-code also exits 0/1/2
+  check can <cap> [--target=X] [--spend=N] [--exit-code] [--record]   the
+                          decision API: ALLOW/CONFIRM/DENY; --spend is in
+                          dollars, as --amount is; --exit-code also exits
+                          0/1/2. --record files a refusal as a deficit, for an
+                          agent asking from a shell; a person's question files
+                          nothing
   check gate              the Claude Code PreToolUse hook: denies what is forbidden,
                           asks about what asks first or has no grant, and never allows;
                           run it in a terminal for the settings entry to paste
@@ -268,7 +257,7 @@ report — what the setup cost to operate
                           its check, the proposals to decide, the verified count.
                           Reads the graph and writes nothing
 
-  help [term]       this list, or one concept explained`;
+  help [word]       this list, or one concept explained, or one command's usage`;
 
 /**
  * What one group owns, as `help --all` prints it.
@@ -282,4 +271,35 @@ function groupHelp(group: string): string {
   return HELP.split('\n\n').find(part => part.startsWith(`${group} — `)) ?? HELP_SHORT;
 }
 
-export { HELP, HELP_SHORT, groupHelp };
+/**
+ * One command's entries from the full list, as `<verb> --help` and
+ * `ambit help <verb>` print them.
+ *
+ * `--help` after a verb ran the verb, or failed on the flag, and the usage was
+ * only in the full list. It is read from that list and not written twice, so
+ * the two cannot disagree. An entry opens on a line indented two spaces and
+ * continues on the lines indented further; every entry that names the verb,
+ * under its group or on its own, is the verb's.
+ */
+function usageOf(verb: string): string | undefined {
+  const group = Object.entries(GROUPS).find(([, verbs]) => verbs.includes(verb))?.[0];
+  const word = verb.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const opens = new RegExp(`^  (${group ? `${group} ` : ''})?${word}(\\s|$)`);
+  const out: string[] = [];
+  let taking = false;
+  for (const line of HELP.split('\n')) {
+    if (/^ {2}\S/.test(line)) taking = opens.test(line);
+    else if (!/^ {3,}\S/.test(line)) taking = false;
+    if (taking) out.push(line);
+  }
+  return out.length ? out.join('\n') : undefined;
+}
+
+/** What `<command> --help` prints: a group's section, or the command's entries. */
+function commandHelp(cmd: string): string | undefined {
+  if (cmd in GROUPS) return groupHelp(cmd);
+  if (cmd === 'help') return HELP_SHORT;
+  return usageOf(cmd);
+}
+
+export { HELP, HELP_SHORT, commandHelp, groupHelp, usageOf };

@@ -33,7 +33,8 @@ export function MapKey({ onClose, ...props }: MapKeyProps) {
   return <MapKeyView {...props} explained={explained} onExplain={setExplained} boxRef={box} />;
 }
 
-const AT_REST = 'Press a key to light its nodes. Esc shows everything.';
+// "Press a key" read as the keyboard, in the one place that is not about it.
+const AT_REST = 'Choose an entry to light its nodes. Esc shows everything.';
 
 interface MapKeyViewProps extends Omit<MapKeyProps, 'onClose'> {
   /** The entry whose meaning the last line says, if one is focused or pressed. */

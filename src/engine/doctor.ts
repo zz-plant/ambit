@@ -203,12 +203,20 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   }
   if (runtimes.length > 0 && !hasConnected) {
     recommendations.push(
-      'Connect Ambit meta-MCP: run "ambit connect" to register pre-flight briefing with agent runtimes'
+      'Connect Ambit to your agents: run "ambit connect" so each session opens with the briefing'
     );
   }
+  // The head counts every single provider; this counts the ones a person can
+  // do something about, and says which the difference is, since the two
+  // numbers sat four lines apart and read as a contradiction.
   if (fixable.length > 0) {
+    const builtIn = spofs.length - fixable.length;
+    const of = builtIn ? ` of the ${spofs.length} with a single provider` : '';
+    const rest = builtIn
+      ? `; the other ${builtIn} ${builtIn === 1 ? 'rests' : 'rest'} on a tool every runtime ships`
+      : '';
     recommendations.push(
-      `${fixable.length} ${fixable.length === 1 ? 'capability rests' : 'capabilities rest'} on one server or model alone: "ambit status" lists them, and a second provider for any of them raises the grade`
+      `${fixable.length}${of} ${fixable.length === 1 ? 'rests' : 'rest'} on one server or model alone${rest}. "ambit status" lists them, and a second provider for any of them raises the grade`
     );
   }
 
@@ -240,7 +248,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
     );
   }
 
-  recommendations.push('Inspect interactive tech tree: run "ambit web" to explore your setup map');
+  recommendations.push('See it on the map: run "ambit web"');
 
   const reach = reachPhrase(db);
   const summary = evidence

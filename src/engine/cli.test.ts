@@ -10,7 +10,7 @@
 import { test, expect, vi } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { capture } from './cli.ts';
 import { getDb, migrate } from './db.ts';
@@ -101,6 +101,49 @@ test('help teaches the groups on first contact and lists every verb under --all'
   }
 });
 
+test('--help after a command prints its usage, runs nothing, and exits 0', () => {
+  // `goal --help` routed "--help" as a goal, `-h` was an unknown command, and
+  // either one on a first run seeded a graph before answering.
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-help-'));
+  try {
+    for (const [argv, says] of [
+      [['goal', '--help'], 'plan goal <cap-or-sentence>'],
+      [['can', '-h'], 'check can <cap>'],
+      [['plan', '--help'], 'plan — what to acquire next'],
+      [['status', '--help'], 'status '],
+      [[WRAPPER, '-h'], 'graph · plan · check · govern · report'],
+      [[WRAPPER, 'goal', '-h'], 'plan goal <cap-or-sentence>'],
+      [[WRAPPER, 'web', '--help'], 'ambit web [--port=N]'],
+    ] as const) {
+      const r = piped(dir, ...argv);
+      expect([argv.join(' '), r.status]).toEqual([argv.join(' '), 0]);
+      expect(r.stdout).toContain(says);
+      expect(r.stdout).not.toContain('First run');
+    }
+    expect(existsSync(join(dir, 'graph.db'))).toBe(false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('bare graph lists its views, and the whole graph is graph export', () => {
+  // Bare `graph` printed forty kilobytes of JSON where every other group
+  // named alone lists what it owns.
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-graph-'));
+  try {
+    writeFileSync(join(dir, 'config.json'), JSON.stringify({ mcp: { fs: { type: 'local' } } }));
+    run(dir, 'seed');
+    const bare = piped(dir, 'graph');
+    expect(bare.status).toBe(0);
+    expect(bare.stdout).toContain('graph export');
+    expect(bare.stdout).not.toContain('"items"');
+    expect(JSON.parse(run(dir, 'graph', 'export'))).toHaveProperty('items');
+    expect(piped(dir, 'graph', 'exprt').status).toBe(1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('nothing a pipe receives is painted', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ambit-pipe-'));
   try {
@@ -115,7 +158,7 @@ test('nothing a pipe receives is painted', () => {
       [['help', 'frontier'], 'Where you see it'],
       [['help', 'no-such-term'], 'No concept matching'],
       [['sync'], 'Usage: ambit sync'],
-      [[WRAPPER, 'help'], 'ambit mcp'],
+      [[WRAPPER, 'help', '--all'], 'ambit mcp'],
       [[WRAPPER], 'Where you are'],
     ] as const) {
       const { stdout, stderr } = piped(dir, ...argv);
@@ -197,7 +240,7 @@ test('a result taken in-process leaves the exit code to whoever took it', () => 
     expect(said).toHaveBeenCalledWith(expect.stringContaining('Unknown command: nonsense'));
     expect(process.exitCode).toBe(before);
     // Nor do the flags that ask for a code outright.
-    expect(capture(db, ['can', 'nothing-here', '--exit-code']).decision).toBe('DENY');
+    expect(capture(db, ['can', 'nothing-here', '--exit-code', '--record']).decision).toBe('DENY');
     expect(capture(db, ['verify', 'nothing-here', '--exit-code']).error).toBeDefined();
     expect(process.exitCode).toBe(before);
   } finally {
@@ -227,8 +270,9 @@ test('can --exit-code puts the decision in the exit code and changes nothing els
       ['svc:postgres', 'CONFIRM', 1],
       ['device:nuc', 'DENY', 2],
     ] as const) {
+      // Asked as an agent asks from a shell, so a refusal is filed.
       const ask = (...flags: string[]) =>
-        piped(dir, 'can', 'offline-capable', `--target=${target}`, '--json', ...flags);
+        piped(dir, 'can', 'offline-capable', `--target=${target}`, '--json', '--record', ...flags);
       const plain = ask();
       const gated = ask('--exit-code');
       expect(JSON.parse(gated.stdout).decision).toBe(decision);

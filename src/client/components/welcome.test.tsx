@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { MCP_CLIENTS } from '../../engine/mcp-clients';
 import { AGENTS } from '../hooks/useConfigImport';
-import { mergeGraphs } from '../store/ambitStore';
+import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mapFindings } from './civ/layout';
@@ -88,4 +88,27 @@ test('a convinced visitor finds the install line and the docs without leaving fo
   expect(html).toContain('npx ambit-cli');
   expect(html).toMatch(/href="[^"]*docs\/guide\/"/);
   expect(html).toMatch(/href="[^"]*docs\/faq\/"/);
+});
+
+test('the owner of an empty graph is told to seed it, not to install what they have', () => {
+  // `ambit web` against a graph nothing has been read into: the person at the
+  // page already has Ambit, so the visitor's npx line and sample pitch go.
+  // The server render reads the store's initial state, so that is what is set.
+  const seed = (state: Partial<ReturnType<typeof useAmbitStore.getState>>) => {
+    Object.assign(useAmbitStore.getInitialState(), state);
+    useAmbitStore.setState(state);
+  };
+  seed({ backend: 'live', demo: false });
+  try {
+    const owner = renderToStaticMarkup(
+      <WelcomeScreen onExploreDemo={() => {}} onViewLoop={() => {}} onMapped={() => {}} />
+    );
+    expect(owner).toContain('ambit seed');
+    expect(owner).toContain('Ambit has not run here');
+    expect(owner).not.toContain('npx');
+    expect(owner).not.toContain('Watch it open');
+    expect(owner).toContain('Look at the sample setup meanwhile');
+  } finally {
+    seed({ backend: 'unknown' });
+  }
 });

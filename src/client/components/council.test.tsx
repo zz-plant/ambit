@@ -36,8 +36,8 @@ test('the sample is split, and the panel names who is for it and who against', (
 
   expect(words).toContain('The council');
   expect(words).toContain('on Embeddings, the first step to reach');
-  expect(words).toContain('Split. Science and Treasury for, Defence against.');
-  for (const seat of ['Science', 'Defence', 'Treasury', 'Justice', 'Interior']) {
+  expect(words).toContain('Split. Reach and Cost for, What could break against.');
+  for (const seat of ['Reach', 'What could break', 'Cost', 'Permission', 'Checks']) {
     expect(words).toContain(seat);
   }
   // Each seat's command is shown, offered to copy and never run.

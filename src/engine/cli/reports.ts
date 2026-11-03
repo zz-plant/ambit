@@ -22,6 +22,8 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
+import { commandHelp } from './help.ts';
+import { ALIASES, commandWords } from './groups.ts';
 import type { DoctorReport } from '../doctor.ts';
 import { markSeen, movedLines, unseenSince } from './seed.ts';
 import { seedSources } from '../discovery.ts';
@@ -34,6 +36,8 @@ import {
   PROBE_COMMAND,
   REACHED_SQL,
   graphCounts,
+  isReached,
+  ownReached,
   reachPhrase,
   recheckCommand,
 } from '../vocabulary.ts';
@@ -62,7 +66,10 @@ function ago(ts: string | null | undefined): string | undefined {
  * this project exists to prevent.
  */
 function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
-  const { proven, unproven, failing, entries } = graphCounts(db);
+  const { proven, unproven, failing, entries, reached } = graphCounts(db);
+  // What every runtime brings: entries, and in no one's config, so the row
+  // that counts entries says how many of them these are.
+  const builtIn = reached - graphCounts(db, 'tree').reached - ownReached(db);
   // The unproven, split by what would move each: a check never run, a check
   // passing again after failures, or no check at all. The third is the
   // remainder, which is why `checkableNames` and `recovering` count over the
@@ -78,6 +85,7 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
     unproven,
     failing,
     entries,
+    built_in: builtIn,
     recovering: recoveringNow,
     no_check: unproven - recoveringNow - checkable.length,
     last_check: ago(last?.t) || 'never',
@@ -239,12 +247,13 @@ function statusReport(db: any) {
   const worried = worries({ failing: g.failing, spofs, pending });
   const checkable = checkableNames(db);
 
+  const reach = reachPhrase(db);
   return {
-    // The data's sentence, as scripts have read it; `reach` is the one people see.
-    summary:
-      `${g.reached}/${g.total} capabilities reached` +
-      (worried.length ? ` · ${worried.join(' · ')}` : ' · nothing failing'),
-    reach: reachPhrase(db),
+    // The same sentence the head prints. It read "39/70 capabilities reached",
+    // the graph's own count, beside a head saying "15 of 46" of the same setup,
+    // so a script and a person were told two different headlines.
+    summary: `${reach} · ${worried.length ? worried.join(' · ') : 'nothing failing'}`,
+    reach,
     reached: g.reached,
     total: g.total,
     verified: g.verified,
@@ -272,7 +281,11 @@ function statusReport(db: any) {
     // runs went, since a pass after a failure reads as fixed.
     recovering: recoveringNow.length ? recoveringNow : undefined,
     spofs,
-    bottlenecks: findBottlenecks(db).slice(0, 10),
+    // Only what the ranking calls a bottleneck: the rest were rows saying
+    // `is bottleneck: false` under the heading that promised bottlenecks.
+    bottlenecks: findBottlenecks(db)
+      .filter(b => b.is_bottleneck)
+      .slice(0, 10),
     // The empty case belongs to `ambit deficits`, which explains how they get
     // recorded. Here it would be a paragraph of advice inside a health report.
     deficits: Array.isArray(recorded) ? recorded : undefined,
@@ -291,17 +304,6 @@ type StatusReport = ReturnType<typeof statusReport>;
 
 /** The four columns every report in this CLI indents by. */
 const GUTTER = '    ';
-
-/** The keys the head of `renderStatus` says, so the details beneath it skip them. */
-const SAID_IN_HEAD = new Set([
-  'summary',
-  'reached',
-  'total',
-  'verified',
-  'failing',
-  'evidence',
-  'next',
-]);
 
 /**
  * `ambit status` as a person reads it, as lines.
@@ -339,7 +341,13 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
     [
       'entries',
       String(ev.entries),
-      ev.entries ? 'from your config; checks run on what they provide' : undefined,
+      !ev.entries
+        ? undefined
+        : ev.built_in >= ev.entries
+          ? 'built into the runtime; checks run on what they provide'
+          : ev.built_in
+            ? `from your config, and ${ev.built_in} built into the runtime`
+            : 'from your config; checks run on what they provide',
     ],
     ['last check', ev.last_check],
   ];
@@ -360,25 +368,104 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
     }),
   ];
 
-  // What the head does not say, as it was always drawn. The names `verify`
-  // would check stay here, since the head only has room for how many, and the
-  // ones past the eighth are counted, so the list and its count agree. The
-  // failing list keeps its old key for scripts and is labelled for a person,
-  // since a degraded capability is one that is recovering.
-  const rest = Object.fromEntries(
-    Object.entries(report)
-      .filter(([key]) => !SAID_IN_HEAD.has(key))
-      // A degraded capability is one that is recovering, and the text says so;
-      // `--json` keeps the key it has always had.
-      .map(([key, value]) => [key === 'degraded' ? 'not_working' : key, value])
+  // What the head does not say, a row per finding. It fell through to the
+  // generic formatter, which printed every field of every record: rows saying
+  // `is bottleneck: false` under the bottlenecks heading, Shell Execution twice
+  // (the capability and the tool that provides it), `provider id: tool:bash`.
+  // The totals of actions and of the frontier ledger led a line each and
+  // competed with the head; they stay in `--json`. Each list stops at five and
+  // counts the rest, which `--json` holds whole.
+  const details: string[] = [];
+  const section = (title: string, rows: string[], total = rows.length) => {
+    if (!rows.length) return;
+    details.push('', `${GUTTER}${c.bold}${title}${c.reset}`);
+    for (const row of rows.slice(0, 5)) details.push(`${GUTTER}  ${row}`);
+    if (total > 5)
+      details.push(`${GUTTER}  ${c.grey}… ${total - 5} more · --json for all${c.reset}`);
+  };
+  const width = (names: string[]) => Math.min(Math.max(0, ...names.map(n => n.length)), 28);
+  const named = (name: string, w: number, rest: string) =>
+    `${name.padEnd(w)}  ${c.grey}${rest}${c.reset}`;
+
+  if (ev.provable_now.length) {
+    const shown = ev.provable_now.slice(0, 8).join(', ');
+    const more = ev.provable_now.length > 8 ? ` and ${ev.provable_now.length - 8} more` : '';
+    details.push('', `${GUTTER}${c.bold}Provable now${c.reset}  ${shown}${more}`);
+  }
+  // The bars are the generic formatter's; the heading is this report's.
+  const [, ...domains] = formatGeneric({ domains: report.domains }, c).filter(l => l !== '');
+  if (domains.length) details.push('', `${GUTTER}${c.bold}By domain${c.reset}`, ...domains);
+
+  const degraded = (report.degraded ?? []) as { id: string; name: string }[];
+  const dw = width(degraded.map(d => d.name));
+  section(
+    'Not working',
+    degraded.map(d => named(d.name, dw, recheckCommand(d.id)))
   );
-  const provable =
-    ev.provable_now.length > 8
-      ? `${ev.provable_now.slice(0, 8).join(', ')} and ${ev.provable_now.length - 8} more`
-      : ev.provable_now;
-  const details = formatGeneric({ actions: rest.actions, provable_now: provable, ...rest }, c);
+  const recoveringNow = (report.recovering ?? []) as { name: string; recent: string }[];
+  const rw = width(recoveringNow.map(r => r.name));
+  section(
+    'Recovering',
+    recoveringNow.map(r => named(r.name, rw, r.recent))
+  );
+
+  // A sole provider that is also a bottleneck is said once, with what it
+  // unlocks; a bottleneck is said once by name, since the capability and the
+  // tool that provides it often share one.
+  const unlocks = new Map<string, number>();
+  for (const b of report.bottlenecks as { name: string; unlocks_count: number }[]) {
+    if (!unlocks.has(b.name)) unlocks.set(b.name, b.unlocks_count);
+  }
+  const spofs = (Array.isArray(report.spofs) ? report.spofs : []) as {
+    capability: string;
+    provider_id: string;
+  }[];
+  const sw = width(spofs.map(s => s.capability));
+  section(
+    'Single points of failure',
+    spofs.map(s => {
+      const n = unlocks.get(s.capability);
+      return named(s.capability, sw, `only from ${s.provider_id}${n ? ` · unlocks ${n}` : ''}`);
+    })
+  );
+  const sole = new Set(spofs.map(s => s.capability));
+  const choke = [...unlocks].filter(([name]) => !sole.has(name));
+  const bw = width(choke.map(([name]) => name));
+  section(
+    'Bottlenecks',
+    choke.map(([name, n]) => named(name, bw, `unlocks ${n}`))
+  );
+
+  const recorded = (report.deficits ?? []) as {
+    name: string;
+    times_blocked: number;
+    verdict: string;
+    why?: string;
+  }[];
+  const fw = width(recorded.map(d => d.name));
+  section(
+    'Work blocked on',
+    recorded.map(d =>
+      named(d.name, fw, `${d.times_blocked}× · ${d.verdict}${d.why ? ` · last: ${d.why}` : ''}`)
+    )
+  );
+  const pending = report.pending as { id: string; goal: string; status: string }[];
+  section(
+    'Waiting on a decision',
+    pending.map(p => named(p.id, 0, `${p.status} · ${p.goal}`))
+  );
+  const unattended = report.unattended?.[0];
+  if (unattended) {
+    const parts = [
+      unattended.sandboxes ? `${unattended.sandboxes} sandboxes` : null,
+      unattended.standing_budgets ? `${unattended.standing_budgets} standing budgets` : null,
+    ].filter(Boolean);
+    details.push(
+      '',
+      `${GUTTER}${c.grey}Unattended${c.reset}  ${parts.join(' · ')} ${c.grey}· ambit authority lists what each one covers${c.reset}`
+    );
+  }
   while (details[0] === '') details.shift();
-  while (details[details.length - 1] === '') details.pop();
 
   const next = report.next
     ? `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${report.next.command}${c.reset} ${c.grey}· ${report.next.why}${c.reset}`
@@ -445,6 +532,7 @@ function briefReport(db: any) {
         : undefined,
     reached: counts.reached,
     total: counts.total,
+    reach: reachPhrase(db),
     proven: ev.proven,
     unproven: ev.unproven,
     no_check: ev.no_check,
@@ -492,7 +580,7 @@ function renderBrief(
   const close = [
     '',
     `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${typed('ambit web')}${c.reset}  ${c.grey}the same, on the map${c.reset}`,
-    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit --help')} for every command${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit --help')} for the commands${c.reset}`,
     '',
   ];
 
@@ -503,14 +591,16 @@ function renderBrief(
       `${GUTTER}Nothing of yours is in the graph yet.`,
       `${GUTTER}${c.grey}Add an agent config and run ${typed('ambit seed')}, which lists where it looks.${c.reset}`,
       '',
-      `${GUTTER}${c.grey}${typed('ambit --help')} for every command${c.reset}`,
+      `${GUTTER}${c.grey}${typed('ambit --help')} for the commands${c.reset}`,
       '',
     ];
   }
 
   if (report.read) lines.push(`${GUTTER}${c.grey}Read from ${readFrom(report.read)}${c.reset}`);
   lines.push(
-    `${GUTTER}You reach ${report.reached} of ${report.total} capabilities · ${report.proven} proven`
+    // The sentence every surface leads with, and the glossary's word for a
+    // passing check: this line alone said "proven".
+    `${GUTTER}${report.reach} · ${report.proven} verified`
   );
   const moved = report.moved ? movedLines(report.moved, c) : [];
   if (moved.length) {
@@ -670,15 +760,20 @@ function renderPlan(
   if (asked?.others.length) {
     lines.push(`${GUTTER}${c.grey}Also matched: ${asked.others.join(', ')}${c.reset}`);
   }
-  if (first) {
-    // `ambit propose` drafts a description for a step like these, which a
-    // person then does by hand, so the honest next move is the step itself.
-    lines.push(
-      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
-    );
-  }
+  if (first) lines.push(stepLine(first, c));
   lines.push('');
   return lines;
+}
+
+/**
+ * The line a plan ends on: the first step as a command to type. It named the
+ * step and stopped, so the last line of a plan was the one line with nothing
+ * to paste. `ambit fix` prints the ways to set the step up, with each patch,
+ * and writes nothing, which is the next move a person makes by hand.
+ */
+function stepLine(step: { id: string; name: string }, c: Palette): string {
+  const fix = `ambit fix ${shellQuote(step.id.replace(/^combo:/, ''))}`;
+  return `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${fix}${c.reset}${c.grey} · the ways to set up ${step.name}, then ambit seed: the list moves as each step lands${c.reset}`;
 }
 
 /** What `specGoal` returns for a spec it could read. */
@@ -806,11 +901,8 @@ function renderSpec(report: SpecReport, c: Palette = C): string[] {
 
   lines.push('');
   const first = report.steps[0];
-  if (first) {
-    lines.push(
-      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
-    );
-  } else if (report.failing.length) {
+  if (first) lines.push(stepLine(first, c));
+  else if (report.failing.length) {
     lines.push(
       `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${report.failing[0].check}${c.reset}`
     );
@@ -1172,9 +1264,11 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
     `${GUTTER}${report.reach} · ${cap.proven} verified · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
   ];
   if (!report.grade) {
-    lines.push(
-      `${GUTTER}${c.grey}No check has run, so nothing is verified or failing yet.${c.reset}`
-    );
+    // "Not graded" said nothing of what a grade is, so the line says what it
+    // scores and what would give it one.
+    const why =
+      'A grade, A to F, scores what passes its check against what fails, what rests on one provider, and whether Ambit is connected. No check has run yet: ambit verify runs them.';
+    lines.push(...wrapped(why, GUTTER).map(l => `${c.grey}${l}${c.reset}`));
   }
   for (const d of cap.degraded.slice(0, 5)) {
     lines.push(`  ${c.yellow}!${c.reset} ${d.name} is failing its check`);
@@ -1222,16 +1316,28 @@ function renderFix(report: any, c: Palette = C): string[] {
   ];
   const row = (label: string, value: string) =>
     `${GUTTER}${c.grey}${label.padEnd(9)}${c.reset}  ${value}`;
-  if (report.state) lines.push(row('state', String(report.state)));
-  if (report.lifecycle) lines.push(row('lifecycle', String(report.lifecycle)));
+  // In the glossary's words: `locked` is the store's, and a person reads a
+  // next step or blocked. A lifecycle no check has set is no answer about it,
+  // so it is left out (AGENTS.md rule 16), as is the re-check of what is not
+  // reached.
+  const reached = isReached(report.state);
+  if (report.stands) {
+    const behind = report.blocked_by?.length ? `, behind ${report.blocked_by.join(', ')}` : '';
+    lines.push(row('state', `${report.stands}${behind}`));
+  } else if (report.state) lines.push(row('state', String(report.state)));
+  if (report.lifecycle && report.lifecycle !== 'unknown') {
+    lines.push(row('lifecycle', String(report.lifecycle)));
+  }
   if (report.lifecycle === 'broken') {
     lines.push(
       `${GUTTER}${c.yellow}Its last check failed.${c.reset} Re-run it, then look at what the check said:`
     );
-  } else if (report.state && report.state !== 'unlocked' && report.state !== 'active') {
+  } else if (report.state && !reached) {
     lines.push(`${GUTTER}${c.grey}Not reached yet.${c.reset} The ways to acquire it are below.`);
   }
-  lines.push('', `${GUTTER}${c.bold}Check${c.reset}  ${c.bold}${report.check}${c.reset}`);
+  if (report.check) {
+    lines.push('', `${GUTTER}${c.bold}Check${c.reset}  ${c.bold}${report.check}${c.reset}`);
+  }
   const options: any[] = report.options ?? [];
   if (options.length) {
     lines.push('', `${GUTTER}${c.bold}Ways to acquire it${c.reset}`);
@@ -1263,24 +1369,40 @@ function renderFix(report: any, c: Palette = C): string[] {
   return lines;
 }
 
-/** The concept glossary, shared with the visualiser so the two cannot drift. */
+/**
+ * `ambit help <word>`: the glossary entry by that name, and the command by
+ * that name, each printed whole; then the entries that only mention it, named.
+ *
+ * Every entry whose text held the word was printed in full, so `help
+ * verified` opened on two other concepts and ran to fifty lines before the
+ * one asked for. A concept the CLI and the map call different things still
+ * finds its entry: keystone on the map is bottlenecks in `ambit status`, and
+ * the entry says so, so `help bottlenecks` names Keystone. A command verb
+ * prints its usage, the lines `help --all` holds for it.
+ */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
     readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8')
   );
-  // Matched against the whole entry, not just its name: a concept the CLI and
-  // the map call different things — keystone on the map, bottlenecks in
-  // `ambit status` — says so in its own text, and looking up either word
-  // should find it.
-  const picked = wanted
-    ? concepts.filter((c: any) =>
-        [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
+  const words = (text: string) => text.toLowerCase().split(/[^a-z0-9-]+/);
+  const exact = concepts.filter(
+    (c: any) => c.key === wanted || String(c.term).toLowerCase() === wanted
+  );
+  const named = exact.length ? exact : concepts.filter((c: any) => words(c.term).includes(wanted));
+  const verb = ALIASES[wanted]?.to ?? wanted;
+  const usage = wanted && (commandWords().includes(verb) ? commandHelp(verb) : undefined);
+  const mentioned = wanted
+    ? concepts.filter(
+        (c: any) =>
+          !named.includes(c) &&
+          [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
       )
-    : concepts;
+    : [];
+  const picked = wanted ? named : concepts;
   // An agent asks what a term means as readily as a person does, and reads
   // the answer through a pipe.
   const paint = terminalPalette();
-  if (picked.length === 0) {
+  if (!picked.length && !usage && !mentioned.length) {
     console.log(`${paint.yellow}No concept matching "${wanted}".${paint.reset}`);
     console.log(`Try: ${concepts.map((c: any) => c.key).join(', ')}`);
     return;
@@ -1304,6 +1426,19 @@ function explain(wanted: string): void {
     console.log(wrap(c.long));
     console.log(`  ${paint.grey}Where you see it: ${c.seen}${paint.reset}`);
     console.log('');
+  }
+  if (usage) {
+    console.log(`${paint.bold}ambit ${verb}${paint.reset}`);
+    console.log(usage);
+    console.log('');
+  }
+  if (mentioned.length) {
+    const lead =
+      picked.length || usage
+        ? 'Also mentioned in'
+        : `No concept is called "${wanted}". Mentioned in`;
+    const names = mentioned.map((c: any) => `${c.term} (ambit help ${c.key})`).join(', ');
+    console.log(`${paint.grey}${lead}: ${names}${paint.reset}\n`);
   }
   if (!wanted)
     console.log(`${paint.grey}ambit help <term> for one of these on its own.${paint.reset}\n`);

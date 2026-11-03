@@ -172,6 +172,14 @@ code, pre, .code, .sp-cli-cmd {
   outline: none;
 }
 
+/* Placeholder text in the muted token, not the browser's #757575: that was
+   3.9:1 on the inset fields, under the 4.5:1 text needs. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
 /* Text for screen readers only: the live region that announces a selection.
    It rendered as visible text in the top-left corner while this was missing. */
 .visually-hidden {
@@ -1207,7 +1215,7 @@ button.app-sample-tag:hover {
   margin: 0 0 4px;
   font-size: var(--fs-md);
   line-height: 1.4;
-  color: var(--warn);
+  color: var(--text-primary);
 }
 
 .sp-keystone-mark {
@@ -3681,6 +3689,13 @@ button.app-sample-tag:hover {
   color: var(--text-primary);
 }
 
+/* What a second ranking on the page ranks by, under its title. */
+.loop-section-note {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
 .loop-filter-tabs {
   display: flex;
   gap: 4px;
@@ -4923,10 +4938,33 @@ button.app-sample-tag:hover {
   }
 }
 
-/* Up to 1270px the view tabs are icons: five of them no longer fit with
-   words on a phone, where the tab bar's own idiom is icon-first anyway, and
-   each keeps its name in aria-label and its tooltip. */
-@media (max-width: 1270px) {
+/* From 1024px to 1270px the view tabs give up their icons and keep a word,
+   the short one where a view has one (Setup, Cost): five drawings were five
+   things to learn before a tab could be read. The words cost about 120px
+   over the icons, which below 1024px the status pill needs: there it folded
+   to one count and then wrapped. So from 769px the tabs are icons again, as
+   on a phone, where that is the tab bar's own idiom. Each keeps its full name
+   in aria-label and its tooltip at every width. */
+.app-deck-tab-short {
+  display: none;
+}
+
+@media (min-width: 1024px) and (max-width: 1270px) {
+  .app-deck-nav .app-tab-icon,
+  .app-deck-nav .app-deck-tab-label--long {
+    display: none;
+  }
+
+  .app-deck-nav .app-deck-tab-short {
+    display: inline;
+  }
+
+  .app-deck-nav .app-deck-tab {
+    padding: 5px 9px;
+  }
+}
+
+@media (max-width: 1023px) {
   .app-deck-nav .app-deck-tab-label {
     display: none;
   }
@@ -4978,6 +5016,12 @@ button.app-sample-tag:hover {
 
   .setup-row-provides {
     gap: 8px;
+  }
+
+  /* The map's tools were 24 to 26px tall, under a thumb at 375 wide. */
+  .civ-zoom-btn {
+    min-width: 40px;
+    height: 40px;
   }
 }
 
@@ -5355,8 +5399,9 @@ button.app-sample-tag:hover {
 }
 
 /* A lens the ledger has nothing for is offered, disabled, with the reason
-   in its tooltip. */
-.civ-lens-hud .app-deck-tab:disabled {
+   in its tooltip and its description. It stays focusable, so the reason is
+   read to a keyboard too. */
+.civ-lens-hud .app-deck-tab[aria-disabled='true'] {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -5981,11 +6026,20 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+/* The last card holds three buttons, and at 800 wide they shared one row:
+   "Keep exploring" broke onto two lines and "Map yours" was clipped. A
+   button keeps its label on one line, and the row wraps before one does. */
 .app-tour-nav {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
   margin-top: 14px;
+}
+
+.app-tour-nav button {
+  white-space: nowrap;
 }
 
 .app-tour-dots {
@@ -6860,6 +6914,8 @@ button.app-sample-tag:hover {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  /* Right-aligned on its own: the desk says once what approving does. */
+  margin-left: auto;
 }
 
 /* ─── WHAT A NODE MAY DO, PER ACTION ─── */
@@ -7853,9 +7909,10 @@ button.app-sample-tag:hover {
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Two lines over an ellipsis: "Without as…" left the rung the ladder
+     exists to name unread. */
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .sp-grant-rung::before {

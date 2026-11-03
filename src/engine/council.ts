@@ -188,7 +188,9 @@ function treasury(db: Db, motion: Motion | null): LoopAdvisor {
     const onTheWay = prerequisitesOf(db, String(first.capability_id)).some(p => p.id === motion.id);
     return {
       ...seat,
-      says: `The ledger prices ${name} first: it pays back in ${payback(Number(first.payback_months))} and recovers $${saves} a month, and ${motion.name} is ${onTheWay ? 'the step to it' : 'not on the way to it'}.`,
+      // "Prices it first" claimed the top of the pay-back table, which lists
+      // by monthly cost and can lead with work no capability names.
+      says: `Of the capabilities the ledger prices, ${name} pays back soonest: in ${payback(Number(first.payback_months))}, recovering $${saves} a month, and ${motion.name} is ${onTheWay ? 'the step to it' : 'not on the way to it'}.`,
       command: `ambit opportunities ${shellQuote(String(first.id))}`,
       subject: { id: String(first.capability_id), name },
       stance: onTheWay ? 'for' : 'neutral',

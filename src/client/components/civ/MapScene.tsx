@@ -438,6 +438,12 @@ export function MapScene({
   const isTreeView = colOrder.some(c => c.startsWith('era:'));
   const keystone = (item: Item) =>
     (downstream.get(item.id) || []).length >= 3 || isRuntimeNode(item);
+  // What an outage cuts off was never set up, so the line to it is drawn as
+  // muted as the node: red to a dashed outline still said "stops".
+  const notSetUp = useMemo(
+    () => new Set(items.filter(i => i.status !== 'built').map(i => i.id)),
+    [items]
+  );
 
   return (
     <>
@@ -500,7 +506,9 @@ export function MapScene({
                   : 0.22;
         const strokeColor = isSimLine
           ? simulationMode === 'outage'
-            ? 'var(--error)'
+            ? notSetUp.has(conn.to) && conn.to !== simulatedNodeId
+              ? 'var(--text-muted)'
+              : 'var(--error)'
             : simulationMode === 'gap'
               ? 'var(--warn)'
               : 'var(--accent)'
@@ -642,6 +650,7 @@ export function MapScene({
 
               // A texture over the colour, each meaning one thing: see MapFilters.
               let texture: Texture | undefined;
+              let cutOff = false;
               if (isRecovering(item) && simulationMode === 'none' && !mark && !isAttentionHot) {
                 texture = waverOf(filters, recentFailures(item), seedOf(item.id));
               }
@@ -652,12 +661,14 @@ export function MapScene({
                   sc = 'var(--text-primary)';
                   sw = 2.5;
                 } else if (isSimAffected && !reached) {
-                  // Never set up, so nothing stopped: a red outline, cut off
-                  // and empty. Filled like the rest, the tour's "4 things
-                  // stop" sat over sixteen red circles.
+                  // Never set up, so nothing stopped: a dashed muted outline,
+                  // cut off and empty, kin to a blocked node. Filled like the
+                  // rest, the tour's "4 things stop" sat over sixteen red
+                  // circles; outlined in red, it still said red for two facts.
                   nodeFill = 'var(--bg-canvas)';
-                  sc = 'var(--error)';
-                  sw = 2;
+                  sc = 'var(--text-muted)';
+                  sw = 1.5;
+                  cutOff = true;
                 } else if (isSimAffected && !failingNode) {
                   // Red for what stops; amber for what keeps another
                   // provider and only loses one. It was all red. A node
@@ -820,7 +831,8 @@ export function MapScene({
                       stroke={texture ? 'none' : sc}
                       strokeWidth={sw}
                       strokeDasharray={
-                        !reached && !next && simulationMode === 'none' && !isAttentionHot
+                        cutOff ||
+                        (!reached && !next && simulationMode === 'none' && !isAttentionHot)
                           ? '5,4'
                           : undefined
                       }

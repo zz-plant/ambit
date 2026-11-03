@@ -258,7 +258,7 @@ On the map, form carries meaning. A capability is a circle; a required edge is s
 - **Hazard stripes**: something that refuses: a failing check, a forbidden grant, a spend past its ceiling.
 - **The waver**: recovering. The ring slips off its fill, further the more of the last five checks failed. At rest only.
 - **Corrosion**: what an outage simulation stops. The fill is eaten through inside an intact ring. Never at rest.
-- **The keystone wedge**: a node many others rest on.
+- **The keystone wedge**: a node many others rest on. Drawn in ink, since it shows under every lens and amber is the authority lens's "asks first".
 - **The part fill**: how much a next step was asked for.
 - **The seal**: a signature something can verify. Signed approvals only.
 - **Actor marks**: circle for a person, rounded square for an agent, hexagon for a machine, diamond for Ambit; drawn only when the id's prefix says which.

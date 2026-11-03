@@ -13,7 +13,7 @@ import {
   setSink,
   terminalPalette,
 } from './cli/output.ts';
-import { HELP, HELP_SHORT, groupHelp } from './cli/help.ts';
+import { HELP, HELP_SHORT, commandHelp, groupHelp } from './cli/help.ts';
 import {
   briefReport,
   explain,
@@ -94,7 +94,7 @@ import {
 } from './planning.ts';
 import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
-import { typedCommand } from './paths.ts';
+import { loadTechTree, typedCommand } from './paths.ts';
 import { judgeGoal } from './judge.ts';
 import { judgeUnrouted, specDirHint, specGoal } from './spec.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
@@ -109,7 +109,7 @@ import { exportSummary, importSummary } from './federation.ts';
 import { portfolio } from './portfolio.ts';
 import { incidents, resolveIncident } from './incident.ts';
 import { catalogReport, installText } from './catalog.ts';
-import { recheckCommand } from './vocabulary.ts';
+import { isReached, recheckCommand } from './vocabulary.ts';
 import { auditFor } from './audit.ts';
 import {
   addPerson,
@@ -173,11 +173,17 @@ async function runCommand(
   // A window in days, as `--days=N` or the bare number every report used to
   // take; undefined leaves the report its default (DEFAULT_WINDOW_DAYS).
   const days = (positionalAt = arg) => Number(value('days')) || Number(positionalAt) || undefined;
-  const named = (given?: string): { id: string } | { error: string; did_you_mean?: string[] } => {
+  // A word that resembles no node gets a command instead of a list: `goal`
+  // routes a sentence, or a word, to the capability it means, so "No
+  // capability" is not where the reader is left.
+  const named = (
+    given?: string
+  ): { id: string } | { error: string; did_you_mean?: string[]; try?: string } => {
     const r = resolveCapability(db, given);
     if (r.ok) return { id: r.id };
-    return r.did_you_mean.length
-      ? { error: r.error, did_you_mean: r.did_you_mean }
+    if (r.did_you_mean.length) return { error: r.error, did_you_mean: r.did_you_mean };
+    return r.reason === 'unknown'
+      ? { error: r.error, try: `ambit goal ${shellQuote(String(given).trim())}` }
       : { error: r.error };
   };
   switch (cmd) {
@@ -266,7 +272,19 @@ async function runCommand(
       else if (arg === 'affordances') emit(affordanceDomains(db));
       else if (arg === 'capacity') emit(capacityReport());
       else if (arg === 'unmapped') emit(unmappedUse(db, days(positional[1])));
-      else emitRaw(exportGraph(db), false);
+      // The whole graph as JSON is a view like the others, and named as one.
+      // It was what bare `graph` printed, forty kilobytes on a terminal, where
+      // every other group named alone lists what it owns.
+      else if (arg === 'export') emitRaw(exportGraph(db), false);
+      else if (!arg) emitText(groupHelp('graph'));
+      else {
+        const views = ['surface', 'combos', 'affordances', 'capacity', 'unmapped', 'export'];
+        const meant = nearest(arg, [...views, ...GROUPS.graph], 2);
+        emit({
+          error: `No graph view "${arg}". ambit graph lists them.`,
+          ...(meant.length ? { did_you_mean: meant.map(m => `ambit graph ${m}`) } : {}),
+        });
+      }
       break;
     }
     case 'goal': {
@@ -501,18 +519,43 @@ async function runCommand(
         break;
       }
       const catalog = catalogReport(db, node.id) as any;
-      const options = (catalog.options ?? []).map((o: any) => ({
-        ...o,
-        install: installText(node.id, o),
-      }));
+      // In the order `ambit goal` lists the same step's ways, the tree's own,
+      // so the plan's first option is this command's first. The catalog ranks
+      // by declared cost and then by name, and with no cost declared that put
+      // the plan's second way first here. One the tree does not name keeps
+      // the catalog's order, after those it does.
+      const curated = (
+        loadTechTree().nodes?.find((n: any) => `combo:${n.id}` === node.id)?.acquisition
+          ?.alternatives ?? []
+      ).map((a: any) => a.name);
+      const rank = (o: any) => {
+        const i = curated.indexOf(o.provider);
+        return i === -1 ? curated.length : i;
+      };
+      const options = (catalog.options ?? [])
+        .map((o: any, i: number) => ({ o, i }))
+        .sort((a: any, b: any) => rank(a.o) - rank(b.o) || a.i - b.i)
+        .map(({ o }: any) => ({ ...o, install: installText(node.id, o) }));
       const palette = terminalPalette();
+      const reached = isReached(node.state);
+      // Not reached is one of two things, as the map says it: a next step,
+      // which nothing else stands before, or blocked, behind the steps the
+      // plan orders first. The rule is `goal --spec`'s, from the same plan.
+      const plan = reached ? undefined : (planFor(db, node.id) as any);
+      const before = Array.isArray(plan?.order)
+        ? (plan.order as { id: string; name: string }[]).filter(s => s.id !== node.id)
+        : [];
       emit(
         {
           capability: node.name,
           id: node.id,
           state: node.state,
+          stands: reached ? 'reached' : before.length ? 'blocked' : 'next step',
+          blocked_by: before.length ? before.map(s => s.name) : undefined,
           lifecycle: node.lifecycle,
-          check: recheckCommand(node.id),
+          // A check re-runs what is reached; for a next step it has nothing
+          // to prove yet, and the line read as an instruction to run it.
+          check: reached ? recheckCommand(node.id) : undefined,
           options,
         },
         report => renderFix(report, palette)
@@ -595,11 +638,31 @@ async function runCommand(
         });
         break;
       }
+      // A refusal is recorded as a deficit when an agent asks, and not when a
+      // person does. Every refusal used to be filed, so a person trying the
+      // command out, or checking a grant they had just written, counted as
+      // work blocked on the capability, and that count is what ranks the next
+      // step and calls a deficit structural. An agent asks before it acts, so
+      // its refusal is a wall it hit; the MCP tool and the gate keep filing
+      // theirs on their own paths, and a script standing in for an agent
+      // passes --record. --no-record, the old way to opt out, is still read.
+      const record = flags.has('--record') && !flags.has('--no-record');
       // A slip is answered as one and files nothing; see `capabilityToAsk`.
+      // A word that resembles nothing goes to the gate only for an agent, for
+      // whom a tool nothing supplies is a wall worth filing. A person who
+      // typed it is told the graph holds no such capability, and the exit
+      // code says so.
       const asked = capabilityToAsk(db, arg);
       if ('answer' in asked) {
         emit(asked.answer);
         break;
+      }
+      if (!record) {
+        const known = named(arg);
+        if (!('id' in known)) {
+          emit(known);
+          break;
+        }
       }
       const decision: any = canExecute(db, {
         actor: value('actor'),
@@ -607,12 +670,14 @@ async function runCommand(
         target: value('target'),
         spendCents,
       });
-      // A refusal is a deficit whoever asked. This surface used to be the
-      // silent one, which meant the same question had different consequences
-      // depending on where it was asked.
-      if (!flags.has('--no-record')) {
+      if (record) {
         const recorded = recordRefusal(db, decision, value('tool'));
         if (recorded !== undefined) decision.recorded_deficit = recorded;
+      } else if (decision.refused === 'ungranted') {
+        // The command that would answer yes next time, for the person to
+        // type or not. The narrowest mode that permits: a person still asked.
+        const scope = value('target') ? ` --scope=${shellQuote(value('target')!)}` : '';
+        decision.to_grant = `ambit authority grant ${shellQuote(asked.ask.replace(/^combo:/, ''))} confirm${scope}`;
       }
       emit(decision);
       // --exit-code puts the decision where a shell can branch on it: 0 to go
@@ -1250,8 +1315,27 @@ function runGate(db: Db | null, flags: Set<string>): void {
 }
 
 async function main() {
-  const resolved = resolveCommand(process.argv[2], process.argv.slice(3));
+  // `-h` and `--help` alone are `help`; after a command they are that
+  // command's usage, printed before the graph is opened, so asking how a
+  // command is used never runs it, and never seeds a first graph either.
+  const first = process.argv[2] === '-h' || process.argv[2] === '--help' ? 'help' : process.argv[2];
+  const resolved = resolveCommand(first, process.argv.slice(3));
   const cmd = resolved.cmd;
+  if (cmd && cmd !== 'help' && (resolved.argv.includes('--help') || resolved.argv.includes('-h'))) {
+    const usage = commandHelp(cmd);
+    if (usage) {
+      console.log(usage);
+      return;
+    }
+  }
+  // Help reads the lists and the glossary and nothing in the graph, so it
+  // answers before one is opened, or created where there was none.
+  if (!cmd || cmd === 'help') {
+    const word = resolved.argv.find(a => !a.startsWith('--'));
+    if (cmd === 'help' && word) explain(word.toLowerCase());
+    else console.log(resolved.argv.includes('--all') ? HELP : HELP_SHORT);
+    return;
+  }
   // The gate runs inside someone else's tool call, so it is answered before
   // the graph is opened for anything else. A graph it cannot open printed a
   // stack trace and exited 1, and an empty one was seeded on the spot, with
@@ -1290,7 +1374,6 @@ async function main() {
   // looked for a capability named "--json", which every flag-taking command
   // silently inherited.
   const positional = resolved.argv.filter(a => !a.startsWith('--'));
-  const arg = positional[0];
   const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
   const mappingOverride = process.env.CONFIG_MAPPING;
 
@@ -1360,16 +1443,6 @@ async function main() {
         /* the logs wait for the next command */
       }
     }
-  }
-  if (!cmd || cmd === 'help') {
-    if (cmd === 'help' && arg && arg !== '--all') {
-      explain(arg.toLowerCase());
-      db.close();
-      return;
-    }
-    console.log(flags.has('--all') ? HELP : HELP_SHORT);
-    db.close();
-    return;
   }
   await runCommand(db, cmd, positional, flags, mappingOverride);
   db.close();

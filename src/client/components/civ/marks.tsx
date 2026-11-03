@@ -61,7 +61,9 @@ export function Brackets({ r, color }: { r: number; color: string }) {
  * corner the check badge leaves free. It was a dashed square around the node,
  * one step from the corners that mean "pointed at", so a keystone read as a
  * second selection. Outlined at rest, filled when the key or the selection
- * asks for it.
+ * asks for it. It is drawn in ink, not amber: amber is the authority lens's
+ * "asks first", and the wedge is drawn under every lens, so an amber wedge on
+ * an amber node said one thing twice and two things at once.
  */
 /**
  * How much of a next step is already asked for: a wedge from twelve o'clock,
@@ -89,8 +91,8 @@ export function KeystoneMark({ lit = true }: { lit?: boolean }) {
   return (
     <path
       d="M-5 -4 H5 L3 4 H-3 Z"
-      fill={lit ? 'var(--warn)' : 'var(--bg-canvas)'}
-      stroke="var(--warn)"
+      fill={lit ? 'var(--text-primary)' : 'var(--bg-canvas)'}
+      stroke="var(--text-primary)"
       strokeWidth={1.25}
       strokeLinejoin="round"
       strokeOpacity={lit ? 1 : 0.7}
@@ -258,7 +260,7 @@ export function mapKeys(prefix: string) {
       sym: '!',
       label: 'Failing',
       hatch: true,
-      hint: 'Failing: its last check failed. Configured, and not working.',
+      hint: 'Failing: its last check failed. Configured, and not working. Stripes mark what refuses, on every lens.',
     },
     required: { kind: 'line', label: 'Required' },
     optional: { kind: 'line', dashed: true, label: 'Optional' },
@@ -344,7 +346,15 @@ export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string 
     case 'ring':
       return <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={2} />;
     case 'cutoff':
-      return <circle r={7} fill="var(--bg-canvas)" stroke="var(--error)" strokeWidth={1.5} />;
+      return (
+        <circle
+          r={7}
+          fill="var(--bg-canvas)"
+          stroke="var(--text-muted)"
+          strokeWidth={1.5}
+          strokeDasharray="3.5,2.5"
+        />
+      );
     case 'corroded':
       return (
         <>

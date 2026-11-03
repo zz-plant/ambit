@@ -15,6 +15,7 @@ import {
   briefReport,
   explain,
   renderBrief,
+  renderFix,
   renderImpact,
   renderStatus,
   statusReport,
@@ -174,6 +175,33 @@ describe('the evidence counts', () => {
     }
   });
 
+  // Every runtime's built-ins are seeded with or without a config, so an
+  // empty home read "4 of your own" beside a short screen saying nothing of
+  // the person's was found.
+  it('do not count what every runtime brings as your own, and say where it went', () => {
+    const report = reportOf([
+      { id: 'combo:shell', name: 'Shell', lifecycle: 'configured' },
+      { id: 'tool:bash', name: 'Shell Execution', kind: 'provider', lifecycle: 'unknown' },
+      { id: 'core:reasoning', name: 'Core Reasoning', kind: 'provider', lifecycle: 'unknown' },
+    ]);
+    expect(report.reach).toBe('1 of 1 capabilities reached');
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    1 of 1 reached · 0 verified · nothing failing');
+    expect(evidenceRows(lines)).toContain(
+      '    entries         2  built into the runtime; checks run on what they provide'
+    );
+
+    const mixed = reportOf([
+      { id: 'combo:shell', name: 'Shell', lifecycle: 'configured' },
+      { id: 'tool:bash', name: 'Shell Execution', kind: 'provider', lifecycle: 'unknown' },
+      { id: 'mcp:git', name: 'git', kind: 'provider', category: 'mcp', lifecycle: 'unknown' },
+    ]);
+    expect(mixed.reach).toBe('1 of 1 capabilities reached, and 1 of your own');
+    expect(evidenceRows(renderStatus(mixed, PLAIN))).toContain(
+      '    entries         2  from your config, and 1 built into the runtime'
+    );
+  });
+
   it('say how the unverified split, in parts that add up to it', () => {
     const db = graphWithChecks(
       [
@@ -212,7 +240,7 @@ describe('the evidence counts', () => {
       const report = statusReport(db);
       expect(report.evidence[0].provable_now).toHaveLength(11);
       const text = renderStatus(report, PLAIN).join('\n');
-      expect(text).toContain('provable now: s00, s01, s02, s03, s04, s05, s06, s07 and 3 more');
+      expect(text).toContain('Provable now  s00, s01, s02, s03, s04, s05, s06, s07 and 3 more');
       expect(text).toContain('turns 11 of the unverified into evidence');
     } finally {
       db.close();
@@ -332,22 +360,70 @@ describe('a capability recovering from a failed check', () => {
       { id: 'combo:b', name: 'Beta', recent: '2 of the last 5 passed' },
     ]);
     const text = renderStatus(report, PLAIN).join('\n');
-    expect(text).toContain('recovering:');
-    expect(text).toContain('2 of the last 5 passed');
+    expect(text).toMatch(/Recovering\n {6}Beta +2 of the last 5 passed/);
   });
 });
 
 describe('what the head does not say', () => {
-  it('follows beneath it as it always has been drawn', () => {
-    const text = renderStatus(reportOf(MIXED), PLAIN).join('\n');
-    expect(text).toContain('actions: 1/1 reached');
-    expect(text).toContain('domains:');
-    // The list keeps its key for scripts, and is labelled for a person.
-    expect(text).toContain('not working:');
+  it('follows beneath it a row per finding, with no record dump', () => {
+    const report = reportOf(MIXED);
+    const text = renderStatus(report, PLAIN).join('\n');
+    expect(text).toContain('By domain');
+    // The list keeps its key for scripts, and is labelled for a person, with
+    // the command that re-runs each check.
+    expect(text).toMatch(/Not working\n {6}Gamma +ambit verify c/);
     expect(text).not.toContain('degraded:');
-    expect(text).toContain('combo:c');
-    // The scalars the head replaced are not printed twice.
+    // Totals that competed with the head stay in the data, off the screen.
+    expect(report.actions).toBe('1/1 reached');
+    expect(text).not.toContain('actions:');
+    expect(text).not.toContain('frontier:');
+    expect(text).not.toContain('reach:');
+    // No field of a record printed as a label.
+    expect(text).not.toMatch(/is bottleneck:|provider id:|capability id:|unlocks count:/);
     expect(text).not.toMatch(/^ {4}(reached|total|verified|failing|summary):/m);
+  });
+
+  it('says a sole provider once, with what it unlocks, and a bottleneck once by name', () => {
+    const report = {
+      ...reportOf(MIXED),
+      spofs: [
+        {
+          capability: 'Shell Execution',
+          id: 'combo:shell-execution',
+          sole_provider: 'Shell Execution',
+          provider_id: 'tool:bash',
+        },
+      ],
+      bottlenecks: [
+        {
+          capability_id: 'combo:shell-execution',
+          name: 'Shell Execution',
+          domain: 'infra',
+          unlocks_count: 5,
+          is_bottleneck: true,
+        },
+        {
+          capability_id: 'tool:bash',
+          name: 'Shell Execution',
+          domain: 'infra',
+          unlocks_count: 1,
+          is_bottleneck: true,
+        },
+        {
+          capability_id: 'combo:tool-protocol',
+          name: 'Tool Protocol',
+          domain: 'backend',
+          unlocks_count: 10,
+          is_bottleneck: true,
+        },
+      ],
+    } as ReturnType<typeof reportOf>;
+    const text = renderStatus(report, PLAIN).join('\n');
+    expect(text).toMatch(
+      /Single points of failure\n {6}Shell Execution {2}only from tool:bash · unlocks 5\n/
+    );
+    expect(text).toMatch(/Bottlenecks\n {6}Tool Protocol {2}unlocks 10\n/);
+    expect(text.match(/Shell Execution/g)).toHaveLength(1);
   });
 });
 
@@ -441,6 +517,91 @@ describe('the glossary', () => {
     expect(bare).toContain('Where you see it');
     expect(shown(true, '1')).toBe(bare);
     expect(plain(terminal)).toBe(bare);
+  });
+
+  const asked = (word: string) => {
+    const lines: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line?: unknown) => {
+      lines.push(String(line ?? ''));
+    });
+    try {
+      asProcess(false, undefined, () => explain(word));
+    } finally {
+      log.mockRestore();
+    }
+    return lines.join('\n').trim();
+  };
+
+  // `help verified` printed every entry whose text held the word, two other
+  // concepts first, fifty lines before the one asked for.
+  it('prints the entry by that name first, and only names the ones that mention it', () => {
+    const verified = asked('verified');
+    expect(verified.startsWith('Verified —')).toBe(true);
+    expect(verified.match(/Where you see it/g)).toHaveLength(1);
+    expect(verified).toMatch(/Also mentioned in: .*Recovering \(ambit help recovering\)/);
+  });
+
+  it('prints a command verb as its usage', () => {
+    const verify = asked('verify');
+    expect(verify).toContain('ambit verify\n  check verify [cap]');
+    expect(verify).not.toContain('Where you see it');
+  });
+
+  it('finds the entry a word the CLI uses is mentioned in', () => {
+    expect(asked('bottlenecks')).toBe(
+      'No concept is called "bottlenecks". Mentioned in: Keystone (ambit help keystone)'
+    );
+  });
+});
+
+describe('renderFix', () => {
+  // `fix` on a capability not yet reached printed `state locked`, `lifecycle
+  // unknown` and a re-check of something there was nothing yet to check.
+  it('says next step or blocked, and leaves out what no check has said', () => {
+    const next = renderFix(
+      {
+        capability: 'Hosting',
+        id: 'combo:hosting',
+        state: 'locked',
+        stands: 'next step',
+        lifecycle: 'unknown',
+        options: [],
+      },
+      PLAIN
+    ).join('\n');
+    expect(next).toContain('state      next step');
+    expect(next).not.toContain('lifecycle');
+    expect(next).not.toContain('ambit verify');
+    expect(next).not.toContain('locked');
+
+    const blocked = renderFix(
+      {
+        capability: 'Backups',
+        id: 'combo:backups',
+        state: 'locked',
+        stands: 'blocked',
+        blocked_by: ['Production Database'],
+        lifecycle: 'unknown',
+        options: [],
+      },
+      PLAIN
+    ).join('\n');
+    expect(blocked).toContain('state      blocked, behind Production Database');
+
+    const reached = renderFix(
+      {
+        capability: 'Shell',
+        id: 'combo:shell',
+        state: 'active',
+        stands: 'reached',
+        lifecycle: 'broken',
+        check: 'ambit verify shell',
+        options: [],
+      },
+      PLAIN
+    ).join('\n');
+    expect(reached).toContain('lifecycle  broken');
+    expect(reached).toContain('Check  ambit verify shell');
   });
 });
 

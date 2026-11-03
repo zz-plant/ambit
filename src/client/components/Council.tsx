@@ -20,12 +20,17 @@ import { Command } from './Command';
  * is never drawn as an opinion.
  */
 
+/**
+ * Each seat by the question it reads, in plain words. The engine still names
+ * the seats by ministry (`science`, `defence`, ...), and those ids stay the
+ * wire's; a page whose one game metaphor is the map's eras shows the question.
+ */
 const SEAT: Record<LoopAdvisor['seat'], string> = {
-  science: 'Science',
-  defence: 'Defence',
-  treasury: 'Treasury',
-  justice: 'Justice',
-  interior: 'Interior',
+  science: 'Reach',
+  defence: 'What could break',
+  treasury: 'Cost',
+  justice: 'Permission',
+  interior: 'Checks',
 };
 
 const STANCE: Record<LoopAdvisor['stance'], string> = {

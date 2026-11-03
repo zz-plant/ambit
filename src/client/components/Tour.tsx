@@ -17,6 +17,12 @@ interface TourProps {
   onMapped: () => void;
   /** The step a link asked to open on; the first when it names none, or one this sample lacks. */
   start?: TourStep | null;
+  /**
+   * A dialog is open over the page. The card steps out of sight and keeps its
+   * place: drawn behind the proposal it had just offered, it read as a second
+   * thing asking to be answered.
+   */
+  covered?: boolean;
 }
 
 /** "A, B and C", the way the step reads a list of capabilities out. */
@@ -73,7 +79,14 @@ interface Step {
  * It runs on the demo only. A machine's own graph opens on the readout of
  * that setup instead (YourAmbit.tsx).
  */
-export default function Tour({ style, onDone, onShowProposals, onMapped, start }: TourProps) {
+export default function Tour({
+  style,
+  onDone,
+  onShowProposals,
+  onMapped,
+  start,
+  covered = false,
+}: TourProps) {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const ranked = useAmbitStore(s => s.loop?.next);
@@ -132,8 +145,8 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         },
       });
     }
-    // Only what was working counts as stopped, and only that is filled red.
-    // What was never set up is drawn as a red outline and named for what it
+    // Only what was working counts as stopped, and only that is red. What
+    // was never set up is drawn as a dashed outline and named for what it
     // is: drawn alike, the title said 4 over sixteen red circles. A check
     // that was already failing is the next card's subject, not this one's.
     if (outage?.stopped.length) {
@@ -143,7 +156,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         title: `And if ${COLD_OPEN_PLAIN} went down? ${stopped.length} things stop.`,
         body:
           `They would lose ${named(stopped)}.` +
-          (cutOff.length ? ' The red outlines were never set up.' : ''),
+          (cutOff.length ? ' The dashed outlines were never set up.' : ''),
         enter: () => {
           select(null);
           startOutage(COLD_OPEN_OUTAGE);
@@ -218,6 +231,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
       style={style}
       aria-label="A tour of the demo"
       data-occludes-map
+      hidden={covered}
     >
       <div className="app-guide-head">
         <span className="app-tour-count">

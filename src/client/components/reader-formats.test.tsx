@@ -39,8 +39,8 @@ test('dollars keep US grouping on a German browser', () => {
 
 test('a payback under a month is said in days', () => {
   const said = demo();
-  // The demo's soonest is 0.3 months.
-  expect(said).toContain('Pays back in 9 days and recovers $248 a month.');
+  // The demo's soonest is 0.3 months, in the table of what would pay back.
+  expect(said).toContain('9 days to pay back');
   expect(said).not.toMatch(/0\.\d (mo|months)\b/);
 });
 

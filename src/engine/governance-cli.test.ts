@@ -587,8 +587,16 @@ test('asking about a slip is not a refusal on the command line either, and files
   expect(slip.decision).toBeUndefined();
   expect(count()).toBe(before);
 
-  // A wall that resembles nothing is still a wall, and is still filed.
-  const wall = cli('can', 'quantum-teleportation', '--tool=qtp');
+  // Typed by a person, a word that resembles nothing is not a capability,
+  // and is said to be one the graph does not hold, with a command to route it.
+  const typed = cli('can', 'quantum-teleportation', '--tool=qtp');
+  expect(typed.error).toContain('No capability "quantum-teleportation"');
+  expect(typed.try).toBe('ambit goal quantum-teleportation');
+  expect(typed.decision).toBeUndefined();
+  expect(count()).toBe(before);
+
+  // Asked as an agent asks, it is a wall, and is filed.
+  const wall = cli('can', 'quantum-teleportation', '--tool=qtp', '--record');
   expect(wall.decision).toBe('DENY');
   expect(wall.recorded_deficit).toBeDefined();
   expect(count()).toBeGreaterThan(before);
@@ -596,6 +604,33 @@ test('asking about a slip is not a refusal on the command line either, and files
   // A name is the id it names, and no capability is a usage error and not a stack trace.
   expect(cli('can', 'Shell Execution', '--no-record').capability).toBe('combo:shell-execution');
   expect(cli('can').error).toContain('Usage: ambit can <capability>');
+});
+
+test('a refusal a person asked about files nothing, and names the grant that would answer it', () => {
+  // A person trying the command, or checking a grant they just wrote, was
+  // counted as work blocked on the capability. Only an agent's refusal is a
+  // wall it hit, and `--record` is how a script asking for one says so.
+  seed(LOCAL_ONLY).close();
+  const deficits = () => {
+    const db = getDb(join(dir, 'graph.db'));
+    const n = rows(db, 'SELECT COUNT(*) AS n FROM failure_signals')[0].n;
+    db.close();
+    return n;
+  };
+  const before = deficits();
+  const asked = cli('can', 'offline-capable', '--target=device:nuc');
+  expect(asked.decision).toBe('DENY');
+  expect(asked.refused).toBe('ungranted');
+  expect(asked.recorded_deficit).toBeUndefined();
+  expect(asked.to_grant).toBe('ambit authority grant offline-capable confirm --scope=device:nuc');
+  // The old opt-out still parses, and changes nothing now.
+  expect(cli('can', 'offline-capable', '--no-record').recorded_deficit).toBeUndefined();
+  expect(deficits()).toBe(before);
+
+  const agent = cli('can', 'offline-capable', '--target=device:nuc', '--record');
+  expect(agent.recorded_deficit).toBeDefined();
+  expect(agent.to_grant).toBeUndefined();
+  expect(deficits()).toBeGreaterThan(before);
 });
 
 test('a budget refuses a spend that would exceed it', () => {

@@ -1356,7 +1356,7 @@ export function mapFindings(
   const tree = visibleItems(items).filter(i => !isEntry(i));
   const failing = tree.filter(isFailing);
   let best: MapFindings['best'];
-  // The engine ranks what to reach next for My Setup, Time & authority and `ambit
+  // The engine ranks what to reach next for My Setup, Time & cost and `ambit
   // next`, by what blocked work and then by leverage per hour. The map ranked
   // by its own rule and named a different step on the same page, so its pick
   // is the engine's whenever the engine made one that is on the map.

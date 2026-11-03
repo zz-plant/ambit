@@ -34,6 +34,7 @@ import {
   withEnv,
 } from './testing/cli.ts';
 import { asProcess } from './testing/terminal.ts';
+import { planFor } from './planning.ts';
 
 test('people are nodes, and what they supply becomes a capability', () => {
   const db = seed(WITH_PEOPLE);
@@ -697,8 +698,8 @@ test('status keeps every field it had, names what is recovering, and adds next a
     'pending',
     'next',
   ]);
-  // The sentence the data carries is the one it always was.
-  expect(status.summary).toMatch(/^\d+\/\d+ capabilities reached · /);
+  // The sentence the data carries is the one the head prints, not a second count.
+  expect(status.summary.startsWith(`${status.reach} · `)).toBe(true);
 });
 
 test('status piped is plain text, carries the same lines, and ends on Next', () => {
@@ -755,4 +756,31 @@ test('status is drawn in colour on a terminal and plain everywhere else', async 
   expect(await drawn(true, '1')).toBe(bare);
   expect(terminal.split(esc).length).toBeGreaterThan(1);
   expect(terminal.replace(new RegExp(`${esc}\\[[0-9;]*m`, 'g'), '')).toBe(bare);
+});
+
+test('an id that resembles nothing is answered with a command, not a bare error', () => {
+  // `impact notathing` ended on "No capability" and nothing to type.
+  seed(LOCAL_ONLY).close();
+  const missing = cli('impact', 'notathing');
+  expect(missing.error).toBe('No capability "notathing" in this graph.');
+  expect(missing.try).toBe('ambit goal notathing');
+  // A slip still gets the names it resembles, and no command in their place.
+  const slip = cli('impact', 'shell-exection');
+  expect(slip.did_you_mean).toContain('combo:shell-execution');
+  expect(slip.try).toBeUndefined();
+});
+
+test('fix lists the ways to acquire a step in the order goal lists them', () => {
+  seed(LOCAL_ONLY).close();
+  const db = getDb(join(dir, 'graph.db'));
+  const plan = planFor(db, 'combo:hosting') as any;
+  db.close();
+  const step = plan.order.find((s: any) => s.id === 'combo:hosting');
+  const fixed = cli('fix', 'hosting');
+  // Not reached, and said as the plan says it: behind the steps it orders first.
+  const before = plan.order.filter((s: any) => s.id !== 'combo:hosting').map((s: any) => s.name);
+  expect(fixed.stands).toBe(before.length ? 'blocked' : 'next step');
+  expect(fixed.blocked_by).toEqual(before.length ? before : undefined);
+  expect(fixed.check).toBeUndefined();
+  expect(fixed.options.map((o: any) => o.provider)).toEqual(step.options.map((o: any) => o.name));
 });
