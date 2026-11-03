@@ -38,6 +38,7 @@ import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg, type Showing } from '
 import type { ImageKind } from './components/civ/ImageMenu';
 import { embeddedFontCss } from './fonts';
 import { INSTALL } from './utils/copy';
+import { isMissingFile } from './utils/loadFailure';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 // Fetched when first opened: a visit lands on the map, and the views it
@@ -75,30 +76,49 @@ const Loading = ({ what }: { what: string }) => (
 );
 
 /**
- * A view whose code could not be fetched, which is what an open page meets
- * after a deploy replaces the files it was built from. The suspense fallback
- * used to stay up forever; this says so and offers the one thing that works.
- * main.tsx reloads once before this is reached, so it is what a person sees
- * when the reload did not help.
+ * A view that could not be shown, said for the reason it could not.
+ *
+ * Its code may not have arrived, which is what an open page meets after a
+ * deploy replaces the files it was built from: the suspense fallback used to
+ * stay up forever, and main.tsx reloads once before this is reached, so it is
+ * what a person sees when the reload did not help. Or the view threw while it
+ * drew, and every such error was reported as the first kind, with nothing of
+ * what was thrown: a person reloaded onto the same failure, and nobody could
+ * say what it was. A thrown error names itself here and in the console.
  */
 class ViewBoundary extends React.Component<
   { what: string; children: React.ReactNode },
-  { failed: boolean }
+  { error: unknown }
 > {
-  state = { failed: false };
+  state: { error: unknown } = { error: null };
 
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error: unknown) {
+    return { error: error ?? new Error('unknown error') };
+  }
+
+  componentDidCatch(error: unknown, info: React.ErrorInfo) {
+    console.error(`Ambit: ${this.props.what} failed to draw.`, error, info.componentStack);
   }
 
   render() {
-    if (!this.state.failed) return this.props.children;
+    const { error } = this.state;
+    if (!error) return this.props.children;
+    const what = this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1);
     return (
       <div className="app-loading" role="alert">
-        <p>
-          {this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1)} could not load. A
-          newer build may have replaced the files this page was loaded from. Reload to get it.
-        </p>
+        {isMissingFile(error) ? (
+          <p>
+            {what} could not load. A newer build may have replaced the files this page was loaded
+            from. Reload to get it.
+          </p>
+        ) : (
+          <>
+            <p>{what} stopped with an error, which is a bug in the page and not your setup:</p>
+            <code className="app-loading-error">
+              {error instanceof Error ? `${error.name}: ${error.message}` : String(error)}
+            </code>
+          </>
+        )}
         <button type="button" className="tp-btn" onClick={() => window.location.reload()}>
           Reload
         </button>
