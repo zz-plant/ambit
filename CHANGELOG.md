@@ -6,6 +6,12 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Help that starts small, and `--help` that runs nothing
+
+`ambit help` was meant to cover a first session and listed seventeen commands with their options, `--judge[=url]` and `goal --spec` among them. It now lists the eight a first session uses, in the order a person meets them, and the five groups with a line each. `ambit plan` printed the group's whole section of `--all`, sixty lines of which the judge's options were most; each group now prints one line a command, and `ambit help <command>` shows that command's entry in full with the word it rests on (`ambit help verify` ends on Verified). `ambit help verify` used to explain the word and never the command, and `ambit help frontier` printed Ambit's entry first because its text mentions the frontier: a word that names a concept now shows that concept alone, and a slip is offered what it was probably meant to be.
+
+`--help` after a command was one more flag the command ignored, so `ambit verify --help` ran every declared check, `ambit approve <id> --help` approved, `ambit mcp --help` started a server waiting on stdin, and `ambit web --help` opened the map. `--help` and `-h` anywhere after a command now print its entry and run nothing. Help no longer opens the graph, so it no longer waits on the spools and session logs, or creates a graph on a fresh machine. Bare `ambit graph` on a terminal prints its group's index where it printed a hundred kilobytes of JSON on one line; a pipe and `--json` still get the export.
+
 ### One reach, one step, said the same way everywhere
 
 Bare `ambit` said "9 of 46 capabilities" where `ambit status`, the agent's briefing, `ambit doctor` and My Setup's journey said "18 of 55" of the same setup. The larger figure counts the person's own servers, models and runtimes as well, and both are true. Every sentence that states reach now holds both, "9 of 46 capabilities reached, and 9 of your own", so each agrees with the other surfaces and the evidence rows under `ambit status` still add up. The page's Time & cost and journey count the tree, as the map does, and `ambit_stats` carries the sentence for an agent to quote.
