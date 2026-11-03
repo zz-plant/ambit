@@ -186,6 +186,8 @@ check — what is proven, what is permitted, what is currently broken
                           status line where none is set, and never replaces one
   check port [server] [--to=<runtime|all>] [--from=<runtime>] [--dry-run]
                           port an MCP server between agent runtimes (Claude, Cursor, Codex, etc.)
+  check toggle <server> [--off|--on] [--to=<runtime>] [--dry-run]
+                          turn an MCP server off or on across agent runtimes
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported
