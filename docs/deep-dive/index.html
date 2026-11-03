@@ -366,7 +366,7 @@ ambit rollback prop-msrsqzij
 <hr>
 <h2 id="the-surfaces"><a class="anchor" href="#the-surfaces" aria-hidden="true" tabindex="-1">#</a>The surfaces</h2>
 <h3 id="the-full-cli-surface"><a class="anchor" href="#the-full-cli-surface" aria-hidden="true" tabindex="-1">#</a>The full CLI surface</h3>
-<p>Run <code>ambit</code> with no arguments and it shows where the environment stands; <code>ambit help --all</code> shows the surface. The commands group under five nouns, and the grouping is presentation only: every verb also works flat, so <code>ambit impact x</code> and <code>ambit graph impact x</code> are the same command:</p>
+<p>Run <code>ambit</code> with no arguments and it shows where the environment stands. <code>ambit help</code> is a first session, <code>ambit help &lt;group&gt;</code> one group&#39;s index, <code>ambit help &lt;command&gt;</code> one command with its options, and <code>ambit help --all</code> the surface. The commands group under five nouns, and the grouping is presentation only: every verb also works flat, so <code>ambit impact x</code> and <code>ambit graph impact x</code> are the same command:</p>
 <pre><code>           seed · briefing [--json|--peek] · status · next [n] · help [term]
 graph      impact &lt;id&gt; · catalog &lt;cap&gt; · where · skills · objects [target]
            share [--redact] [--out=path] · sync export|import &lt;path&gt;
@@ -452,7 +452,7 @@ report     work [limit] · usage [days] [--windows] · economics [price &lt;mode
 </tr>
 <tr>
 <td align="left"><code>ambit graph</code></td>
-<td align="left">The whole graph as JSON; <code>graph surface</code> is the runtime-owned vocabulary a runtime would publish, <code>graph combos</code> the ones whose required prerequisites are all in place, <code>graph affordances</code> the structural domains, <code>graph unmapped</code> what the agents used that no node on the map accounts for (presence, never frequency) and the overlay that would add it, <code>graph capacity</code> the machines on your tailnet and this machine&#39;s memory, naming the online ones no manifest declares</td>
+<td align="left">The whole graph as JSON through a pipe or with <code>--json</code> (on a terminal, the group&#39;s index); <code>graph surface</code> is the runtime-owned vocabulary a runtime would publish, <code>graph combos</code> the ones whose required prerequisites are all in place, <code>graph affordances</code> the structural domains, <code>graph unmapped</code> what the agents used that no node on the map accounts for (presence, never frequency) and the overlay that would add it, <code>graph capacity</code> the machines on your tailnet and this machine&#39;s memory, naming the online ones no manifest declares</td>
 </tr>
 <tr>
 <td align="left"><strong>plan</strong> — <em>what to acquire next, and whether it paid</em></td>
