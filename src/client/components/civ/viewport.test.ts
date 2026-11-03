@@ -15,6 +15,7 @@ import {
   fitsScene,
   type Geometry,
   grabOffset,
+  isPress,
   minimapModel,
   nearestNode,
   offscreen,
@@ -315,6 +316,16 @@ test('a press inside the outline keeps its place under the pointer, and one outs
   expect(grabOffset(view, { x: 300, y: 150 })).toEqual({ x: 100, y: 50 });
   // Outside, the middle of the outline goes to the pointer.
   expect(grabOffset(view, { x: 500, y: 500 })).toEqual({ x: 0, y: 0 });
+});
+
+test('a pointer that barely moved pressed the map, and one that travelled dragged it', () => {
+  const down = { x: 400, y: 300 };
+  expect(isPress(down, down)).toBe(true);
+  // A hand's tremor on the way up is still a press.
+  expect(isPress(down, { x: 403, y: 302 })).toBe(true);
+  // A pan, however short, clears nothing when it lets go on empty ground.
+  expect(isPress(down, { x: 405, y: 300 })).toBe(false);
+  expect(isPress(down, { x: 400, y: 260 })).toBe(false);
 });
 
 test('the arrow keys move the view a tenth of a screen, Shift nearly a whole one', () => {

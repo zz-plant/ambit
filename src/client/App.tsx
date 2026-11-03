@@ -127,6 +127,18 @@ class ViewBoundary extends React.Component<
   }
 }
 
+/**
+ * What arriving at a view reads, whether its tab was pressed or Back and
+ * Forward brought it. Back used to set the view and read nothing, so after a
+ * reload the trail said "Reading the trail…" for good.
+ */
+function readOnArrival(view: View) {
+  const s = useAmbitStore.getState();
+  if (view === 'cost' && !s.demo) s.loadLoop();
+  if (view === 'audit') s.loadAudit();
+  if (view === 'proposals') s.loadProposals();
+}
+
 /** A lazy view: named while it loads, and a way out when it cannot. */
 const Lazy = ({ what, children }: { what: string; children: React.ReactNode }) => (
   <ViewBoundary what={what}>
@@ -328,6 +340,7 @@ export default function App() {
       const next = readLinkState(window.location.search);
       setLink(next);
       setView(next.view);
+      readOnArrival(next.view);
       setSetupTab(next.tab);
       setShowDocs(next.docsOpen);
       const s = useAmbitStore.getState();
@@ -418,23 +431,12 @@ export default function App() {
   const showView = (next: View) => {
     setView(next);
     // The detail panel is meaningful over the map and the list, and in the
-    // way over the figures. An era's ladder is the map's alone: it stayed open
-    // over My Setup, covering the right edge of the list.
+    // way over the figures, the trail and the decisions, which are pages of
+    // their own. An era's ladder is the map's alone: it stayed open over My
+    // Setup, covering the right edge of the list.
     if (next !== 'map' && useAmbitStore.getState().selectedEra !== null) selectEra(null);
-    if (next === 'cost') {
-      selectItem(null);
-      if (!demo) loadLoop();
-    }
-    if (next === 'audit') {
-      selectItem(null);
-      loadAudit();
-    }
-    // The decisions are a page of their own: the panel over it was the map's
-    // business, and the queue decides in its own transaction anyway.
-    if (next === 'proposals') {
-      selectItem(null);
-      loadProposals();
-    }
+    if (next === 'cost' || next === 'audit' || next === 'proposals') selectItem(null);
+    readOnArrival(next);
   };
 
   /**

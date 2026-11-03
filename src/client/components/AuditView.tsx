@@ -2,7 +2,14 @@ import { useState } from 'react';
 import type { AuditEvent, AuditOutcome } from '../../shared/api';
 import { readerLocale } from '../../shared/format';
 import { useAmbitStore } from '../store/ambitStore';
-import { matchesAudit, parseAuditQuery } from '../utils/auditQuery';
+import {
+  canQualify,
+  matchesAudit,
+  narrowsTo,
+  parseAuditQuery,
+  type Qualifier,
+  toggleQualifier,
+} from '../utils/auditQuery';
 import { ActorMark } from './ActorMark';
 import { Seal } from './figures';
 
@@ -53,11 +60,60 @@ function Outcome({ outcome }: { outcome: AuditOutcome }) {
 }
 
 /**
+ * A line's actor, action or target. With somewhere to send it, it is the
+ * qualifier the query bar takes, pressed: the ids sat under a bar that
+ * filters by them, drawn like the commands that copy on a press, and a press
+ * on one did nothing. A value with a space cannot be a qualifier, and stays
+ * a word.
+ */
+function Field({
+  field,
+  value,
+  query,
+  onFilter,
+  className,
+  mono,
+}: {
+  field: Qualifier;
+  value: string;
+  query: string;
+  onFilter?: (field: Qualifier, value: string) => void;
+  className: string;
+  mono?: boolean;
+}) {
+  const word = mono ? <code className={className}>{value}</code> : value;
+  if (!onFilter || !canQualify(value)) {
+    return mono ? word : <span className={className}>{value}</span>;
+  }
+  const on = narrowsTo(query, field, value);
+  return (
+    <button
+      type="button"
+      className={`audit-field${mono ? '' : ` ${className}`}`}
+      aria-pressed={on}
+      title={on ? `Show every ${field} again` : `Show only lines whose ${field} is ${value}`}
+      onClick={() => onFilter(field, value)}
+    >
+      {word}
+    </button>
+  );
+}
+
+/**
  * The lines a query leaves. An event with no recorded outcome draws no
  * outcome at all, and no empty cell stands in for one: the line simply ends
  * sooner.
  */
-export function AuditTrail({ events, query }: { events: AuditEvent[]; query: string }) {
+export function AuditTrail({
+  events,
+  query,
+  onFilter,
+}: {
+  events: AuditEvent[];
+  query: string;
+  /** A press on a line's actor, action or target, which narrows the trail to it. */
+  onFilter?: (field: Qualifier, value: string) => void;
+}) {
   const parsed = parseAuditQuery(query);
   const shown = events.filter(e => matchesAudit(e, parsed));
   if (!shown.length) {
@@ -81,9 +137,33 @@ export function AuditTrail({ events, query }: { events: AuditEvent[]; query: str
               </time>
             )}
             <span className="audit-what">
-              {e.actor && <code className="audit-actor">{e.actor}</code>}
-              <span className="audit-action">{e.action}</span>
-              {e.target && <code className="audit-target">{e.target}</code>}
+              {e.actor && (
+                <Field
+                  field="actor"
+                  value={e.actor}
+                  mono
+                  className="audit-actor"
+                  query={query}
+                  onFilter={onFilter}
+                />
+              )}
+              <Field
+                field="action"
+                value={e.action}
+                className="audit-action"
+                query={query}
+                onFilter={onFilter}
+              />
+              {e.target && (
+                <Field
+                  field="target"
+                  value={e.target}
+                  mono
+                  className="audit-target"
+                  query={query}
+                  onFilter={onFilter}
+                />
+              )}
             </span>
             {e.summary && <span className="audit-summary">{e.summary}</span>}
             {e.outcome && <Outcome outcome={e.outcome} />}
@@ -182,7 +262,11 @@ export default function AuditView() {
                   `The window held more than ${audit.limit}; the oldest are not shown.`}
               </p>
             )}
-            <AuditTrail events={audit.events} query={query} />
+            <AuditTrail
+              events={audit.events}
+              query={query}
+              onFilter={(field, value) => setQuery(q => toggleQualifier(q, field, value))}
+            />
           </>
         )}
       </div>

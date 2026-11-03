@@ -166,6 +166,18 @@ export function grabOffset(view: Rect, at: Point): Point {
     : { x: 0, y: 0 };
 }
 
+/** How far a pointer may travel between down and up, in pixels, and still have pressed. */
+export const PRESS_SLOP = 4;
+
+/**
+ * Whether a pointer that went down at one point and came up at another pressed
+ * the map or dragged it. The map pans under a drag, and a drag that ended on
+ * empty ground must not also count as a press there.
+ */
+export function isPress(down: Point, up: Point): boolean {
+  return Math.hypot(up.x - down.x, up.y - down.y) <= PRESS_SLOP;
+}
+
 /**
  * The keys that move the viewport when it has focus, the keyboard's half of
  * a drag. An arrow moves a tenth of the screen, with Shift nearly a whole

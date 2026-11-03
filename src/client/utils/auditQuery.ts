@@ -39,6 +39,33 @@ export function parseAuditQuery(input: string): AuditQuery {
   return query;
 }
 
+/** Whether a value can be a qualifier's: the bar splits terms on spaces, so one with a space cannot. */
+export const canQualify = (value: string) => value !== '' && !/\s/.test(value);
+
+/** Whether the query already narrows `key` to exactly `value`. */
+export function narrowsTo(input: string, key: Qualifier, value: string): boolean {
+  const v = value.toLowerCase();
+  return parseAuditQuery(input).qualified.some(q => q.key === key && q.value === v);
+}
+
+/**
+ * The query after a press on a line's actor, action or target. A press adds
+ * that qualifier in place of any other for the same field, since a line has
+ * one actor and two would match nothing; a press on the one already there
+ * takes it out. Every other term is kept as it was typed.
+ */
+export function toggleQualifier(input: string, key: Qualifier, value: string): string {
+  const on = narrowsTo(input, key, value);
+  const kept = input
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter(term => {
+      const colon = term.indexOf(':');
+      return !(colon > 0 && term.slice(0, colon).toLowerCase() === key);
+    });
+  return (on ? kept : [...kept, `${key}:${value}`]).join(' ');
+}
+
 export function matchesAudit(event: AuditEvent, query: AuditQuery): boolean {
   if (!query.qualified.every(q => (event[q.key] ?? '').toLowerCase() === q.value)) return false;
   if (!query.text.length) return true;

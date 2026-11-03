@@ -6,11 +6,13 @@
  * and a word and never as a colour alone, no outcome where none was
  * recorded, and the query bar narrowing to one actor.
  */
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import type { AuditEvent, AuditResponse } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
 import { demoAudit } from '../store/demo';
+import { findAll, type Props } from '../testing/elements';
 import AppDeck from './AppDeck';
 import AuditView, { AuditTrail } from './AuditView';
 
@@ -103,6 +105,41 @@ test('actor:human:web leaves only that actor’s lines', () => {
 
   const none = renderToStaticMarkup(<AuditTrail events={events} query="actor:human:nobody" />);
   expect(none).toContain('Nothing on the trail matches that.');
+});
+
+test('a line’s actor, action and target are the filters the bar takes, pressed', () => {
+  const pressed: string[] = [];
+  const onFilter = (field: string, value: string) => pressed.push(`${field}:${value}`);
+  const html = renderToStaticMarkup(
+    <AuditTrail events={events} query="actor:human:web" onFilter={onFilter} />
+  );
+  // The one in the bar reads as pressed, and says a second press lets it go.
+  expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*title="Show every actor again"/);
+  expect(html).toContain('title="Show only lines whose target is prop-a"');
+
+  // Each field is drawn by its own small component; draw it, and press what it draws.
+  const tree = AuditTrail({ events, query: '', onFilter });
+  for (const field of findAll(tree, el => typeof el.props?.field === 'string')) {
+    const drawn = (field.type as (p: Props) => ReactElement<Props>)(field.props);
+    drawn.props.onClick();
+  }
+  expect(pressed).toEqual([
+    'actor:human:web',
+    'action:approved',
+    'target:prop-a',
+    'action:failed',
+    'target:combo:shell',
+    'action:proposed',
+    'target:prop-a',
+    'actor:human:kanav',
+    'action:rejected',
+  ]);
+});
+
+test('with nowhere to send a press, the trail draws its ids as words, as it did', () => {
+  const html = renderToStaticMarkup(<AuditTrail events={events} query="" />);
+  expect(html).not.toContain('audit-field');
+  expect(html).toContain('<code class="audit-actor">human:web</code>');
 });
 
 test('the view counts what it shows, and says when the window held more', () => {

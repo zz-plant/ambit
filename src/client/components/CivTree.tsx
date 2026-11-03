@@ -67,7 +67,7 @@ import {
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { usePinchZoom } from './civ/usePinchZoom.ts';
-import { ZOOM_MIN } from './civ/viewport.ts';
+import { isPress, ZOOM_MIN } from './civ/viewport.ts';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
 import { isNarrowScreen, useNarrow, useOcclusion } from '../hooks/useViewport';
@@ -212,6 +212,9 @@ export default function CivTree({
     mouseX: number;
     mouseY: number;
   } | null>(null);
+  // Where the last press went down, kept past the mouseup that ends a drag so
+  // the click after it can tell a press from a pan.
+  const pressRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const surfaceRef = React.useRef<HTMLDivElement>(null);
@@ -1140,6 +1143,7 @@ export default function CivTree({
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    pressRef.current = { x: e.clientX, y: e.clientY };
     if (
       (e.target as HTMLElement).closest('[role="button"]') ||
       (e.target as HTMLElement).closest('button')
@@ -1166,6 +1170,22 @@ export default function CivTree({
   const handleMouseUp = () => {
     setIsDragging(false);
     dragStartRef.current = null;
+  };
+
+  // A press on empty ground puts the selection down, as a press away from a
+  // panel does anywhere else on the page: the open panel used to stay until ✕
+  // or Escape. Only the canvas counts, never a node, an era's head or a
+  // control; never a drag that ended there; and never while a tour narrates a
+  // selection or a simulation stands on one, which their own Done ends.
+  const handleClick = (e: React.MouseEvent) => {
+    const down = pressRef.current;
+    pressRef.current = null;
+    const target = e.target as Element;
+    if (target !== e.currentTarget && !target.closest('svg')) return;
+    if (target.closest('[role="button"], button, a')) return;
+    if (!down || !isPress(down, { x: e.clientX, y: e.clientY })) return;
+    if (narrated || simulationMode !== 'none') return;
+    if (selectedId !== null || selectedEra !== null) onSelect(null);
   };
 
   // The controls sit over the scroller, not inside it. Inside, they were
@@ -1314,7 +1334,7 @@ export default function CivTree({
           />
         )}
 
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: Dragging to pan, and a press on empty ground to put the selection down, are pointer affordances layered over the canvas. Content inside is keyboard operable, and Escape puts the selection down. */}
       <div
         ref={containerRef}
         // The headline is two rows when there is a finding under the range
@@ -1326,6 +1346,7 @@ export default function CivTree({
         // inside carries role="button", tabIndex and a key handler, so the
         // content is reachable and operable without a pointer.
         onMouseDown={handleMouseDown}
+        onClick={handleClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
