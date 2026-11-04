@@ -17,6 +17,11 @@ import { existsSync, readFileSync } from 'node:fs';
  */
 const NODE_FLAGS = ['--experimental-sqlite', '--disable-warning=ExperimentalWarning'];
 
+// Windows sets USERPROFILE and no HOME, and the engine, its servers and every
+// child started below read HOME. Without this a graph and a spool landed under
+// the current directory, and no config was found.
+if (!process.env.HOME && process.env.USERPROFILE) process.env.HOME = process.env.USERPROFILE;
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // cli.js sits at the package root, next to src/ — resolving ".." walked out
 // of the package entirely and every command failed to find the engine.

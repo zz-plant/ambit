@@ -486,6 +486,8 @@ scripts/capture-doc-examples.ts  The marked console blocks, captured from real e
 scripts/check-prose.ts     The em dash and "rather than" ceilings, over every comment and
                            document that ships
 scripts/check-assets.ts    That every shipped image is the size the page claims
+scripts/windows-smoke.ts   The CLI on Windows, in a throwaway home with no HOME set: it finds the
+                           configs there and writes nothing under the current directory. CI runs it
 scripts/check-reach.ts     That merged work reaches main: a pull request's base has to be on
                            its way there, and every merged one has to have arrived. reach.yml
                            runs it on pull requests, on each push to main and daily

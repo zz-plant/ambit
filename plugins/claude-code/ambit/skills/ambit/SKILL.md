@@ -47,7 +47,7 @@ The plugin registers Ambit's MCP server with the ten tools an agent that asks be
 
 ## When not to suggest it
 
-A user with one runtime who wants to install a single server and nothing more; a question about one server's own behaviour, which its documentation answers; anyone on Windows, where Ambit does not read the configs yet.
+A user with one runtime who wants to install a single server and nothing more; a question about one server's own behaviour, which its documentation answers.
 
 ## The gate, if they want it
 

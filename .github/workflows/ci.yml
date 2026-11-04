@@ -6,6 +6,17 @@ on:
   pull_request:
 
 jobs:
+  # The suite assumes a POSIX shell, so Windows gets the path a person takes:
+  # the CLI, in a throwaway home with no HOME set.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/windows-smoke.ts
+
   check:
     runs-on: ubuntu-latest
     strategy:

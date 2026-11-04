@@ -95,7 +95,12 @@ function verifyCheck(
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
       });
-      if (out.status === 0) status = 'verified';
+      // A curated check is written for `sh`. Windows without one has not failed
+      // the check, it could not ask, and a failure would drop a working
+      // capability from every plan.
+      if (process.platform === 'win32' && cmd === 'sh' && (out.error as any)?.code === 'ENOENT') {
+        detail = 'this check needs sh on the PATH, which Git Bash provides';
+      } else if (out.status === 0) status = 'verified';
       else {
         status = 'failed';
         detail = (out.stderr || out.stdout || `exit ${out.status}`).toString().trim().slice(0, 160);
