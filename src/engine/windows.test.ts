@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCheck } from './assure/verify.ts';
+import { runtimesFound, runtimeTarget, targetFile } from './connect.ts';
 import { clientPaths, discoverMcpClients } from './mcp-clients.ts';
 import type { Db } from './db.ts';
 
@@ -81,6 +82,17 @@ test('a config under %APPDATA% is read', () => {
   writeFileSync(file, JSON.stringify({ mcpServers: { git: { command: 'git-mcp' } } }));
   const found = discoverMcpClients(home).find(c => c.runtime === 'claude-desktop');
   expect(found?.path).toBe(file);
+});
+
+test('connect and apply write the Claude Desktop config discovery read', () => {
+  asPlatform('win32');
+  process.env.APPDATA = join(home, 'Roaming');
+  const file = join(home, 'Roaming', 'Claude', 'claude_desktop_config.json');
+  const target = runtimeTarget('claude-desktop');
+  expect(target && targetFile(target, home).path).toBe(file);
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, '{}');
+  expect(runtimesFound(home).find(r => r.target.runtime === 'claude-desktop')?.path).toBe(file);
 });
 
 // Nothing touches the database on an unverifiable answer, which the null holds.

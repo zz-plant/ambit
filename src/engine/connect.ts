@@ -68,10 +68,7 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
   {
     runtime: 'claude-desktop',
     label: 'Claude Desktop',
-    paths: [
-      'Library/Application Support/Claude/claude_desktop_config.json',
-      '.config/Claude/claude_desktop_config.json',
-    ],
+    paths: home => clientPaths('claude-desktop', home),
     kind: 'mcpServers',
   },
   {
