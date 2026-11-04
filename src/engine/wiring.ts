@@ -50,10 +50,17 @@ function runsGate(command: unknown): boolean {
   return typeof command === 'string' && /\b(ambit(-cli)?|cli\.js)\b.*\bgate\b/.test(command);
 }
 
+/** Whether a hook's matcher covers all tools: absent, empty, or one of the two wildcards. */
+function matchesEveryTool(matcher: unknown): boolean {
+  return matcher === undefined || matcher === '' || matcher === '*' || matcher === '.*';
+}
+
 /**
- * Whether Claude Code puts the gate on its tool calls here: the `ambit-gate`
- * plugin, or a PreToolUse hook that runs the command. Claude Code is the one
- * runtime with a gate, so nothing else can answer yes.
+ * Whether Claude Code puts the gate on every tool call here: the `ambit-gate`
+ * plugin, or a PreToolUse hook that runs the command for all tools. A hook on
+ * `Read` alone leaves `Bash` unchecked, so it does not count, and `--gate` adds
+ * the full one beside it. Claude Code is the one runtime with a gate, so nothing
+ * else can answer yes.
  */
 export function gateInstalled(home: string): boolean {
   if (claudePluginEnabled(home, 'ambit-gate@ambit')) return true;
@@ -61,7 +68,10 @@ export function gateInstalled(home: string): boolean {
     const entries = s.hooks?.PreToolUse;
     if (!Array.isArray(entries)) return false;
     return entries.some(
-      e => Array.isArray(e?.hooks) && e.hooks.some((h: any) => runsGate(h?.command))
+      e =>
+        matchesEveryTool(e?.matcher) &&
+        Array.isArray(e?.hooks) &&
+        e.hooks.some((h: any) => runsGate(h?.command))
     );
   });
 }

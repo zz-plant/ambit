@@ -48,6 +48,24 @@ describe('whether the gate is on', () => {
     expect(gateInstalled(home)).toBe(true);
   });
 
+  test('a hook that covers some tools is not the gate on every call', () => {
+    const on = (matcher?: string) => ({
+      hooks: {
+        PreToolUse: [
+          { ...(matcher === undefined ? {} : { matcher }), hooks: [{ command: 'ambit gate' }] },
+        ],
+      },
+    });
+    for (const some of ['Read', 'Bash|Write']) {
+      write('.claude/settings.json', on(some));
+      expect(gateInstalled(home)).toBe(false);
+    }
+    for (const every of [undefined, '', '*', '.*']) {
+      write('.claude/settings.json', on(every));
+      expect(gateInstalled(home)).toBe(true);
+    }
+  });
+
   test('a settings file it cannot parse says nothing and does not throw', () => {
     write('.claude/settings.json', '{ not json');
     expect(gateInstalled(home)).toBe(false);
@@ -92,6 +110,16 @@ describe('connect --gate', () => {
       'already_configured'
     );
     expect(settings().hooks.PreToolUse).toHaveLength(2);
+  });
+
+  test('adds the full hook where the gate only covers some tools', () => {
+    const partial = { matcher: 'Read', hooks: [{ type: 'command', command: 'ambit gate' }] };
+    write('.claude/settings.json', { hooks: { PreToolUse: [partial] } });
+    const result = runConnect('claude-code', { home, gate: true });
+    expect(result.configured.find(c => c.label === 'Claude Code gate')?.action).toBe('added');
+    expect(settings().hooks.PreToolUse[0]).toEqual(partial);
+    expect(settings().hooks.PreToolUse[1].matcher).toBe('*');
+    expect(gateInstalled(home)).toBe(true);
   });
 
   test('adds nothing where the plugin already has the gate on', () => {
