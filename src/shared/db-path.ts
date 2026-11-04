@@ -7,12 +7,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** The graph beside the code — how a git checkout has always stored it. */
 export const REPO_DB_PATH = join(__dirname, '..', '..', 'toolchain-viz.db');
 
+/** The home directory: Windows sets USERPROFILE and no HOME. The plugins transcribe this. */
+function homeDir(): string {
+  return process.env.HOME || process.env.USERPROFILE || '.';
+}
+
 /**
  * Where an installed copy keeps the graph: `~/.local/share/ambit/graph.db`,
  * or `$XDG_DATA_HOME/ambit/graph.db`.
  */
 export function userDbPath(): string {
-  const base = process.env.XDG_DATA_HOME || join(process.env.HOME || '.', '.local', 'share');
+  const base = process.env.XDG_DATA_HOME || join(homeDir(), '.local', 'share');
   return join(base, 'ambit', 'graph.db');
 }
 
@@ -49,7 +54,7 @@ export function userDbPath(): string {
  */
 export function spoolPath(): string {
   if (process.env.AMBIT_SPOOL) return process.env.AMBIT_SPOOL;
-  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || '.', '.local', 'state');
+  const base = process.env.XDG_STATE_HOME || join(homeDir(), '.local', 'state');
   return join(base, 'ambit', 'claude-code.jsonl');
 }
 
@@ -64,7 +69,7 @@ export function spoolPath(): string {
  */
 export function trackerSpoolPath(): string {
   if (process.env.AMBIT_TRACKER_SPOOL) return process.env.AMBIT_TRACKER_SPOOL;
-  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || '.', '.local', 'state');
+  const base = process.env.XDG_STATE_HOME || join(homeDir(), '.local', 'state');
   return join(base, 'ambit', 'opencode-config.jsonl');
 }
 

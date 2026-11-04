@@ -2,7 +2,7 @@
 
 Every agent runtime stores its MCP servers in its own file, under its own key, and a config copied from one into another usually fails without an error. Some runtimes also read a second file inside the repository, for servers that belong to one project. The user-level files and keys below come from Ambit's readers, [`src/engine/mcp-clients.ts`](../src/engine/mcp-clients.ts) and [`src/engine/claude-code.ts`](../src/engine/claude-code.ts), so they are the paths Ambit actually opens.
 
-Paths are for macOS and Linux, with `~` as your home directory. Windows keeps these files elsewhere, and Ambit does not read Windows paths yet; the runtime's own documentation has them.
+Paths are for macOS and Linux, with `~` as your home directory, which is `%USERPROFILE%` on Windows. Six runtimes keep their file under `%APPDATA%` there, and Ambit reads each: Claude Desktop in `Claude\claude_desktop_config.json`, VS Code in `Code\User\mcp.json`, Cline and Roo Code in `Code\User\globalStorage\<extension>\settings\cline_mcp_settings.json`, Zed in `Zed\settings.json`, and Goose in `Block\goose\config\config.yaml`.
 
 ## User files
 

@@ -252,6 +252,16 @@ function readGooseYaml(raw: string): Record<string, unknown> | null {
   return Object.keys(servers).length ? servers : null;
 }
 
+/**
+ * A path under %APPDATA%, on Windows and nowhere else, so a person on macOS is
+ * never told Ambit looked in a folder their machine does not have. The rest of
+ * the runtimes keep their file under the home directory on all three.
+ */
+function appData(home: string, ...parts: string[]): string[] {
+  if (process.platform !== 'win32') return [];
+  return [join(process.env.APPDATA || join(home, 'AppData', 'Roaming'), ...parts)];
+}
+
 const CLIENTS = [
   {
     runtime: 'cursor' as const,
@@ -279,6 +289,7 @@ const CLIENTS = [
     label: 'Claude Desktop',
     env: 'CLAUDE_DESKTOP_CONFIG',
     paths: (home: string) => [
+      ...appData(home, 'Claude', 'claude_desktop_config.json'),
       join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
       join(home, '.config', 'Claude', 'claude_desktop_config.json'),
     ],
@@ -296,6 +307,15 @@ const CLIENTS = [
     label: 'Cline',
     env: 'CLINE_MCP_CONFIG',
     paths: (home: string) => [
+      ...appData(
+        home,
+        'Code',
+        'User',
+        'globalStorage',
+        'saoudrizwan.claude-dev',
+        'settings',
+        'cline_mcp_settings.json'
+      ),
       join(
         home,
         'Library',
@@ -325,6 +345,15 @@ const CLIENTS = [
     label: 'Roo Code',
     env: 'ROO_CODE_MCP_CONFIG',
     paths: (home: string) => [
+      ...appData(
+        home,
+        'Code',
+        'User',
+        'globalStorage',
+        'rooveterinaryinc.roo-cline',
+        'settings',
+        'cline_mcp_settings.json'
+      ),
       join(
         home,
         'Library',
@@ -361,6 +390,7 @@ const CLIENTS = [
     label: 'Zed',
     env: 'ZED_MCP_CONFIG',
     paths: (home: string) => [
+      ...appData(home, 'Zed', 'settings.json'),
       join(home, '.config', 'zed', 'settings.json'),
       join(home, 'Library', 'Application Support', 'Zed', 'settings.json'),
     ],
@@ -371,6 +401,7 @@ const CLIENTS = [
     label: 'VS Code',
     env: 'VSCODE_MCP_CONFIG',
     paths: (home: string) => [
+      ...appData(home, 'Code', 'User', 'mcp.json'),
       join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json'),
       join(home, '.config', 'Code', 'User', 'mcp.json'),
     ],
@@ -407,7 +438,10 @@ const CLIENTS = [
     runtime: 'goose' as const,
     label: 'Goose',
     env: 'GOOSE_MCP_CONFIG',
-    paths: (home: string) => [join(home, '.config', 'goose', 'config.yaml')],
+    paths: (home: string) => [
+      ...appData(home, 'Block', 'goose', 'config', 'config.yaml'),
+      join(home, '.config', 'goose', 'config.yaml'),
+    ],
     read: readGooseYaml,
   },
   // https://kiro.dev/docs/mcp/configuration/

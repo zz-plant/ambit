@@ -44,9 +44,9 @@ Your agents can ask the same questions over MCP, 61 tools of them, and can draft
 
 Demo, nothing to install: https://zz-plant.github.io/ambit/?demo=1. Paste a config and it is read in the tab, or tick the servers you run.
 
-On your machine: `npx ambit-cli`, with Node 22.18 or newer, on macOS or Linux. It writes only its own local file, and there is no telemetry. MIT licensed.
+On your machine: `npx ambit-cli`, with Node 22.18 or newer, on macOS, Linux or Windows. It writes only its own local file, and there is no telemetry. MIT licensed.
 
-Where it falls short: the tree is my opinion of what a capability is and what it needs, so it will be wrong in places. About half the capabilities have a declared check, and the rest can only be shown as configured. The time and cost reports need a few weeks of recorded sessions before they say much. Most of the code was written with Claude Code, under my direction.
+Where it falls short: the tree is my opinion of what a capability is and what it needs, so it will be wrong in places. About half the capabilities have a declared check, and the rest can only be shown as configured. Windows is the newest and least tested: CI shows only that it reads configs there. The time and cost reports need a few weeks of recorded sessions before they say much. Most of the code was written with Claude Code, under my direction.
 
 Repository: https://github.com/zz-plant/ambit
 

@@ -36,7 +36,7 @@ const KEPT = new Set([
 
 function spoolPath() {
   if (process.env.AMBIT_SPOOL) return process.env.AMBIT_SPOOL;
-  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || '.', '.local', 'state');
+  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || process.env.USERPROFILE || '.', '.local', 'state');
   return join(base, 'ambit', 'claude-code.jsonl');
 }
 

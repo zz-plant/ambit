@@ -6,6 +6,12 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.0...main)
 
+### Windows
+
+Ambit found no config on Windows and wrote its graph under the current directory, because Windows sets `USERPROFILE` and no `HOME`. It now takes the home directory from either, in the CLI and in the plugins that transcribe the spool's path, and reads the six runtimes that keep their file under `%APPDATA%` there. A check written for `sh` on a machine with no `sh` stays unverified, since it could not ask: counting that as a failure would have dropped working capabilities from every plan. A new CI job runs the CLI on Windows against a throwaway home.
+
+`./bootstrap.sh` does not run there, and `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, since doing so needs a shell and it starts servers with none.
+
 ## [0.7.0](https://github.com/zz-plant/ambit/releases/tag/v0.7.0) — 2026-11-04
 
 The release that gives a newcomer one answer wherever they start, and measures more of what an agent setup costs. In short:
