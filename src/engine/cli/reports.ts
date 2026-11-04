@@ -25,9 +25,12 @@ import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import { HELP_SHORT, helpTopic } from './help.ts';
 import { commandWords } from './groups.ts';
 import { nearest } from '../../shared/nearest.ts';
-import type { DoctorReport } from '../doctor.ts';
+import { setupGaps, type DoctorReport } from '../doctor.ts';
+import { analyzeRepo } from '../repo-inspect.ts';
 import { markSeen, movedLines, unseenSince } from './seed.ts';
 import { seedSources } from '../discovery.ts';
+import type { ConnectResult } from '../connect.ts';
+import type { SetupStep } from '../wiring.ts';
 import { checkableNames, recovering } from '../assurance.ts';
 import type { usageWindows } from '../telemetry.ts';
 import {
@@ -127,12 +130,29 @@ interface NextMove {
  * because nothing built on it can be trusted. A draft waiting on a decision
  * comes next, since an agent stays idle until someone makes it. Then the
  * checks that turn configured into verified, which is the whole of a fresh
- * install. Last is the capability `ambit next` ranks first. Absent when none
+ * install. Then the agents: until they can ask and what they do is recorded,
+ * the ledger's reports have nothing to read. Last is the capability
+ * `ambit next` ranks first. Absent when none
  * of them has anything to say, and the report then ends without the line.
  */
+/**
+ * The next of connecting the agents and recording them, if either is missing.
+ * The gate is left to `doctor` and `connect`: it puts a question on every tool
+ * call with no grant, which is a person's choice to make and not a next move.
+ * Reading the machine's files is never the reason a report fails to print.
+ */
+function wiringStep(home?: string) {
+  try {
+    return setupGaps(home).find(step => step.kind !== 'gate');
+  } catch {
+    return undefined;
+  }
+}
+
 function nextMove(
   db: any,
-  found: { degraded: { id: string; name: string }[]; drafts: number; checkable: number }
+  found: { degraded: { id: string; name: string }[]; drafts: number; checkable: number },
+  home?: string
 ): NextMove | undefined {
   const [first] = found.degraded;
   if (first) {
@@ -169,6 +189,8 @@ function nextMove(
       why: `turns ${found.checkable} of the unverified into evidence`,
     };
   }
+  const wiring = wiringStep(home);
+  if (wiring) return { command: wiring.command, why: wiring.says };
   // The hint is the least important line of a health report, so a failure
   // ranking it must never be the reason the report does not print.
   try {
@@ -187,7 +209,7 @@ function nextMove(
 
 // The report `status` composes. One surface for "how are we doing", so the
 // person does not have to learn six commands to answer one question.
-function statusReport(db: any) {
+function statusReport(db: any, env: { home?: string } = {}) {
   const counts = graphCounts(db);
   const g = { ...counts, verified: counts.proven };
   // Over the nodes the head counts, so the domains' totals add up to its total.
@@ -293,11 +315,15 @@ function statusReport(db: any) {
     frontier: ledgerHistory(db).slice(-5),
     pending,
     // Last, because it is what the report ends on when a person reads it.
-    next: nextMove(db, {
-      degraded,
-      drafts: pending.filter((p: any) => p.status === 'draft').length,
-      checkable: checkable.length,
-    }),
+    next: nextMove(
+      db,
+      {
+        degraded,
+        drafts: pending.filter((p: any) => p.status === 'draft').length,
+        checkable: checkable.length,
+      },
+      env.home
+    ),
   };
 }
 
@@ -492,7 +518,7 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
  * keeps a failing check and the unverified count as the two things worth
  * knowing first, and leaves the rest of the fragility detail to `status`.
  */
-function briefReport(db: any) {
+function briefReport(db: any, env: { cwd?: string; home?: string } = {}) {
   const sources = seedSources(db);
   // Measured against the tree, as the map and the hosted page measure it: the
   // graph's own count took in the person's servers, so the same three servers
@@ -524,6 +550,8 @@ function briefReport(db: any) {
   const since = seen ? (ledgerSince(db, seen) as any) : null;
   if (seen) markSeen(db);
   return {
+    wiring: wiringStep(env.home),
+    project: projectSuggestion(env.cwd ?? process.cwd(), env.home),
     // Null for a graph seeded before sources were recorded; [] when nothing
     // of the person's was found, which is an answer and changes the screen.
     read: sources,
@@ -546,6 +574,26 @@ function briefReport(db: any) {
 }
 
 type BriefReport = ReturnType<typeof briefReport>;
+
+/**
+ * What `ambit repo` would suggest for the folder this ran in, when it holds a
+ * project: the first thing to do and how many there are. Only what has a command
+ * counts, since `repo` also reports what is already in place. It reads the
+ * project's manifest as data and prints none of it.
+ */
+function projectSuggestion(
+  cwd: string,
+  home?: string
+): { first: string; more: number } | undefined {
+  try {
+    const { repo, superpowers } = analyzeRepo(cwd, home);
+    const steps = superpowers.filter(s => s.command);
+    if (!repo.indicators.length || !steps.length) return undefined;
+    return { first: steps[0].title, more: steps.length - 1 };
+  } catch {
+    return undefined;
+  }
+}
 
 /** "Claude Code (3 servers), Cursor (2 servers) and Ollama (4 models)". */
 function readFrom(read: { label: string; servers: string[]; models?: string[] }[]): string {
@@ -628,8 +676,15 @@ function renderBrief(
       lines.push(`${GUTTER}${c.grey}Also one step away: ${also}${c.reset}`);
     }
   }
+  if (report.project) {
+    const more = report.project.more ? `, and ${report.project.more} more` : '';
+    lines.push(
+      '',
+      `${GUTTER}For this project: ${report.project.first}${more} ${c.grey}· ${typed('ambit repo')}${c.reset}`
+    );
+  }
 
-  if (report.failing.length || report.unproven) {
+  if (report.failing.length || report.unproven || report.wiring) {
     lines.push('', heading('Before you lean on it'));
     if (report.failing.length) {
       const shown = report.failing
@@ -655,8 +710,46 @@ function renderBrief(
         `${GUTTER}${report.unproven} configured and not yet verified ${c.grey}· ${how}${c.reset}`
       );
     }
+    if (report.wiring) {
+      lines.push(
+        `${GUTTER}${report.wiring.says} ${c.grey}· ${typed(report.wiring.command)}${c.reset}`
+      );
+    }
   }
   return [...lines, ...close];
+}
+
+/**
+ * `ambit connect` as a person reads it: what changed, what could not be, and
+ * what is still missing. It printed every runtime it did not find, up to the
+ * limit, and stopped there, so the last thing on the screen was a list of
+ * agents the person does not run. Those are counted, and `--json` lists them.
+ */
+function renderConnect(
+  result: ConnectResult & { still_missing?: SetupStep[] },
+  c: Palette = C,
+  typed: (command: string) => string = command => command
+): string[] {
+  const lines = [''];
+  for (const row of result.configured) {
+    const said = row.action === 'already_configured' ? 'already in place' : row.action;
+    lines.push(`  ${c.green}✓${c.reset} ${row.label}  ${c.grey}${said} · ${row.path}${c.reset}`);
+  }
+  const absent = (s: { reason: string }) => / not found on host$/.test(s.reason);
+  for (const row of result.skipped.filter(s => !absent(s))) {
+    lines.push(`  ${c.yellow}!${c.reset} ${row.label}  ${row.reason}`);
+  }
+  const notFound = result.skipped.filter(absent).length;
+  if (notFound) lines.push(`${GUTTER}${c.grey}${notFound} other runtimes not found here${c.reset}`);
+  if (result.note) lines.push('', `${GUTTER}${c.grey}${result.note}${c.reset}`);
+  if (result.still_missing?.length) {
+    lines.push('', `${GUTTER}${c.bold}Still missing${c.reset}`);
+    for (const step of result.still_missing) {
+      lines.push(`${GUTTER}${step.says}`, `${GUTTER}${c.grey}${typed(step.command)}${c.reset}`);
+    }
+  }
+  lines.push('');
+  return lines;
 }
 
 /** A step of a plan, as `planFor` returns it. */
@@ -1603,6 +1696,7 @@ export {
   ago,
   briefReport,
   renderBrief,
+  renderConnect,
   renderImpact,
   renderNext,
   renderApply,

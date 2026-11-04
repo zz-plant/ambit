@@ -4,6 +4,7 @@
  * End-to-end: each test seeds a real graph by running the engine CLI. Split out
  * of a single 2,300-line file so a failure names a subject.
  */
+import { tmpdir } from 'node:os';
 import { test, expect, vi } from 'vitest';
 import { runCommand } from './cli.ts';
 import {
@@ -667,12 +668,37 @@ test('a failing check comes before a waiting draft, and a draft before more chec
 test('with nothing to repair, decide or check, status points at the best next step', () => {
   seed(LOCAL_ONLY).close();
   cli('verify'); // every declared check in the test model passes
-  const status = cli('status');
-  expect(status.evidence[0].note).toBeUndefined();
+  // A home with no agents in it: wiring one outranks the next step, and this
+  // machine's own agents are no part of what is being tested.
+  const realHome = process.env.HOME;
+  process.env.HOME = join(tmpdir(), `ambit-test-no-agents-${process.pid}`);
+  try {
+    const status = cli('status');
+    expect(status.evidence[0].note).toBeUndefined();
 
-  const top = cli('next').next[0];
-  expect(status.next.command).toBe(`ambit goal ${top.id.replace('combo:', '')}`);
-  expect(status.next.why).toContain(top.capability);
+    const top = cli('next').next[0];
+    expect(status.next.command).toBe(`ambit goal ${top.id.replace('combo:', '')}`);
+    expect(status.next.why).toContain(top.capability);
+  } finally {
+    process.env.HOME = realHome;
+  }
+});
+
+test('a refusal or a ceiling says when no gate is on, and a person can read what it reaches', () => {
+  seed(LOCAL_ONLY).close();
+  const realHome = process.env.HOME;
+  process.env.HOME = join(tmpdir(), `ambit-test-no-agents-${process.pid}`);
+  try {
+    cli('people', 'add', 'ann');
+    const refused = cli('authority', 'grant', 'shell-execution', 'forbidden', '--by=ann');
+    expect(refused.gate).toContain('no gate is on');
+    const open = cli('authority', 'grant', 'shell-execution', 'autonomous', '--by=ann');
+    expect(open.gate).toBeUndefined();
+    const ceiling = cli('budget', 'set', 'shell-execution', '--amount=5', '--by=ann');
+    expect(ceiling.gate).toContain('no gate is on');
+  } finally {
+    process.env.HOME = realHome;
+  }
 });
 
 test('status keeps every field it had, names what is recovering, and adds next at the end', () => {

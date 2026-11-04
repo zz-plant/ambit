@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### What was missing says so where you already look
+
+A grant of `forbidden` printed success and `ambit can` answered DENY, and nothing said that a tool call only stops once the gate is on. `ambit authority grant` and `ambit budget set` now say so when it is off, `ambit doctor` lists it, and `ambit connect claude-code --gate` adds the hook where the plugin is not used.
+
+Bare `ambit` and `ambit status` never named connecting the agents or recording them, though the ledger's reports are empty until both are done. Each now names the next missing step for the runtimes found here, and `ambit connect` ends on what is still missing where it used to end on the runtimes it did not find. `ambit doctor` also counted a Claude Code install with the plugin as not connected, and no longer does.
+
+`ambit repo`, which recommends what to add for the project in the current folder, was listed in `ambit help plan` and nowhere else. Bare `ambit` now says what it would suggest when run inside a project, and it joins the first-session help, the README and the plugin's skill.
+
 ### Help that starts small, and `--help` that runs nothing
 
 `ambit help` was meant to cover a first session and listed seventeen commands with their options, `--judge[=url]` and `goal --spec` among them. It now lists the eight a first session uses, in the order a person meets them, and the five groups with a line each. `ambit plan` printed the group's whole section of `--all`, sixty lines of which the judge's options were most; each group now prints one line a command, and `ambit help <command>` shows that command's entry in full with the word it rests on (`ambit help verify` ends on Verified). `ambit help verify` used to explain the word and never the command, and `ambit help frontier` printed Ambit's entry first because its text mentions the frontier: a word that names a concept now shows that concept alone, and a slip is offered what it was probably meant to be.

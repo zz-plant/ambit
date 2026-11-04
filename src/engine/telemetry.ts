@@ -325,7 +325,9 @@ function workReport(db: Migratable, limit = 20): any {
     )
     .all<WorkRunRow>(limit);
   if (runs.length === 0)
-    return { note: 'No runs recorded. Begin one with a runtime adapter, or ambit record work.' };
+    return {
+      note: `No runs recorded. A bridge fills the ledger by itself: ${recordingHint(db)}.`,
+    };
 
   const nameOf = new Map(
     db

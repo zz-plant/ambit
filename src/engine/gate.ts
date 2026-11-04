@@ -31,6 +31,7 @@ import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import { type Act, builtInTool, commandExercises } from './tool-names.ts';
+import { gateHookEntry } from './wiring.ts';
 
 export interface ToolCall {
   tool_name?: string;
@@ -134,7 +135,7 @@ export function claudeHookSnippet(command = 'ambit gate'): string {
   return JSON.stringify(
     {
       hooks: {
-        PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 10 }] }],
+        PreToolUse: [gateHookEntry(command)],
       },
     },
     null,

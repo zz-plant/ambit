@@ -106,6 +106,7 @@ For the architectural foundation, economic loop, and comparison to prior work, s
 | :--- | :--- |
 | `ambit status` | Environment health: what is reached and how much of it is verified, what is failing its declared check, what has a single provider, pending approvals, and the one command to type next |
 | `ambit goal <name>` | The path to unlock a capability, in order, with setup estimates |
+| `ambit repo [dir]` | What to add for the project you are in, from its dependencies and the servers you already run |
 | `ambit impact <id>` | What downstream stops working if this dependency fails |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
@@ -201,7 +202,7 @@ claude mcp add ambit -- ambit mcp --profile=agent
 
 `--profile=agent` advertises ten tools, the planning and verification ones an agent uses to check before it acts, in about 4.4KB of prompt context. Omitting the flag advertises every tool (~19.5KB). The server answers an unlisted tool by name either way, but most clients call only what they were shown, so under `--profile=agent` the connect instructions send the agent to the `ambit` command for the rest: single points of failure, budgets, incidents, the audit trail, everything `ambit help --all` lists. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) lists every tool and [explains how calls are dispatched](./docs/deep-dive.md#how-a-call-is-answered).
 
-`ambit-gate@ambit` is a companion plugin that puts `ambit gate` on every tool call, so what you refused or set to ask first in Ambit is denied or put to you. The hook block below does the same by hand.
+`ambit-gate@ambit` is a companion plugin that puts `ambit gate` on every tool call, so what you refused or set to ask first in Ambit is denied or put to you. The hook block below does the same by hand. Without the plugin, `ambit connect claude-code --gate` adds the same hook to `~/.claude/settings.json`. Until one of them is on, a grant is a record `ambit can` answers from and a tool call that does not ask still runs; `ambit authority grant`, `ambit budget set` and `ambit doctor` say so.
 
 Ambit also publishes `ambit://briefing`, a resource a client reads on connect: what is reached and verified, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next with what each step would reach, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to `~/.claude/settings.json`:
 

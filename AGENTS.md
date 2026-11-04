@@ -161,6 +161,9 @@ src/engine/audit.ts        The trail: who approved what, what ran, and whether i
                            `auditStream` merges its four sources, newest first, under one limit
 src/engine/machines.ts     What an agent may do on each device the scan found: the gate asked
                            with the device as the target, read only
+src/engine/wiring.ts       What is wired into each agent here: the MCP server, the bridge into the
+                           ledger, the gate. Reads files and writes nothing; `setupSteps` is what
+                           bare `ambit`, `status`, `doctor` and `connect` say is still missing
 src/engine/gate.ts         The gate on a runtime's tool call: the Claude Code PreToolUse hook
                            `ambit gate`, which maps a call to its capabilities and denies or asks,
                            and never allows

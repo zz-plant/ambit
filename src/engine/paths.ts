@@ -40,6 +40,10 @@ export function typedCommand(command: string, engineDir = ENGINE_DIR): string {
     : command;
 }
 
+/** What installs the Claude Code plugin, which registers the server and records into the ledger. */
+export const CLAUDE_PLUGIN_INSTALL =
+  'claude plugin marketplace add zz-plant/ambit && claude plugin install ambit@ambit';
+
 export function telemetryBridgeInstall(): string {
   const file = join(ENGINE_DIR, '..', '..', 'plugins', 'ambit-telemetry.js');
   return `cp ${shellQuote(file)} ~/.config/opencode/plugins/`;
@@ -68,7 +72,7 @@ export function recordingBridges(db?: {
   if (labels.includes('Claude Code')) {
     bridges.push({
       runtime: 'Claude Code',
-      command: 'claude plugin marketplace add zz-plant/ambit && claude plugin install ambit@ambit',
+      command: CLAUDE_PLUGIN_INSTALL,
     });
   }
   if (labels.includes('Cursor')) {
