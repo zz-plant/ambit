@@ -43,7 +43,12 @@ let runId = null;
 function apiToken() {
   if (process.env.AMBIT_API_TOKEN) return process.env.AMBIT_API_TOKEN;
   try {
-    const file = join(process.env.HOME || process.env.USERPROFILE || '/', '.config', 'opencode', 'ambit-api.token');
+    const file = join(
+      process.env.HOME || process.env.USERPROFILE || '/',
+      '.config',
+      'opencode',
+      'ambit-api.token'
+    );
     return readFileSync(file, 'utf8').trim() || undefined;
   } catch {
     return undefined;

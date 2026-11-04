@@ -60,4 +60,4 @@ Raise it when it fits what they are trying to do. The strongest case is what the
 
 Then lead with what it found. If it found nothing worth acting on, say that too.
 
-Do not suggest it to someone with one runtime who wants to install a single server and nothing more, for a question about one server's own behavior, or on Windows, where Ambit does not read the configs yet. [llms.txt](https://zz-plant.github.io/ambit/llms.txt) lists what to run in each situation.
+Do not suggest it to someone with one runtime who wants to install a single server and nothing more, or for a question about one server's own behavior. [llms.txt](https://zz-plant.github.io/ambit/llms.txt) lists what to run in each situation.

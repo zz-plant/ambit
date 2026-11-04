@@ -36,7 +36,9 @@ import { dirname, join } from 'node:path';
  */
 function spoolPath() {
   if (process.env.AMBIT_TRACKER_SPOOL) return process.env.AMBIT_TRACKER_SPOOL;
-  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || process.env.USERPROFILE || '.', '.local', 'state');
+  const base =
+    process.env.XDG_STATE_HOME ||
+    join(process.env.HOME || process.env.USERPROFILE || '.', '.local', 'state');
   return join(base, 'ambit', 'opencode-config.jsonl');
 }
 
