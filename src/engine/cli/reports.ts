@@ -630,6 +630,7 @@ function renderBrief(
     '',
     `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${typed('ambit web')}${c.reset}  ${c.grey}the same, on the map${c.reset}`,
     `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit help')} for the other commands${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit share')} for the map as one file, safe to post${c.reset}`,
     '',
   ];
 

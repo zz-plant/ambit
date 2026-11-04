@@ -4,7 +4,25 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 An entry that refers to the previous entry therefore points down the page, not up.
 
-## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
+## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.0...main)
+
+## [0.7.0](https://github.com/zz-plant/ambit/releases/tag/v0.7.0) — 2026-11-04
+
+The release that gives a newcomer one answer wherever they start, and measures more of what an agent setup costs. In short:
+
+- **One readout, wherever you start.** The hosted demo, `npx ambit-cli`, `ambit web` and the Claude Code plugin now state the same reach and the same next steps for the same setup, and a test holds the tab and the terminal to it. The demo asks for your setup on its first card, not its fifth.
+- **`ambit weigh`** measures what each local tool server's tool list costs in context every session, per runtime.
+- **More of the spend, measured.** Tokens from Codex, OpenCode and Amp are read from the logs those agents keep, Claude Code's as a session runs, and `ambit usage --windows` reports them in five-hour windows. `ambit connect cursor --ledger` feeds Cursor into the work ledger.
+- **More of the machine, read.** Copilot CLI, Amp, Goose, Kiro and VS Code's own MCP servers join the runtimes Ambit reads, with the models Ollama and LM Studio keep on disk.
+- **An approved change reaches the runtime you use.** `ambit apply <id> --to=claude-code` writes that runtime's config and `ambit rollback` gives the file its bytes back; where it cannot write, it prints that runtime's own command.
+- **The latest check decides.** One passing check brings a capability back into every plan, where it took five in a row, and it reads as recovering until its recent runs pass.
+- **A first session that starts small.** `ambit help` lists the eight commands a first session uses, and `--help` after any command says what it does and runs nothing. It used to run it, so `ambit verify --help` ran every check and `ambit approve <id> --help` approved.
+- **Control plane.** An opt-in Docker adapter runs an approved step's command in a throwaway container with no network and no host mount by default.
+- **Three fixes to what may reach you.** The API server refuses a page on another local port, where any page on `localhost` used to pass. `ambit apply` writes a step's patch only when it is the shipped tree's, so an overlay in a cloned repository cannot give a step its own command. A service that stops answering stops counting as reached.
+
+### A Node too old for Ambit says so
+
+The package declares Node 22.18 or newer, and on anything older `npx ambit-cli` died on a flag or a missing module with nothing saying why. It now names the version it found and the one it needs. The status line and the gate stay silent on an old Node, since neither may clutter a screen or block work. The first screen also names `ambit share`, and the demo's paste box says it needs only the server names.
 
 ### What was missing says so where you already look
 

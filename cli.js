@@ -53,6 +53,17 @@ const asked = typed[0] !== 'help' && typed.some(a => HELP_FLAGS.has(a));
 const cmd = asked ? 'help' : typed[0];
 const args = asked ? typed.filter(a => !HELP_FLAGS.has(a)) : typed.slice(1);
 
+// A Node older than package.json's `engines` died on a flag or a missing module
+// with nothing saying why, and `npx` only warns about `engines`. The status line
+// and the gate stay silent and exit 0: the first must not clutter a screen, and
+// a broken gate must never block the person's work.
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 18)) {
+  if (cmd === 'statusline' || cmd === 'gate') process.exit(0);
+  console.error(`Ambit needs Node 22.18 or newer, and this is Node ${process.versions.node}.`);
+  process.exit(1);
+}
+
 /**
  * The status line, answered in this process. Claude Code runs it after every
  * message, and starting the engine as every other command does made it two

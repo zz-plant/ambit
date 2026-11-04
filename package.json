@@ -1,6 +1,6 @@
 {
   "name": "ambit-cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": false,
   "description": "What you, your agents, and your machines can jointly do — and where your own time is going.",
   "mcpName": "io.github.zz-plant/ambit",
