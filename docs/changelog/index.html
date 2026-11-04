@@ -52,6 +52,9 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <p>Written per release, on <a href="https://github.com/zz-plant/ambit/releases">the releases page</a> — each one explains what changed and why, which is more use than a list of commits. The entries below are those notes in full, newest first: what was wrong, what it does now, and why the fix took that shape.</p>
 <p>An entry that refers to the previous entry therefore points down the page, not up.</p>
 <h2 id="unreleased"><a class="anchor" href="#unreleased" aria-hidden="true" tabindex="-1">#</a><a href="https://github.com/zz-plant/ambit/compare/v0.7.0...main">Unreleased</a></h2>
+<h3 id="windows"><a class="anchor" href="#windows" aria-hidden="true" tabindex="-1">#</a>Windows</h3>
+<p>Ambit found no config on Windows and wrote its graph under the current directory, because Windows sets <code>USERPROFILE</code> and no <code>HOME</code>. It now takes the home directory from either, in the CLI and in the plugins that transcribe the spool&#39;s path, and reads the six runtimes that keep their file under <code>%APPDATA%</code> there. A check written for <code>sh</code> on a machine with no <code>sh</code> stays unverified, since it could not ask: counting that as a failure would have dropped working capabilities from every plan. A new CI job runs the CLI on Windows against a throwaway home.</p>
+<p><code>./bootstrap.sh</code> does not run there, and <code>ambit weigh</code> cannot start a server launched through a <code>.cmd</code> such as <code>npx</code>, since doing so needs a shell and it starts servers with none.</p>
 <h2 id="070--2026-11-04"><a class="anchor" href="#070--2026-11-04" aria-hidden="true" tabindex="-1">#</a><a href="https://github.com/zz-plant/ambit/releases/tag/v0.7.0">0.7.0</a> — 2026-11-04</h2>
 <p>The release that gives a newcomer one answer wherever they start, and measures more of what an agent setup costs. In short:</p>
 <ul>
