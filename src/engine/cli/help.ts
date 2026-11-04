@@ -4,7 +4,7 @@ import { ALIASES, GROUPS } from './groups.ts';
  * What `ambit help` prints.
  *
  * Three depths, each a step down from the last. The short list is a first
- * session, eight commands in the order a person meets them, and names the
+ * session, nine commands in the order a person meets them, and names the
  * five groups. `ambit help <group>`, or the group's name alone, is that
  * group's index: one line a verb. `ambit help <command>` is that command's
  * entry from `--all`, every option included. The short list once grew to
@@ -19,6 +19,7 @@ A first session
   ambit web             the same, on a map in the browser
   ambit next            the three capabilities worth reaching next, and why
   ambit goal <what>     the steps to a capability: ambit goal "search the web"
+  ambit repo            what to add for the project you are in
   ambit verify          check that what is configured actually works
   ambit connect         let your agents ask the same questions, over MCP
   ambit status          the full report: what fails, and what waits on you
@@ -190,7 +191,10 @@ check — what is verified, what is permitted, what is currently broken
                           write; cursor --ledger also adds the hooks that record
                           each conversation's tool runs into the work ledger;
                           claude-code --statusline sets ambit statusline as the
-                          status line where none is set, and never replaces one
+                          status line where none is set, and never replaces one;
+                          claude-code --gate adds the gate to every tool call: it
+                          denies what is forbidden and asks about what asks first
+                          or has no grant. Ends on what is still missing
   check port [server] [--to=<runtime|all>] [--from=<runtime>] [--dry-run]
                           port an MCP server between agent runtimes (Claude, Cursor, Codex, etc.)
   check toggle <server> [--off|--on] [--to=<runtime>] [--dry-run]
@@ -305,7 +309,7 @@ const INDEX: Record<string, [string, string][]> = {
     ['opportunities', 'structural changes worth making, ranked and priced'],
     ['roi', 'whether the changes you applied paid'],
     ['reversible', 'what could be acquired without a person'],
-    ['repo [dir]', "a project's stack, and what to add for it"],
+    ['repo [dir]', 'what to add for the project you are in'],
     ['portfolio', 'the same questions across imported environments'],
     ['judge', 'ask a model on this machine which node a sentence means'],
   ],

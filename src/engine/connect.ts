@@ -6,6 +6,7 @@ import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
 import { shellQuote } from '../shared/shell.ts';
 import { clientPaths } from './mcp-clients.ts';
 import { ambitCommand, cursorLedgerScript } from './paths.ts';
+import { gateHookEntry, gateInstalled } from './wiring.ts';
 
 /**
  * Where a runtime keeps its servers, in the shape it reads them:
@@ -472,6 +473,7 @@ export function runConnect(
     force?: boolean;
     ledger?: boolean;
     statusline?: boolean;
+    gate?: boolean;
   } = {}
 ): ConnectResult {
   const home = options.home || process.env.HOME || '/';
@@ -540,6 +542,7 @@ export function runConnect(
 
   if (options.ledger) connectCursorLedger(runtimeName, home, options, configured, skipped);
   if (options.statusline) connectStatusLine(runtimeName, home, options, configured, skipped);
+  if (options.gate) connectGate(runtimeName, home, options, configured, skipped);
 
   return {
     ok: configured.length > 0 || skipped.length === 0,
@@ -689,6 +692,101 @@ function connectStatusLine(
       action,
       ...(backup ? { backup } : {}),
       hook: statusLineEntry().command,
+    });
+  } catch (err: any) {
+    skipped.push({
+      runtime: 'claude-code',
+      label,
+      reason: err?.message || 'Failed to update settings',
+    });
+  }
+}
+
+/**
+ * Add the gate to Claude Code's PreToolUse hooks, beside any already there, and
+ * do nothing where the plugin or an earlier run already put it on. The array is
+ * rewritten whole, so a comment inside it does not survive; the file is kept in
+ * `<file>.bak` first.
+ */
+function configureGate(
+  filePath: string,
+  home: string,
+  dryRun: boolean
+): { action: 'added' | 'already_configured'; backup?: string } {
+  if (gateInstalled(home)) return { action: 'already_configured' };
+  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '{}\n';
+  let parsed: { hooks?: unknown } | undefined;
+  try {
+    parsed = parseJsonc(text);
+  } catch {
+    throw new Error(`${filePath} is not valid JSON; left unchanged`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${filePath} is not a settings object; left unchanged`);
+  }
+  const hooks = parsed.hooks;
+  if (hooks !== undefined && (!hooks || typeof hooks !== 'object' || Array.isArray(hooks))) {
+    throw new Error(`${filePath} has a hooks value that is not an object; left unchanged`);
+  }
+  const theirs = (hooks as { PreToolUse?: unknown } | undefined)?.PreToolUse;
+  if (theirs !== undefined && !Array.isArray(theirs)) {
+    throw new Error(`${filePath} has a PreToolUse value that is not a list; left unchanged`);
+  }
+  const entry = gateHookEntry([...ambitCommand(), 'gate'].join(' '));
+  let backup: string | undefined;
+  if (!dryRun) {
+    backup = keepBackup(filePath);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, setIn(text, ['hooks', 'PreToolUse'], [...(theirs ?? []), entry]));
+  }
+  return { action: 'added', backup };
+}
+
+/**
+ * `--gate`: `ambit gate` on every Claude Code tool call. Only Claude Code has
+ * the hook. A copy run through npx is not written in: the hook runs before every
+ * call with a ten-second limit, and npx would resolve the package again each
+ * time, so a slow resolve would pass the call through with no answer.
+ */
+function connectGate(
+  runtimeName: string | undefined,
+  home: string,
+  options: { dryRun?: boolean; force?: boolean },
+  configured: ConnectResult['configured'],
+  skipped: ConnectResult['skipped']
+) {
+  const label = 'Claude Code gate';
+  if (runtimeName && runtimeName.toLowerCase() !== 'claude-code') {
+    skipped.push({
+      runtime: runtimeName,
+      label,
+      reason: '--gate puts the gate on Claude Code, the one runtime with the hook it needs',
+    });
+    return;
+  }
+  const path = join(home, '.claude', 'settings.json');
+  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
+    skipped.push({ runtime: 'claude-code', label, reason: 'Claude Code not found on host' });
+    return;
+  }
+  if (ambitCommand()[0] === 'npx') {
+    skipped.push({
+      runtime: 'claude-code',
+      label,
+      reason:
+        'The gate runs before every tool call, and npx would resolve the package again each time: install with `npm install -g ambit-cli` and run this again',
+    });
+    return;
+  }
+  try {
+    const { action, backup } = configureGate(path, home, options.dryRun ?? false);
+    configured.push({
+      runtime: 'claude-code',
+      label,
+      path,
+      action,
+      ...(backup ? { backup } : {}),
+      hook: [...ambitCommand(), 'gate'].join(' '),
     });
   } catch (err: any) {
     skipped.push({

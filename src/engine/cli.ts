@@ -23,6 +23,7 @@ import {
   renderImpact,
   renderNext,
   renderApply,
+  renderConnect,
   renderDoctor,
   renderPort,
   renderRepo,
@@ -125,10 +126,11 @@ import {
   applyProposal,
   rollbackProposal,
 } from './governance.ts';
-import { runDoctor } from './doctor.ts';
+import { runDoctor, setupGaps } from './doctor.ts';
 import { listPortStatus, portServer } from './port.ts';
 import { toggleServer } from './toggle.ts';
 import { analyzeRepo } from './repo-inspect.ts';
+import { gateNote } from './wiring.ts';
 import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
 import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
@@ -142,6 +144,16 @@ import { decisionHistory, reviewDecision } from './decision/records.ts';
 import { judgeAttention, judgeTools, judgeFailures, judgeNext } from './decision/contexts.ts';
 import { askDecision } from './decision/client.ts';
 import type { WorkflowOptions } from './decision/workflow.ts';
+
+/**
+ * A refusal or a ceiling with what it reaches on this machine: the answer says
+ * so when no gate is on, since the grant alone stops no tool call.
+ */
+function withGateNote<T>(result: T, mode?: string): T | (T & { gate: string }) {
+  if ((result as { error?: unknown })?.error) return result;
+  const note = gateNote(process.env.HOME || '/', mode);
+  return note ? { ...result, gate: note } : result;
+}
 
 /**
  * Runs one resolved command against an open graph and reports through `emit`.
@@ -226,14 +238,16 @@ async function runCommand(
       if ((arg === 'set' || arg === 'clear') && budgeted && !('id' in budgeted)) emit(budgeted);
       else if (arg === 'set')
         emit(
-          setBudget(db, {
-            capability: budgeted && 'id' in budgeted ? budgeted.id : positional[1],
-            action: positional[2],
-            amount: value('amount'),
-            period: value('period'),
-            scope: value('scope'),
-            person: by(),
-          })
+          withGateNote(
+            setBudget(db, {
+              capability: budgeted && 'id' in budgeted ? budgeted.id : positional[1],
+              action: positional[2],
+              amount: value('amount'),
+              period: value('period'),
+              scope: value('scope'),
+              person: by(),
+            })
+          )
         );
       else if (arg === 'clear')
         emit(
@@ -585,17 +599,20 @@ async function runCommand(
           if (!('id' in node)) emit(node);
           else
             emit(
-              grantAuthority(db, {
-                capability: node.id,
-                mode: positional[2],
-                action: value('action'),
-                scope: value('scope'),
-                condition: value('condition'),
-                ttl: value('ttl'),
-                expires: value('expires'),
-                by: by(),
-                note: value('note'),
-              })
+              withGateNote(
+                grantAuthority(db, {
+                  capability: node.id,
+                  mode: positional[2],
+                  action: value('action'),
+                  scope: value('scope'),
+                  condition: value('condition'),
+                  ttl: value('ttl'),
+                  expires: value('expires'),
+                  by: by(),
+                  note: value('note'),
+                }),
+                positional[2]
+              )
             );
         }
       } else if (arg === 'sandbox') {
@@ -976,13 +993,18 @@ async function runCommand(
     case 'connect': {
       const dryRun = flags.has('--dry-run');
       const force = flags.has('--force');
-      emit(
-        runConnect(arg, {
-          dryRun,
-          force,
-          ledger: flags.has('--ledger'),
-          statusline: flags.has('--statusline'),
-        })
+      const result = runConnect(arg, {
+        dryRun,
+        force,
+        ledger: flags.has('--ledger'),
+        statusline: flags.has('--statusline'),
+        gate: flags.has('--gate'),
+      });
+      // Read after the write, so what this run added is no longer listed. A dry
+      // run wrote nothing, and would list what it just offered to add.
+      const missing = dryRun ? [] : setupGaps();
+      emit({ ...result, ...(missing.length ? { still_missing: missing } : {}) }, r =>
+        renderConnect(r, terminalPalette(), typedCommand)
       );
       break;
     }

@@ -8,6 +8,7 @@ import { parseJsonc } from '../shared/opencode.ts';
 import { checkableNames } from './assurance.ts';
 import { carryById } from './weight.ts';
 import { carryByRuntime } from '../shared/carry.ts';
+import { type SetupStep, claudePluginEnabled, setupSteps } from './wiring.ts';
 
 export interface DoctorRuntime {
   runtime: string;
@@ -93,6 +94,8 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
     } catch {
       // unreadable file
     }
+    // The plugin registers the server itself, in no file this reads.
+    if (c.runtime === 'claude-code' && claudePluginEnabled(home, 'ambit@ambit')) hasAmbit = true;
     detected.push({ runtime: c.runtime, label: c.label, path: p, has_ambit: hasAmbit });
   }
   for (const c of clientConfigs(home)) {
@@ -104,6 +107,11 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
     });
   }
   return detected;
+}
+
+/** What is still missing on this machine, from its runtimes as this module detects them. */
+export function setupGaps(home = process.env.HOME || '/'): SetupStep[] {
+  return setupSteps(detectRuntimes(home), home);
 }
 
 /**
@@ -201,10 +209,8 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       `Verify ${provable} unverified ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into verified`
     );
   }
-  if (runtimes.length > 0 && !hasConnected) {
-    recommendations.push(
-      'Connect Ambit to your agents: run "ambit connect" so each session opens with the briefing'
-    );
+  for (const step of setupSteps(runtimes, home ?? process.env.HOME ?? '/')) {
+    recommendations.push(`${step.says}: run "${step.command}"`);
   }
   // The head counts every single provider; this counts the ones a person can
   // do something about, and says which the difference is, since the two

@@ -7,6 +7,8 @@
  * column with a marker on the one that wants a person, and the last line is the
  * one thing to type next. Colour is added on top and never changes a line.
  */
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { learn, makeGraph, type CapabilityFixture } from '../testing/graph.ts';
 import { asProcess } from '../testing/terminal.ts';
@@ -29,10 +31,13 @@ const ANSI = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
 const plain = (s: string) => s.replace(ANSI, '');
 
 /** A status report over a graph holding exactly these nodes. */
+// A home with no agents in it, so what these report does not depend on the machine's.
+const NO_AGENTS = join(tmpdir(), `ambit-test-no-agents-${process.pid}`);
+
 function reportOf(capabilities: CapabilityFixture[]) {
   const db = makeGraph({ capabilities });
   try {
-    return statusReport(db);
+    return statusReport(db, { home: NO_AGENTS });
   } finally {
     db.close();
   }
