@@ -89,3 +89,12 @@ test('the demo decides its queue locally, each draft on its own', async () => {
   expect(status.get('prop-b')).toBe('draft');
   expect(status.get('prop-c')).toBe('approved');
 });
+
+test('approval explains the receipt once for several waiting cards', () => {
+  seed({ proposals: [draft('prop-a'), draft('prop-b')] });
+  const html = render();
+  expect(html.match(/Approving signs a receipt; nothing runs yet\./g)).toHaveLength(1);
+  expect(html).toContain('gov-ask-row');
+  expect(html).toContain('Approve this proposal, prop-a');
+  expect(html).toContain('Approve this proposal, prop-b');
+});

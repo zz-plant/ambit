@@ -112,3 +112,11 @@ test('the owner of an empty graph is told to seed it, not to install what they h
     seed({ backend: 'unknown' });
   }
 });
+
+test('the privacy assurance appears once, below the input and before agent help', () => {
+  expect(html.match(/Read in this tab; nothing is sent\./g)).toHaveLength(1);
+  const privacy = html.indexOf('Read in this tab; nothing is sent.');
+  expect(privacy).toBeGreaterThan(html.indexOf('</textarea>'));
+  expect(privacy).toBeLessThan(html.indexOf('Which agent is it for?'));
+  expect(html).toContain('class="intake-trust"');
+});
