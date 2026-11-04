@@ -103,7 +103,10 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
       {/* The sentence that decides whether a visitor pastes a config at all,
           so it sits under the box at reading weight. It was the last muted
           note in the form, under the agent picker and the paths. */}
-      <p className="intake-trust">Read in this tab; nothing is sent.</p>
+      <p className="intake-trust">
+        Read in this tab; nothing is sent. It needs only the server names, so delete any keys first
+        if you prefer.
+      </p>
       <fieldset className="intake-agents">
         <legend className="intake-ask">Which agent is it for?</legend>
         <div className="intake-agent-row">

@@ -2,9 +2,9 @@
 
 # Ambit
 
-**What you, your agents, and your machines can jointly do — and where your own time is going.**
+**A Civilization-style tech tree of what your AI agents can do, and what one more step would unlock.**
 
-That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode and [the other agent runtimes it knows](#get-started) into a local capability map: what you can do now, what one more step would unlock, and which configured tools are not working.
+Ambit reads the configs of Claude Code, Cursor, OpenCode and [13 other agent runtimes](#get-started) into one local map. What you, your agents and your machines can jointly do is your *ambit*: this shows where its edge is and how to move it.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
@@ -18,7 +18,7 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 <img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it rings in blue the two capabilities it would make reachable; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
 
-<sub>One setup, mapped. Pick a next step and Ambit shows what it would open: two more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
+<sub>Pick a next step and the map shows what it opens. Switch off something you rely on and it counts what stops.</sub>
 
 `npx ambit-cli`, or `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
 
@@ -26,44 +26,18 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 ---
 
-## What Ambit is
+## What it tells you
 
-An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file.
+- **What is one step away.** Capabilities whose prerequisites you already meet, each with a setup estimate, ranked by what keeps blocking your agents and by how much each step opens. Tools also compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions.
+- **What is configured but not working.** `ambit verify` runs a capability's declared check. One that fails is left out of plans and permissions until it passes.
+- **What your tool lists cost.** `ambit weigh` starts each local tool server your user-level configs declare and measures what its tool list takes from context every session.
+- **What stops if a piece goes.** Three providers that share one API credential show up as one point of failure.
 
-**What an agent setup can do is not written in any configuration file.** It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. Ambit computes that reach and helps you widen it: a declared check says whether a piece works, a grant you set says what may run without asking, and a work ledger records whether a change saved you time.
+Your agents can ask the same questions over MCP: what they can do before they try, and at a limit, what would lift it, drafted as a change you approve. Ambit is a *meta-MCP server*, speaking the protocol of the tools it reads. The graph is a local SQLite file, with no telemetry.
 
-Ambit reads those configs into one model, the capability graph. Every server, model, skill and declared credential is a node, as is every capability of the curated tree, and an edge records what one needs from another or provides to it. My Setup lists what your configs declare, and the map draws the curated tree with your position on it. The edge of what you reach is the *frontier*, with the next steps just past it. From the graph, Ambit answers:
+On a small setup, Ambit mostly answers what to add next. On a larger one, with several runtimes and a second machine, it mostly answers which configured tools fail their checks and what would stop with them. [The words it uses](#the-words-ambit-uses) are defined further down.
 
-1. **What is one step away?** Capabilities whose prerequisites you already meet, each with its estimated setup time, and near-miss combinations that are one or two prerequisites away from unlocking additional tools. Separately configured tools also compose: a vector store plus local embeddings satisfies the prerequisites for semantic retrieval, which neither configuration file mentions alone.
-2. **What is worth setting up next?** Ranked by what keeps blocking your agents and by how much each step unlocks, and once the work ledger records a few weeks, by the human attention it would save.
-3. **What actually works?** A configured tool is not necessarily a working one. Ambit runs each capability's declared verification check (`ambit verify`) and keeps `installed ≠ working ≠ authorized`. An unverified capability stays available; one whose check fails is left out of plans and permissions until it passes again.
-4. **What breaks if a dependency fails?** Ambit traces transitive dependencies: three supposedly redundant providers that share an API credential show up as a single point of failure.
-
-You ask from the terminal. Your agents ask over MCP: what they can do before they try, and when they hit a limit, what would lift it, drafted as a change you approve. Ambit is itself an MCP server, speaking the same protocol as the tools it reads: a *meta-MCP server*.
-
-### The words Ambit uses
-
-The terminal and the map use the same words.
-
-- **Capability**: one thing your setup can do. Every MCP server, agent, skill, provider, model and command in your config becomes one, as does every node of the curated tree.
-- **Reached, next step, blocked**: Reached means a configured provider satisfies it and its required prerequisites are met. A next step has all required prerequisites met but lacks a configured provider; it sits just beyond the frontier and appears in `ambit goal`. Blocked means a required prerequisite is missing.
-- **Verified**: Reached, and its declared check recently passed. `ambit status` reports these as verified. Reached is a fact about the config; verified is a fact about a check that ran.
-- **Required vs optional prerequisite**: a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. The data model and the CLI call these hard and soft.
-- **Combo**: a capability the curated tree defines as composed from others, such as semantic retrieval from a vector store and local embeddings. Every node on the map is one, which is why their ids start with `combo:`.
-- **Era**: how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
-
-<div align="center">
-<img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
-<br><sub>Filled nodes are reached · Bright rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
-</div>
-
----
-
-## Who it is for
-
-Anyone running AI agents who wants them to do more. On a small setup, one runtime and a few MCP servers, Ambit mostly answers what to add next, and what a single missing prerequisite would open. On a larger one, with several runtimes, dozens of servers and a second machine, it mostly answers which configured tools fail their checks and what would stop with them.
-
-The demo opens on a sample setup's next step, lighting what it would open, and asks which agent you use. Paste that agent's config, or tick the servers it runs, and yours is placed on the same map with nothing uploaded: how much of the tree it reaches and the three next steps worth taking, ranked as `npx ambit-cli` ranks them on the machine itself. The rest of the sample is there for whoever asks: the outage that shows what that reach rests on, a check that was already failing, and the approval every change waits for.
+If it answers a question your config files could not, [a star](https://github.com/zz-plant/ambit/stargazers) is how the next person with the same stack finds it.
 
 ## Get started
 
@@ -88,13 +62,13 @@ npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh`
 
 Ambit sits above the protocol layer and below workflow orchestration. Its CLI, MCP server and gate neither route an agent's calls nor run them. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself from a checkout, and only with its opt-in Docker adapter.
 
-| System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| Vector tool-RAG | by similarity | – | – | – | – |
-| Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
-| Package managers (Nix, Homebrew) | – | for binaries | – | – | – |
-| Flat MCP catalogs (Smithery, registries) | by name | – | – | – | – |
-| **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
+| If you want to | Use | What Ambit adds |
+| :--- | :--- | :--- |
+| Find a tool by name or description | Smithery, the MCP registries, tool-RAG | Which ones your setup already has what it needs for, and what each would open |
+| Order the steps of one task | A workflow engine such as LangGraph | Nothing inside the task; what the setup can do before one starts |
+| Install a binary | Nix, Homebrew | No installing; what is missing, in order, as a change you approve |
+| Allow or refuse each call as it happens | [An MCP gateway](./docs/compare.md) | No place on the call path; Ambit's gate only answers Claude Code's hook, with deny or ask |
+| See what the whole setup can do, which pieces work, and what to add next | Ambit | |
 
 For the architectural foundation, economic loop, and comparison to prior work, see [The ideas behind Ambit](./docs/ideas.md), [Your loadout, from A to B](./docs/loadout.md), and [Building alone](./docs/solo.md).
 
@@ -283,6 +257,11 @@ The server sends this instruction in the MCP handshake. For clients that do not 
 
 ## The map
 
+<div align="center">
+<img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
+<br><sub>Filled nodes are reached · Bright rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
+</div>
+
 `./bootstrap.sh web` serves five views over the graph the CLI reads.
 
 - **Map**: The curated tree with your reach drawn on it. The line on top names what the map found: a failing check, or else the next step that opens the most.
@@ -300,6 +279,12 @@ When an agent proposes a configuration change over MCP, the **Proposals** view s
 ---
 
 ## How it works
+
+An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file.
+
+**What an agent setup can do is not written in any configuration file.** It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. Ambit computes that reach and helps you widen it: a declared check says whether a piece works, a grant you set says what may run without asking, and a work ledger records whether a change saved you time.
+
+Every server, model, skill and declared credential is a node in one model, the capability graph, as is every capability of the curated tree, and an edge records what one needs from another or provides to it. The edge of what you reach is the *frontier*, with the next steps just past it.
 
 Discovery reads your host configs into an embedded SQLite graph, and three surfaces read it back out: the CLI, the MCP server and the map. Discovery, verification and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map's switch for an entry that already exists, which cannot create one.
 
@@ -321,6 +306,19 @@ Availability is decided by lifecycle, not state, and a check can only take avail
 - **Single points of failure**: capabilities with exactly one provider.
 - **Bottlenecks**: capabilities ranked by how many others depend on them. The map marks the top ones with a keystone.
 - **Shared credentials**: providers behind one API token fail together, so they are not redundancy. Declaring shared credentials in a `credentials` block enables `ambit impact credential:...` to analyze revocation impact.
+
+---
+
+## The words Ambit uses
+
+The terminal and the map use the same words.
+
+- **Capability**: one thing your setup can do. Every MCP server, agent, skill, provider, model and command in your config becomes one, as does every node of the curated tree.
+- **Reached, next step, blocked**: Reached means a configured provider satisfies it and its required prerequisites are met. A next step has all required prerequisites met but lacks a configured provider; it sits just beyond the frontier and appears in `ambit goal`. Blocked means a required prerequisite is missing.
+- **Verified**: Reached, and its declared check recently passed. `ambit status` reports these as verified. Reached is a fact about the config; verified is a fact about a check that ran.
+- **Required vs optional prerequisite**: a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. The data model and the CLI call these hard and soft.
+- **Combo**: a capability the curated tree defines as composed from others, such as semantic retrieval from a vector store and local embeddings. Every node on the map is one, which is why their ids start with `combo:`.
+- **Era**: how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
 
 ---
 
@@ -370,7 +368,7 @@ New capability models, runtime readers, visualization work and edge-case reports
 
 ## Support the project
 
-Ambit is a personal project. If it answered a question your config files could not, [a star](https://github.com/zz-plant/ambit/stargazers) is how the next person with the same stack finds it.
+Ambit is a personal project. It has one maintainer, so the fastest help is telling it where it got your setup wrong.
 
 - Share an `ambit share --redact` snapshot of your map. Paths never enter the file and `--redact` replaces every name the tree did not supply with its category, so a real setup can be shown without naming it.
 - Report unsupported runtimes or inaccurate capability models via [issue templates](https://github.com/zz-plant/ambit/issues/new/choose).
