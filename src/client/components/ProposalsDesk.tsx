@@ -536,31 +536,28 @@ export function ProposalsDesk() {
                       </button>
                     </>
                   ) : (
-                    <>
-                      <span className="gov-hint">Approving signs a receipt; nothing runs yet.</span>
-                      <span className="gov-actions">
-                        <button
-                          type="button"
-                          className="tp-btn-sm"
-                          onClick={() => setDeclining({ id: p.id, reason: '' })}
-                        >
-                          Turn down
-                        </button>
-                        {/* It names what it approves: with several cards
-                            open, "approve" alone does not say which. */}
-                        <button
-                          type="button"
-                          className="tp-btn tp-btn--primary"
-                          disabled={approvingId === p.id}
-                          onClick={() => handleApprove(p.id)}
-                          aria-label={
-                            approvingId === p.id ? undefined : `Approve this proposal, ${p.id}`
-                          }
-                        >
-                          {approvingId === p.id ? 'Signing…' : 'Approve this proposal'}
-                        </button>
-                      </span>
-                    </>
+                    <span className="gov-actions">
+                      <button
+                        type="button"
+                        className="tp-btn-sm"
+                        onClick={() => setDeclining({ id: p.id, reason: '' })}
+                      >
+                        Turn down
+                      </button>
+                      {/* It names what it approves: with several cards
+                          open, "approve" alone does not say which. */}
+                      <button
+                        type="button"
+                        className="tp-btn tp-btn--primary"
+                        disabled={approvingId === p.id}
+                        onClick={() => handleApprove(p.id)}
+                        aria-label={
+                          approvingId === p.id ? undefined : `Approve this proposal, ${p.id}`
+                        }
+                      >
+                        {approvingId === p.id ? 'Signing…' : 'Approve this proposal'}
+                      </button>
+                    </span>
                   )}
                 </div>
               </div>

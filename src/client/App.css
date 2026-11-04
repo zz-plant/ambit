@@ -5736,6 +5736,12 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+.intake-trust {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
 /* ─── THE TOUR ───
    The demo, narrated, on the first-run card's frame. Wider, because each
    step is a sentence and not a list, and the last step holds the paste box. */

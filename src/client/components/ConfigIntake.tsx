@@ -100,6 +100,7 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
           />
         </>
       )}
+      <p className="intake-trust">Read in this tab; nothing is sent.</p>
       <fieldset className="intake-agents">
         <legend className="intake-ask">Which agent is it for?</legend>
         <div className="intake-agent-row">
@@ -143,7 +144,6 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
           </dl>
         </details>
       )}
-      <p className="intake-note">Read in this tab; nothing is sent.</p>
       <input
         ref={fileInput}
         type="file"
