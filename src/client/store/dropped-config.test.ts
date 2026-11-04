@@ -30,7 +30,7 @@ test('an agent config is mapped in the browser, with no engine behind it', () =>
   expect(demo).toBe(false);
 });
 
-test('an `ambit graph` export is drawn as it stands', () => {
+test('an `ambit graph export` file is drawn as it stands', () => {
   const ok = useAmbitStore.getState().loadFromJSON(
     JSON.stringify({
       items: [{ id: 'combo:deploy', name: 'Deploy', type: 'possibility' }],

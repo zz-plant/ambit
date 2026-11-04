@@ -204,7 +204,7 @@ test('the latest failure makes a capability broken, whatever came before', () =>
   db.close();
 });
 
-test('a recent failure under a passing head reads as degraded, not reliable', () => {
+test('a recent failure under a passing head reads as recovering, not reliable', () => {
   const db = makeGraph({ capabilities: [{ id: 'combo:x', state: 'unlocked' }] });
   learn(db, 'combo:x', 'failed');
   learn(db, 'combo:x', 'verified');
@@ -212,7 +212,7 @@ test('a recent failure under a passing head reads as degraded, not reliable', ()
   deriveLifecycles(db);
   expect(
     db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get('combo:x')!.lifecycle
-  ).toBe('degraded');
+  ).toBe('recovering');
   db.close();
 });
 
@@ -240,7 +240,7 @@ test('the latest check decides: one pass after a failure is usable, and five cle
 
   learn(db, 'combo:x', 'verified');
   deriveLifecycles(db);
-  expect(lifecycle()).toBe('degraded');
+  expect(lifecycle()).toBe('recovering');
   expect(usable(lifecycle())).toBe(true);
   expect(decide()).toMatchObject({ decision: 'ALLOW' });
   // Recovering is neither proven nor failing: its record is mixed.
@@ -250,7 +250,7 @@ test('the latest check decides: one pass after a failure is usable, and five cle
   // Four more passes: the failure is still one of the last five.
   for (let i = 0; i < 3; i++) learn(db, 'combo:x', 'verified');
   deriveLifecycles(db);
-  expect(lifecycle()).toBe('degraded');
+  expect(lifecycle()).toBe('recovering');
   expect(recentRuns(db, 'combo:x')).toBe('4 of the last 5 passed');
 
   learn(db, 'combo:x', 'verified');
@@ -263,7 +263,7 @@ test('the latest check decides: one pass after a failure is usable, and five cle
 
 test('the lifecycle is read off the evidence, newest first', () => {
   const runs = (...actions: string[]) => actions.map(action => ({ action }));
-  expect(lifecycleFrom(true, true, runs('verified', 'failed'))).toBe('degraded');
+  expect(lifecycleFrom(true, true, runs('verified', 'failed'))).toBe('recovering');
   expect(lifecycleFrom(true, true, runs('failed', 'verified', 'verified'))).toBe('broken');
   expect(
     lifecycleFrom(

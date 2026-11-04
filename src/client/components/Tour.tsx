@@ -1,9 +1,10 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { costOf, isEntry, mapFindings, unlockCascade } from './civ/layout';
+import { VIEW_ID } from './AppDeck';
 import ConfigIntake from './ConfigIntake';
 
 interface TourProps {
@@ -16,6 +17,12 @@ interface TourProps {
   onMapped: () => void;
   /** The step a link asked to open on; the first when it names none, or one this sample lacks. */
   start?: TourStep | null;
+  /**
+   * A dialog is open over the page. The card steps out of sight and keeps its
+   * place: drawn behind the proposal it had just offered, it read as a second
+   * thing asking to be answered.
+   */
+  covered?: boolean;
 }
 
 /** "A, B and C", the way the step reads a list of capabilities out. */
@@ -26,6 +33,19 @@ const named = (list: Item[]) =>
         .slice(0, -1)
         .map(i => i.name)
         .join(', ')} and ${list[list.length - 1].name}`;
+
+/**
+ * The way on from the first card, named for the card it opens. "What else it
+ * shows" said nothing about where the press went, and the first card is the
+ * one a visitor decides on.
+ */
+const NEXT_LABEL: Record<TourStep, string> = {
+  next: 'Next',
+  outage: 'See what breaks',
+  failing: 'See a failing check',
+  approval: 'See the approval gate',
+  yours: 'Map yours',
+};
 
 interface Step {
   /** The name a link opens this step by (`?tour=`). */
@@ -59,7 +79,14 @@ interface Step {
  * It runs on the demo only. A machine's own graph opens on the readout of
  * that setup instead (YourAmbit.tsx).
  */
-export default function Tour({ style, onDone, onShowProposals, onMapped, start }: TourProps) {
+export default function Tour({
+  style,
+  onDone,
+  onShowProposals,
+  onMapped,
+  start,
+  covered = false,
+}: TourProps) {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const ranked = useAmbitStore(s => s.loop?.next);
@@ -89,6 +116,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           .flatMap(id => byId.get(id) ?? [])
           .filter(i => !isEntry(i))
       : [];
+    // The baseline the delta is a delta from, counted as the welcome screen
+    // counts it, so the card a visitor lands on says the same thing the
+    // button that brought them there said.
+    const tree = items.filter(i => !isEntry(i));
+    const reached = tree.filter(i => i.status === 'built').length;
 
     // Each body is a sentence or two: the map is doing the showing, and on a
     // phone a seventy-word card covered half of what it was describing.
@@ -98,20 +130,23 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         key: 'next',
         intake: true,
         title: `One step would open ${best.reaches} more`,
-        body:
-          `This is a sample developer's agent setup. Setting up ${best.item.name}` +
-          `${cost ? ` (about ${cost})` : ''} would ` +
-          (opened.length
-            ? `unlock the ones in green: ${named(opened)}.`
-            : `open ${best.reaches} more things their agents could do.`),
+        body: (() => {
+          const opening =
+            `This sample setup reaches ${reached} of ${tree.length} capabilities. Setting up ` +
+            `${best.item.name}${cost ? ` (about ${cost})` : ''} would take it to ` +
+            `${reached + best.reaches}`;
+          return opened.length
+            ? `${opening} and unlock the ones ringed in blue: ${named(opened)}.`
+            : `${opening}.`;
+        })(),
         enter: () => {
           select(null);
           startAcquisition(best.item.id);
         },
       });
     }
-    // Only what was working counts as stopped, and only that is filled red.
-    // What was never set up is drawn as a red outline and named for what it
+    // Only what was working counts as stopped, and only that is red. What
+    // was never set up is drawn as a dashed outline and named for what it
     // is: drawn alike, the title said 4 over sixteen red circles. A check
     // that was already failing is the next card's subject, not this one's.
     if (outage?.stopped.length) {
@@ -121,7 +156,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         title: `And if ${COLD_OPEN_PLAIN} went down? ${stopped.length} things stop.`,
         body:
           `They would lose ${named(stopped)}.` +
-          (cutOff.length ? ' The red outlines were never set up.' : ''),
+          (cutOff.length ? ' The dashed outlines were never set up.' : ''),
         enter: () => {
           select(null);
           startOutage(COLD_OPEN_OUTAGE);
@@ -172,9 +207,22 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     step.enter();
   }, [step.key]);
 
+  // A step's buttons are not the last step's, and the one that was pressed
+  // can be gone from the next: the keyboard fell to the page, eighty stops
+  // from the card. It lands on the step's title instead, which says where it is.
+  const title = useRef<HTMLHeadingElement>(null);
+  const shownStep = useRef(step.key);
+  useEffect(() => {
+    if (shownStep.current === step.key) return;
+    shownStep.current = step.key;
+    if (!document.activeElement || document.activeElement === document.body) title.current?.focus();
+  }, [step.key]);
+
   const finish = () => {
     clearSimulation();
     onDone();
+    // The card is going, and the focus with it: on to the view it was about.
+    document.getElementById(VIEW_ID)?.focus({ preventScroll: true });
   };
 
   return (
@@ -183,6 +231,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
       style={style}
       aria-label="A tour of the demo"
       data-occludes-map
+      hidden={covered}
     >
       <div className="app-guide-head">
         <span className="app-tour-count">
@@ -192,7 +241,9 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           Skip tour
         </button>
       </div>
-      <h2 className="app-tour-title">{step.title}</h2>
+      <h2 className="app-tour-title" ref={title} tabIndex={-1}>
+        {step.title}
+      </h2>
       <p className="app-tour-body">{step.body}</p>
 
       {step.proposal && (
@@ -222,8 +273,13 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
             the sample is the quieter button beside it. The last card leads
             back to the first, where the visitor's setup goes in. */}
         {step.intake ? (
-          <button type="button" className="app-tour-back" onClick={() => go(index + 1)}>
-            What else it shows
+          <button
+            type="button"
+            className="app-tour-back"
+            onClick={() => go(index + 1)}
+            disabled={index + 1 >= steps.length}
+          >
+            {NEXT_LABEL[steps[index + 1]?.key ?? 'next']} →
           </button>
         ) : last ? (
           <>

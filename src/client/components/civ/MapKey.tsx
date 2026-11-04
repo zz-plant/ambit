@@ -33,7 +33,8 @@ export function MapKey({ onClose, ...props }: MapKeyProps) {
   return <MapKeyView {...props} explained={explained} onExplain={setExplained} boxRef={box} />;
 }
 
-const AT_REST = 'Press a key to light its nodes. Esc shows everything.';
+// "Press a key" read as the keyboard, in the one place that is not about it.
+const AT_REST = 'Choose an entry to light its nodes. Esc shows everything.';
 
 interface MapKeyViewProps extends Omit<MapKeyProps, 'onClose'> {
   /** The entry whose meaning the last line says, if one is focused or pressed. */
@@ -76,6 +77,13 @@ export function MapKeyView({
   });
   return (
     <section className="civ-key" aria-label="Key" ref={boxRef}>
+      {/* What this view is, for the half of the distinction the deck's tab
+          titles carry only on hover: the map is the curated tree, and My
+          Setup is what this machine declares. */}
+      <p className="civ-key-lead">
+        The tree of what agent setups grow into, with your position on it. My Setup lists what your
+        configs declare.
+      </p>
       <ul className="civ-key-list">
         {keys.map(entry => {
           if (entry.kind === 'label') {

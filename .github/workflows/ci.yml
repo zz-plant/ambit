@@ -6,6 +6,17 @@ on:
   pull_request:
 
 jobs:
+  # The suite assumes a POSIX shell, so Windows gets the path a person takes:
+  # the CLI, in a throwaway home with no HOME set.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/windows-smoke.ts
+
   check:
     runs-on: ubuntu-latest
     strategy:
@@ -68,6 +79,12 @@ jobs:
       # by installing the tool and finding out.
       - name: Check README examples match real output
         run: npm run docs:examples:check
+
+      # The tool listing is what every connecting agent loads into context.
+      # server.test.ts holds it under 95% of its ceiling; this prints how much
+      # room is left on every run, so the number is seen before it is a problem.
+      - name: Check MCP listing size and quality
+        run: npm run mcp:check
 
       # The published demo is derived from a fixture through the engine. If the
       # model moves and this is not regenerated, the demo shows a system this

@@ -41,6 +41,44 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 | [L3](#l3-one-row-per-machine) | One row per machine | My Setup, Infra | L | Slices 1 and 2 built |
 | [K1](#k1-a-palette-that-speaks-verbs) | A palette that speaks verbs | Finder | M | Built |
 | [K2](#k2-the-terminal-is-a-surface-too) | `ambit status` as a designed surface | CLI | S | Built |
+| [O1](#o1-ontological-rationalization-decoupled-assurance-bound-affordances-and-the-supervisory-ladder) | Ontological rationalization | Engine, API, CLI | M | Built |
+
+## First use
+
+### U1. One path from recommendation to checked result
+
+*Size M. Status: proposed, with a navigation fix built. The layouts below are design options, not shipped screens.*
+
+**The question.** What works in my setup, what should I change next, and how will I know the change worked?
+
+**Today.** The answer is spread across several surfaces. My Setup opens with the seven-leg Journey before the entries. The Map offers a next step, a preview and a detail panel, but setup and checking require local commands. A preview and the selected node can remain visible when moving to My Setup. At compact widths, navigation names disappear; on phones, the Sample label disappears too. Time & cost leads with annual attention value, which is easy to read as money earned.
+
+**The change.** Make one recommendation usable without learning the map's vocabulary. Keep the full map available for exploring dependencies.
+
+![Proposed first-use path, showing the browser and local execution boundary](./assets/first-use-path.svg)
+
+Two layouts use the same sequence:
+
+- **Guided start, recommended for first use.** Open My Setup with the next useful change, any failing checks, then the entry list. Move the Journey into an optional guide. Each recommendation gives a plain-language benefit, current state, estimated effort and one primary action: **Review setup plan**.
+- **Map first, for exploration.** Start with the selected recommendation and readable prerequisites and dependents. Offer the whole map as an expansion. Keep **Review setup plan** beside that selection, so the diagram leads to the same action.
+
+**Review setup plan** explains where the command runs and what it does. For the demo's Embeddings example, `ambit goal combo:embeddings --paths` lists available routes locally. It does not install a model. After setup, copy `ambit verify combo:embeddings` to run its declared check. A missing check remains unverified; a passing check supports only the behavior it exercises.
+
+Keep prerequisites, permission and evidence separate under **Why this recommendation?** A modeled route can be reachable while untested or unauthorized. Any future claim about operating a service unattended needs the outcome evidence proposed in [roadmap §17](./roadmap.md#17-defined-outcomes--proposed).
+
+**Supporting changes.**
+
+- Retain visible navigation names and sample status on narrow screens. Reflow the controls before removing their labels.
+- Keep simulations on the Map. Leaving it closes the preview and its controls; returning does not imply a real change occurred. A preview always says **Your setup has not changed**.
+- Put recorded spend before estimated attention value. Keep the valuation basis beside the estimate, including that it is not cash received.
+- In Proposals, lead with waiting decisions. Before approval, state whether execution is manual and whether automatic undo exists. Approval signs a plan; execution is separate.
+- Offer ordinary text search and visible activity filters before exposing query syntax or technical identifiers.
+
+**Implementation seams.** `AppDeck.tsx` and its responsive CSS own navigation; `SetupView.tsx` owns the entry order; `App.tsx` owns view transitions and preview cleanup. `NodeDetailPanel.tsx` can put the existing plan command beside the preview and check command. `LoopDashboard.tsx` and `ProposalsDesk.tsx` own the valuation and decision wording. Keep those surfaces on their existing projections. No new browser command-execution route is needed. Any displayed glossary term still comes from `src/shared/concepts.json`.
+
+**Done when.** A first-time user can identify a failing check, explain one recommendation, review its local setup command, close a preview and find how to check the result. Navigation names and sample status remain visible at 320, 390, 768 and 1024 pixels. Moving between views leaves no map controls covering another page. Browser Back, Forward and reload restore the named view. Task completion and comprehension still need observation with new users; a working prototype does not establish improved usability.
+
+**Built.** `writeAddress` now retains the History API receiver for both push and replace. The previous detached call threw in a browser and the catch hid it, so navigation could change the screen without updating the URL. The regression test exercises both receiver-sensitive methods. The other changes in this spec remain proposed.
 
 ## First use
 
@@ -403,7 +441,41 @@ Slice 2. A manifest device or service may carry `tags`, seeded into a `tags` col
 
 **Done when.** The status of a fresh install prints the aligned block with a `Next` line. Piped output is plain and carries the same content. JSON output is unchanged apart from the new field.
 
-**Built.** `cli/output.ts` gains a color gate (`colorOn`, `terminalPalette`, `PLAIN`) and `emit(data, human?)`, and the generic formatter now returns lines, with its output for the other commands byte-identical. `renderStatus` in `cli/reports.ts` prints a summary line (reached of total, and proven), the aligned counts and a final Next line from the new `next` field, which is the last key of the JSON and holds `{command, why}`. The order is a failing check, then a draft waiting, then `ambit verify`, then the top pick of `ambit next`; when none applies the field is absent and so is the line. A `›` marks the row that wants a person, so it survives a pipe, and an empty `NO_COLOR` counts as unset. The README block keeps its 14-line window and gains a one-line tail (`capture-doc-examples.ts` takes an optional `tail`), so it ends on Next after an ellipsis.
+**Built.** `cli/output.ts` gains a color gate (`colorOn`, `terminalPalette`, `PLAIN`) and `emit(data, human?)`, and the generic formatter now returns lines, with its output for the other commands byte-identical. `renderStatus` in `cli/reports.ts` prints a summary line (reached of total, and verified), the aligned counts and a final Next line from the new `next` field, which is the last key of the JSON and holds `{command, why}`. The order is a failing check, then a draft waiting, then `ambit verify`, then the top pick of `ambit next`; when none applies the field is absent and so is the line. A `›` marks the row that wants a person, so it survives a pipe, and an empty `NO_COLOR` counts as unset. The README block keeps its 14-line window and gains a one-line tail (`capture-doc-examples.ts` takes an optional `tail`), so it ends on Next after an ellipsis.
+
+## Ontology & Governance
+
+### O1. Ontological rationalization: decoupled assurance, bound affordances, and the supervisory ladder
+
+*Size M. Status: built.*
+
+**The question.** How does Ambit cleanly distinguish reachability from empirical verification, disambiguate providers and resources, formalize progressive supervision, and model actions bound to objects without breaking existing stored snapshot continuity?
+
+**Today.** Three naming and conceptual collisions created cognitive friction:
+1. `provider` was both a capability supplier (MCP server, skill) and an inference endpoint (`provider:anthropic`, which was mapped to `kind = 'resource'`).
+2. `degraded` meant failing in legacy wire fields and CLI output, but meant recovering (last check passed after failures) in `vocabulary.ts`.
+3. Authority was modeled as a flat 3-mode enum (`autonomous`, `confirm`, `forbidden`), while the governance engine actually evaluated a 6-rung ladder of supervision.
+4. Curated capabilities were coarse verbs (`combo:version-control`), lacking target objects and scopes.
+5. Human accounting labeled reducible friction "middleware", creating confusion with software middleware.
+
+**The change.**
+1. **Decoupled Assurance Model ($\text{State} \times \text{Assurance}$):**
+   - Structural reachability (`unconfigured`, `blocked`, `reached`) is strictly decoupled from empirical evidence.
+   - Node assurance levels: `untested`, `proven`, `reliable`, `recovering`, and `failing`.
+   - `recovering` is introduced as the explicit lifecycle for nodes whose latest check passed after failures, curing the `degraded` semantic inversion while retaining wire compatibility.
+   - Raw check run actions in `session_learning` are binary: `passed` (or legacy `verified`) and `failed`.
+2. **Taxonomy Normalization:**
+   - Canonical kind mapping normalizes `endpoint`, `upstream`, `substrate`, `host`, `adapter`, and `model` in `ontology.ts`.
+   - Stored node ids remain unchanged for complete continuous ledger backward compatibility.
+3. **The 6-Rung Supervisory Ladder:**
+   - Formalized ladder: `ungranted` $\rightarrow$ `forbidden` $\rightarrow$ `attended` $\rightarrow$ `thresholded` $\rightarrow$ `budgeted` $\rightarrow$ `autonomous`.
+   - Mapped at runtime to instantaneous gate verdicts: `ALLOW`, `CHALLENGE`, or `DENY`.
+4. **Labor Classification:**
+   - Explicit distinction between `Compensatory Friction` (mechanical shims and glue to eliminate) and `Sovereign Discretion` (essential human judgment, ethics, and fiduciary sign-off to preserve).
+
+**Implementation seams.** `src/shared/types.ts` (`LIFECYCLES`, `SUPERVISORY_RUNGS`), `src/engine/ontology.ts` (`PREFIX_KIND`, `CATEGORY_KIND`), `src/engine/vocabulary.ts` (`RECOVERING`, `CHECK_RUN_SQL`, `COMPENSATORY_FRICTION_KINDS`), `src/engine/assure/lifecycle.ts` (`lifecycleFrom`), and `src/engine/views.ts` (`ladderOf`).
+
+**Done when.** All 141 existing test suites pass. Check runs accept `passed` and `verified` identically. `recovering` is recognized as a valid lifecycle alongside `degraded`. Normalized prefixes (`upstream:`, `substrate:`, `adapter:`) map cleanly to engine kinds.
 
 ## Decisions, with recommendations
 
@@ -456,7 +528,7 @@ Closed:
 - A missing or misspelt argument to an MCP tool came back as an SQLite bind error, a CLI usage line or a TypeError, and `ambit_verify` with a misspelt name ran every declared check. Arguments are checked against the tool's schema before dispatch, and a failed call is `isError`.
 - A simulation started on a scrubbed map, or a lens no observation records, played on the scrubbed day. It returns the map to now, in the store, so the finder, Time & cost and My Setup are all covered.
 - An era's ladder read the store while its header counted the observation, so "Model Access" said 1 of 6 reached over a ladder that said 3 of 6. It reads the same items and says "As of ...".
-- The header's pill counted a reached node whose check is failing as unproven. `mapCounts` keeps failing apart, and each segment lights the nodes it counts.
+- The header's pill counted a reached node whose check is failing as unverified. `mapCounts` keeps failing apart, and each segment lights the nodes it counts.
 - Escape was owned by the shell and the map, and whichever ran second found the first one's work done. `escapeLayer` in `utils/keys.ts` closes one layer a press, topmost overlay first.
 - The finder stopped only Escape, so arrow keys and `g` reached the page behind it, and the page's keys stood aside for a field and a text area and not a select. The finder stops every key and `typingIn` includes SELECT.
 - Proposals, the docs and the finder left the focus on the page behind them. `useDialogFocus` and `trapTab` move it in, keep Tab there and give it back.
@@ -480,7 +552,7 @@ Open:
 - `data-access` in `techtree.json` has two alternatives named "read-only database MCP", one with a patch. The catalog keeps the later, which has none, so the patch never reaches the page. `installText` refuses to show the earlier one's patch against the later, and a test holds that. Recommended: name them apart.
 - `/api/frontier` returns every snapshot with its full state maps, and `runTimeline` reads every intervention of a run before it caps the list, so a long-lived graph, or one filled through `/api/telemetry` by anything holding the token, could make either response large.
 - The CLI formatters print names and ids raw, so a control sequence in one reaches the terminal.
-- The frontier sentence counts every capability the graph holds, as `ambit history` always has, and the map's header counts the curated tree's nodes. Scrubbing the demo to its first observation reads "reached 30" over a header whose tooltip counts 7 nodes reached, all unproven. The two were always different sets (`ambit status` counts every capability but the actions, `ambit history` counts the actions too, and the map counts the nodes it draws); the timeline puts them on one screen for the first time. Recommended: say "across the whole graph" in the sentence, or show the tree's count beside it. It moves the shared sentence the CLI, MCP and page test, and the demo data.
+- The frontier sentence counts every capability the graph holds, as `ambit history` always has, and the map's header counts the curated tree's nodes. Scrubbing the demo to its first observation reads "reached 30" over a header whose tooltip counts 7 nodes reached, all unverified. The two were always different sets (`ambit status` counts every capability but the actions, `ambit history` counts the actions too, and the map counts the nodes it draws); the timeline puts them on one screen for the first time. Recommended: say "across the whole graph" in the sentence, or show the tree's count beside it. It moves the shared sentence the CLI, MCP and page test, and the demo data.
 - A budget bounds and does not delegate. Probed on a fresh graph with a $1 budget on Shell Execution, `canExecute` answers CONFIRM at 50 cents and with no spend stated, and DENY at 1 cent once the dollar is spent. So `ambit budget set` could not truthfully say that spending within the ceiling "no longer needs a person": that holds only beside an autonomous grant, which the budget then bounds. The wording is corrected, except two places that name a contract: the authority report's `spendable_without_asking` key and `ambit status`'s `unattended` block, which lists standing budgets beside sandboxes. They follow the decision. If a budget is meant to relax confirmation within its ceiling, the gate changes and they are right; if not, they change. It is a decision for a person, because it widens what runs unattended (rules 9 and 11).
 - Scrubbed to Aug 3, some blocked rungs on an era's ladder (Local Runtime, Typed Judgment) show no "Waits for". It looks like a prerequisite the observation does not hold. Not investigated.
 - When the header's status pill wraps onto two lines, the second starts with its separator dot. Cosmetic.
@@ -489,4 +561,4 @@ Open:
 - The MCP tool listing and the agent profile are each close to the byte budget a test holds them to, 20,000 and 5,000, so a new tool or a longer description may have to shorten another.
 - `canExecute` does not apply a capability's grants to its actions. After `ambit authority grant shell-execution forbidden --scope=device:nuc`, `act:shell-execution/read_output` on that device still answers ALLOW from the gate. The Infra tab now shows the refusal of the capability beside each action, so the page and `ambit incidents` agree, and the gate is unchanged, because whether a forbidden capability cascades to its actions changes what runs unattended (rules 9 and 11) and is a person's call.
 - An ISO time with a `T` and no zone is still read as local time by `daysSince` in `views.ts`, `ago` in `cli/reports.ts`, `parseDatetime` in `roi.ts`, `agoLabel` in `NodeDetailPanel.tsx` and `usedAgo` in `EnvironmentPanels.tsx`. The space-separated form SQLite writes is read as UTC by all of them, and the run timeline and budgets read both as UTC now. One helper in `shared/format.ts` would close it.
-- Two places still spell a vocabulary fact out. `frontierNow` in `ledger.ts` lists the proven lifecycles, and `assure/lifecycle.ts` writes reached as `!== 'locked'`, where rule 5 says to take them from `vocabulary.ts`.
+- Two places still spell a vocabulary fact out. `frontierNow` in `ledger.ts` lists the verified lifecycles, and `assure/lifecycle.ts` writes reached as `!== 'locked'`, where rule 5 says to take them from `vocabulary.ts`.

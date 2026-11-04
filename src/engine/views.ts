@@ -153,7 +153,10 @@ export function techTreeView(db: Db): TechTreeResponse {
        WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
       .all()
-      .map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
+      .map(r => [
+        r.capability_id,
+        { at: r.at, passed: r.action === 'verified' || r.action === 'passed' },
+      ])
   );
 
   // How many runs passed, of how many: one success is a weaker claim than
@@ -162,7 +165,7 @@ export function techTreeView(db: Db): TechTreeResponse {
   try {
     for (const r of db
       .prepare(
-        `SELECT capability_id, SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passed,
+        `SELECT capability_id, SUM(CASE WHEN action IN ('verified', 'passed') THEN 1 ELSE 0 END) AS passed,
                 COUNT(*) AS total
          FROM session_learning WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
@@ -442,7 +445,7 @@ function ladderFor(
       rung: 'threshold',
       note: failing
         ? `Held: a check is failing inside the ${days}-day window.`
-        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs unattended.`,
+        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs without asking.`,
     };
   }
   if (budgeted) {
@@ -571,7 +574,9 @@ function checkHistory(db: Db, runs = CHECK_HISTORY_RUNS): Map<string, CheckRun[]
       )
       .all<{ capability_id: string; id: number; action: string }>(runs)) {
       if (!out.has(r.capability_id)) out.set(r.capability_id, []);
-      out.get(r.capability_id)!.push({ id: r.id, passed: r.action === CHECK_RUN.passed });
+      out
+        .get(r.capability_id)!
+        .push({ id: r.id, passed: r.action === 'verified' || r.action === CHECK_RUN.passed });
     }
   } catch {
     /* a graph with no ledger yet */
@@ -799,7 +804,10 @@ export function interventionHeatmap(db: Db): Record<string, any>[] {
  * because no report draws a line.
  */
 export function loopView(db: Db): LoopResponse {
-  const counts = graphCounts(db);
+  // Over the curated tree, as the map, its pill and the readout count: the
+  // graph's figure took in the config's own entries, and My Setup's journey
+  // said "18 of 55" under a readout saying "9 of 46".
+  const counts = graphCounts(db, 'tree');
   const digest = humanDigest(db, LOOP_WINDOW_DAYS) as {
     interventions?: number;
     reducible?: Intervention[];

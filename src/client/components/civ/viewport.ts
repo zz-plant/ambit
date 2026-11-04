@@ -166,6 +166,18 @@ export function grabOffset(view: Rect, at: Point): Point {
     : { x: 0, y: 0 };
 }
 
+/** How far a pointer may travel between down and up, in pixels, and still have pressed. */
+export const PRESS_SLOP = 4;
+
+/**
+ * Whether a pointer that went down at one point and came up at another pressed
+ * the map or dragged it. The map pans under a drag, and a drag that ended on
+ * empty ground must not also count as a press there.
+ */
+export function isPress(down: Point, up: Point): boolean {
+  return Math.hypot(up.x - down.x, up.y - down.y) <= PRESS_SLOP;
+}
+
 /**
  * The keys that move the viewport when it has focus, the keyboard's half of
  * a drag. An arrow moves a tenth of the screen, with Shift nearly a whole
@@ -262,15 +274,27 @@ export interface MinimapModel {
   view: { left: number; top: number; width: number; height: number };
 }
 
-export function minimapModel(g: Geometry, scene: Size, box: Size): MinimapModel | null {
+export function minimapModel(
+  g: Geometry,
+  scene: Size,
+  box: Size,
+  across?: { left: number; right: number }
+): MinimapModel | null {
   // Whether the map fits is a question about the scene and the window, so it
   // is asked with the scroller at its origin. Asked where it was scrolled to,
   // a map that overflowed by less than the offsets above it (74px at 1440 by
   // 900) fitted at the bottom of its scroll, and the minimap vanished mid-drag
-  // and dropped out of the Tab order.
-  if (!(g.zoom > 0) || fitsScene(viewportRect({ ...g, scrollLeft: 0, scrollTop: 0 }), scene)) {
-    return null;
-  }
+  // and dropped out of the Tab order. `across` is where the scene holds
+  // anything from side to side: with every column on screen and only the
+  // empty margins past the edges, there is nothing for a thumbnail to show.
+  if (!(g.zoom > 0)) return null;
+  const origin = viewportRect({ ...g, scrollLeft: 0, scrollTop: 0 });
+  const fits = across
+    ? origin.y <= 1 &&
+      origin.y + origin.height >= scene.height - 1 &&
+      origin.width >= across.right - across.left - 1
+    : fitsScene(origin, scene);
+  if (fits) return null;
   const view = viewportRect(g);
   const { scale, width, height } = thumbnail(scene, box);
   const seen = clampToScene(view, scene);

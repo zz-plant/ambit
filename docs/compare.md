@@ -15,7 +15,7 @@ A gateway answers **may this call go ahead, now?** It sees calls as they happen,
 Ambit is not on the call path. It reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI and others into one local graph, and answers questions about the setup as a whole:
 
 - **What can this setup do?** Capabilities are composed: version control plus a review agent is a review loop. Ambit maps what the servers, models, skills and commands add up to, against a curated tree of what agent setups grow into.
-- **Does it work?** A capability with a declared check is proven or failing, and a failing one is left out of every plan and permission decision until it passes.
+- **Does it work?** A capability with a declared check is verified or failing, and a failing one is left out of every plan and permission decision until it passes.
 - **What breaks if one piece goes?** [The blast radius](./mcp-outage.md) of a server, model or credential: what would stop, and what would only lose one of its providers.
 - **What should change next, and was it worth it?** Ranked by what has actually blocked work, drafted as a proposal a person approves, and, once the work ledger (Ambit's local record of agent runs) holds a few weeks of them, measured against the hours it was forecast to save.
 

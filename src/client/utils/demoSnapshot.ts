@@ -93,7 +93,7 @@ function demoCouncil(): LoopCouncil {
       {
         seat: 'science',
         reads: 'the frontier',
-        says: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which is supplied and waiting on this alone.',
+        says: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which needs only this one thing to be reached.',
         command: 'ambit propose embeddings',
         subject: { id: 'combo:embeddings', name: 'Embeddings' },
         stance: 'for',
@@ -109,7 +109,7 @@ function demoCouncil(): LoopCouncil {
       {
         seat: 'treasury',
         reads: 'the ledger',
-        says: 'The ledger prices Vector Store first: it pays back in 9 days and recovers $248 a month, and Embeddings is the step to it.',
+        says: 'Of the capabilities the ledger prices, Vector Store pays back soonest: in 9 days, recovering $248 a month, and Embeddings is the step to it.',
         command: 'ambit opportunities opp-1',
         subject: { id: 'combo:vector-store', name: 'Vector Store' },
         stance: 'for',
@@ -327,7 +327,7 @@ export function demoSnapshot(): LoopSnapshot {
       {
         id: 'combo:embeddings',
         capability: 'Embeddings',
-        why: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which is supplied and waiting on this alone.',
+        why: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which needs only this one thing to be reached.',
         cost: '10m',
         basis: 'observed',
       },
@@ -341,7 +341,7 @@ export function demoSnapshot(): LoopSnapshot {
       {
         id: 'combo:model-routing',
         capability: 'Model Routing',
-        why: 'Reaching it also reaches Offline Capable, which is already supplied and waiting on this alone.',
+        why: 'Reaching it also reaches Offline Capable, which already has a provider and needs only this.',
         cost: '10m',
         basis: 'observed',
       },
@@ -368,10 +368,10 @@ export function demoSnapshot(): LoopSnapshot {
       diminished: treeStatus().degraded,
     },
     // The council on Embeddings, the first of `next`. The one worth the panel
-    // is Defence: the demo tree has Embeddings resting on Hosted Inference,
+    // is What could break: the demo tree has Embeddings resting on Hosted Inference,
     // which the status above lists among the single points of failure, so the
     // frontier's recommendation and the fragility report disagree, and the
-    // page shows both. The Interior seat reads the demo tree's failing node,
+    // page shows both. The Checks seat reads the demo tree's failing node,
     // never a name typed here.
     council: demoCouncil(),
     // A month of sessions: the hosted model does most of it, in Claude Code,

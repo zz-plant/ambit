@@ -82,7 +82,7 @@ import {
 import { judgeGoal } from '../engine/judge.ts';
 import { council } from '../engine/council.ts';
 import { judgeUnrouted, specGoal } from '../engine/spec.ts';
-import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
+import { REACHED_SQL, graphCounts, notSeeded, reachPhrase } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(
@@ -384,6 +384,8 @@ async function handleLine(line: string) {
                 const c = graphCounts(db);
                 return {
                   stats: {
+                    // The sentence the person's own screens print, to quote.
+                    reach: reachPhrase(db),
                     total: c.total,
                     unlocked: c.reached,
                     verified: c.proven,

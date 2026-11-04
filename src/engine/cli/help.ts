@@ -1,56 +1,66 @@
+import { ALIASES, GROUPS } from './groups.ts';
+
 /**
  * What `ambit help` prints.
  *
- * Two lists on purpose: forty verbs on first contact taught nothing, so the
- * short one covers a first session and names the five groups, and `--all` is
- * the full surface.
+ * Three depths, each a step down from the last. The short list is a first
+ * session, nine commands in the order a person meets them, and names the
+ * five groups. `ambit help <group>`, or the group's name alone, is that
+ * group's index: one line a verb. `ambit help <command>` is that command's
+ * entry from `--all`, every option included. The short list once grew to
+ * seventeen verbs with their flags, and a group named alone printed sixty
+ * lines of the judge's options, so a reader met everything before anything.
  */
 
-// Six commands cover most first sessions. Everything else is `help --all` —
-// forty verbs on first contact taught nothing; depth should be discovered.
-const HELP_SHORT = `ambit - what your system can do, what it costs, what to change
+const HELP_SHORT = `ambit - what your setup can do, what it costs, what to change
 
-  seed              seed from the agent config
-  briefing          what an agent should know before its first tool call
-  status            health · failing · sole providers · deficits · waiting approvals
-  next              the three capabilities worth reaching next, and why
-  council           five readings of the first of those, and whether they agree
-  graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
-  goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
-                    delta, compare acquisition paths, or check preferences
-                    --judge[=url] asks a judgment model on this machine when
-                    no words match, or an embedding model there when no
-                    judge answers; it suggests and writes nothing
-  goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
-                    and the gap; the file is read as data, nothing in it runs
-  opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                    ranked investments, or one in full
-  verify [cap] [--history]   run the declared check, or show past verification;
-                             --failing re-runs only the checks now failing
-                             or recovering
-  impact <id>       what actually breaks if a capability goes away
-  doctor            setup health: what works, what fails, what rests on one piece
-  connect [runtime] register Ambit's MCP server in each runtime config it can write
+A first session
+  ambit                 where you stand, and the one step worth taking next
+  ambit web             the same, on a map in the browser
+  ambit next            the three capabilities worth reaching next, and why
+  ambit goal <what>     the steps to a capability: ambit goal "search the web"
+  ambit repo            what to add for the project you are in
+  ambit verify          check that what is configured actually works
+  ambit connect         let your agents ask the same questions, over MCP
+  ambit status          the full report: what fails, and what waits on you
+  ambit seed            read your agent configs again after you change one
 
-  Grouped: graph · plan · check · govern · report — try \`ambit plan\`
-  A decision is taken --by=<person>, or by the one person declared. A report
-  over the ledger looks back --days=30 unless told otherwise.
-  help --all        every command
-  help [term]       one concept explained`;
+The rest sits in five groups; ambit help <group> lists one
+  graph                 the structure, and what losing a piece would break
+  plan                  what to acquire next, and whether it paid
+  check                 what is verified, what is permitted, what is broken
+  govern                proposals, approvals, and the trail they leave
+  report                what the setup costs to operate
 
-const HELP = `ambit - what your system can do, what it costs, what to change
+  ambit help <command>  one command in full: ambit help goal
+  ambit help <word>     one word explained: ambit help frontier
+  ambit help --all      every command at once`;
+
+const HELP = `ambit - what your setup can do, what it costs, what to change
 
 Five groups. Every verb also works on its own — \`ambit impact x\` and
-\`ambit graph impact x\` are the same command.
+\`ambit graph impact x\` are the same command. A decision is taken
+--by=<person>, or by the one person declared. A report over the ledger
+looks back --days=30 unless told otherwise.
 
   seed              seed from the agent config
   briefing [--json] [--peek]   what an agent should know before its first tool
                     call — broken, waiting, blocked, next. --peek does not
                     move the "since last briefing" mark
-  status            health · failing · sole providers · deficits · waiting approvals
+  status [--brief]  health · failing · sole providers · deficits · waiting approvals;
+                    --brief is the short screen bare \`ambit\` shows
+  web [--port=N] [--no-open]   open the map on localhost: the built page from
+                    an install, Vite from a checkout
+  mcp [--profile=agent]   run the MCP server, exposing the same questions to an
+                    agent session: claude mcp add ambit -- ambit mcp
+  --version         the installed version, for a bug report
 
 graph — the structure, and what it would cost to lose a piece
-  graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
+  graph [surface|combos|affordances|unmapped|capacity]   one view of the graph;
+                          with no view, this list on a terminal, and the whole
+                          graph as JSON through a pipe or with --json, which
+                          the map draws when the file is dropped on it
+  graph export            the whole graph as JSON, the same through a pipe or not
   graph impact <id>       what actually breaks if a capability goes away
   graph catalog <cap>     the ways to acquire a capability, compared by cost
   graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
@@ -76,27 +86,28 @@ plan — what to acquire next, and whether it paid
   plan goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]]   route a
                           goal, plan the delta, compare acquisition paths, check
                           preferences; --judge asks a judgment model on this
-                          machine (AMBIT_JUDGE_URL, or Kev on 127.0.0.1:8009)
-                          when no words match, then an embedding model there
-                          (AMBIT_EMBED_URL, or Ollama on 127.0.0.1:11434) when
-                          no judge answers, and suggests without writing
+                          machine (AMBIT_JUDGE_URL, or a default loopback
+                          port) when no words match, then an embedding model
+                          there (AMBIT_EMBED_URL, Ollama's port by default)
+                          when no judge answers, and suggests without writing
   plan goal --spec <dir|tasks.md> [--judge[=url]]   a spec's tasks, each routed
                           as a sentence is: what they need, which is reached,
                           a next step, blocked or failing, the steps in order,
                           and the tasks nothing routed. Spec Kit and OpenSpec;
                           read as data, so no command, link or URL in it runs
   plan opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                          ranked investments, observed burden priced and compared,
+                          ranked opportunities, observed attention priced and compared,
                           or one case in full; --budget allocates the best
                           combination within $N
   plan propose <cap> [option] [--by=<who>]   draft a reviewable acquisition, with
                           its simulation; --by records who drafted it
   plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
                           proposal's before/after verdict
-  plan portfolio [--budget=N]   across imported environments — shared burden,
-                          spofs, where capex would produce the most
+  plan portfolio [--budget=N]   across imported environments — shared attention,
+                          single points of failure, where capex would produce the most
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
+  plan repo [dir]         inspect project stack and recommend tailored agent superpowers
   plan judge goal <sentence> [--multi] [--threshold=0.8] [--record]   which
                           capability a sentence means: the vocabulary first,
                           then a judgment model for what it could not route;
@@ -114,13 +125,13 @@ plan — what to acquire next, and whether it paid
   plan judge history [--limit=N] · review <id> accepted|rejected · plan <id>
                           the receipts kept, a person's one review of each, and
                           the plans an accepted one asks for, from the graph now
-  plan judge … --provider=cloudflare [--model=clef|clef-flash|clef-omni]
+  plan judge … --provider=cloudflare [--model=<name>]
                           send the request to Workers AI, with
                           CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN. The
-                          default is a model on this machine, loopback only:
-                          AMBIT_JUDGE_URL, or 127.0.0.1:8009
+                          default is a model on this machine, loopback only,
+                          at AMBIT_JUDGE_URL or a default port
 
-check — what is proven, what is permitted, what is currently broken
+check — what is verified, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
                           declared check, or past verification; --target files
                           the evidence against that object rather than the verb
@@ -129,11 +140,17 @@ check — what is proven, what is permitted, what is currently broken
   check verify --failing  re-run only the checks that are failing or recovering
                           now, after fixing what broke them; one pass brings a
                           capability back
+  check fix <cap>         what to type for a capability that is failing or not
+                          yet reached: the re-check command and the ways to
+                          acquire it, with each patch to paste. Prints only
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
-  check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]
+  check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--condition=branch!=main] [--by=<person>]
                           declare a grant, or elevate one for a window; once
-                          the TTL runs out whatever stood before decides again
+                          the TTL runs out whatever stood before decides again.
+                          --condition bounds the scope: "yes on this repo, not
+                          on main". A condition the gate cannot parse is not a
+                          narrowing
   check authority promote [<cap> <action> --after=N --window=30d --scope=<target>
                           --by=<person>]   widen a grant once the evidence
                           supports it; --scope buys it for one target only. One
@@ -145,9 +162,12 @@ check — what is proven, what is permitted, what is currently broken
                           a ceiling on spend per period, in dollars; a spend
                           past it is refused, and within it the grant's own
                           mode decides
-  check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
-                          ALLOW/CONFIRM/DENY; --spend is in dollars, as
-                          --amount is; --exit-code also exits 0/1/2
+  check can <cap> [--target=X] [--spend=N] [--exit-code] [--record]   the
+                          decision API: ALLOW/CONFIRM/DENY; --spend is in
+                          dollars, as --amount is; --exit-code also exits
+                          0/1/2. --record files a refusal as a deficit, for an
+                          agent asking from a shell; a person's question files
+                          nothing
   check gate              the Claude Code PreToolUse hook: denies what is forbidden,
                           asks about what asks first or has no grant, and never allows;
                           run it in a terminal for the settings entry to paste
@@ -162,12 +182,23 @@ check — what is proven, what is permitted, what is currently broken
   check incidents [resolve <svc> <outcome>]   probe the manifest, record each
                           answer as a check and open incident runs for offline
                           services; or close one, with MTTR from the ledger
+  check init <cap> [--command="<probe>"]   scaffold a declared check, and print
+                          it. Refuses a command that would write (redirects,
+                          rm, tee, curl -o, git push, installs); nothing is
+                          registered, you paste the block and type ambit verify
   check doctor            setup health: what works, what fails, what rests on one piece
   check connect [runtime] register Ambit's MCP server in each runtime config it can
                           write; cursor --ledger also adds the hooks that record
                           each conversation's tool runs into the work ledger;
                           claude-code --statusline sets ambit statusline as the
-                          status line where none is set, and never replaces one
+                          status line where none is set, and never replaces one;
+                          claude-code --gate adds the gate to every tool call: it
+                          denies what is forbidden and asks about what asks first
+                          or has no grant. Ends on what is still missing
+  check port [server] [--to=<runtime|all>] [--from=<runtime>] [--dry-run]
+                          port an MCP server between agent runtimes (Claude, Cursor, Codex, etc.)
+  check toggle <server> [--off|--on] [--to=<runtime>] [--dry-run]
+                          turn an MCP server off or on across agent runtimes
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported
@@ -217,7 +248,7 @@ govern — the reviewable path from proposal to applied change
                           read, or read them all now. A source that goes quiet
                           says so rather than looking like a quiet week
 
-report — what the system cost to operate
+report — what the setup cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
   report usage --windows [days]
@@ -248,18 +279,174 @@ report — what the system cost to operate
                           its check, the proposals to decide, the verified count.
                           Reads the graph and writes nothing
 
-  help [term]       this list, or one concept explained`;
+  help [group|command|word]   the first-session list, or a group's index, one
+                    command in full, or one word explained
+  help --all        this list`;
 
 /**
- * What one group owns, as `help --all` prints it.
+ * Each group's index: one line a verb, in the order a person reaches for them.
  *
- * `ambit help` ends "try `ambit plan`", and a group named with no verb after it
- * was an unknown command, so the one piece of advice the short help gives led
- * to an error. Sections are separated by a blank line and none contains one,
- * so the group's is the chunk that opens with its name.
+ * Written apart from the full list and not cut from it, because an entry
+ * there opens on its options and a line cut to fit stopped mid-clause. A
+ * test holds every verb a group dispatches to a line here.
  */
-function groupHelp(group: string): string {
-  return HELP.split('\n\n').find(part => part.startsWith(`${group} — `)) ?? HELP_SHORT;
+const INDEX: Record<string, [string, string][]> = {
+  graph: [
+    ['graph [view]', 'one view: surface, combos, affordances, unmapped, capacity'],
+    ['impact <id>', 'what stops working if this piece goes away'],
+    ['catalog <cap>', 'the ways to acquire a capability, compared by cost'],
+    ['share', 'the map as one HTML file, safe to post'],
+    ['where', 'which graph file is open'],
+    ['skills', 'what the agent built itself and registered'],
+    ['objects [target]', 'what may be done to a thing, and what is proved there'],
+    ['sync export|import', 'the graph and ledger as one file, for a rebuilt machine'],
+  ],
+  plan: [
+    ['next [n]', 'the capabilities worth reaching next, and why'],
+    ['goal <what>', 'the steps to a capability, in order'],
+    ['council', 'the first next step, read five ways'],
+    ['propose <cap>', 'draft a change for a person to approve'],
+    ['opportunities', 'structural changes worth making, ranked and priced'],
+    ['roi', 'whether the changes you applied paid'],
+    ['reversible', 'what could be acquired without a person'],
+    ['repo [dir]', 'what to add for the project you are in'],
+    ['portfolio', 'the same questions across imported environments'],
+    ['judge', 'ask a model on this machine which node a sentence means'],
+  ],
+  check: [
+    ['verify [cap]', 'run the declared checks and record what passed'],
+    ['fix <cap>', 'what to type for something failing or not reached'],
+    ['doctor', 'what works, what fails, what rests on one piece'],
+    ['connect [runtime]', "register Ambit's MCP server with your agents"],
+    ['authority [cap]', 'what may run without asking, and what asks first'],
+    ['can <cap>', 'one decision: allow, confirm or deny'],
+    ['budget', 'a ceiling on what a capability may spend'],
+    ['gate', 'the Claude Code hook that asks or denies before a tool runs'],
+    ['weigh', "what each tool server's tool list costs in context"],
+    ['toggle <server>', 'turn a tool server off or on across runtimes'],
+    ['port [server]', 'copy a tool server from one runtime to another'],
+    ['credentials', 'what revoking each credential would end'],
+    ['init <cap>', 'scaffold a declared check to paste'],
+    ['init-rules', "add Ambit's pre-flight guidance to your agent rules"],
+    ['incidents', 'probe the declared services and record what answered'],
+    ['receipt [hours]', 'what the ledger recorded in the last hours'],
+    ['ci', 'the capability checks a CI pipeline runs'],
+  ],
+  govern: [
+    ['proposals [id]', 'the drafts, and what waits on a decision'],
+    ['approve <id>', 'say yes to a draft; apply is what writes it'],
+    ['reject <id>', 'say no, with a reason the next draft learns from'],
+    ['apply <id>', "write an approved change into a runtime's config"],
+    ['rollback <id>', 'undo an applied change'],
+    ['people', 'who may approve and set budgets'],
+    ['dispatch <id>', 'send a proposal to Slack, Discord, ntfy or a webhook'],
+    ['history', 'how the frontier moved over time'],
+    ['audit', 'who approved what, what ran, and whether it held'],
+    ['delegation', 'grants that narrowed when what they rest on failed'],
+  ],
+  report: [
+    ['work', 'recent runs, each with what it cost'],
+    ['usage', 'where effort and tokens went'],
+    ['attention', 'how much work still runs through a person'],
+    ['economics', 'declared costs and goal values'],
+    ['record <cap>', 'record a blocked task, or a skill the agent wrote'],
+    ['signals', 'failures observed without anyone recording them'],
+    ['preferences', 'what someone declared, or what they actually approve'],
+    ['notify <topic>', "push the week's digest to ntfy"],
+    ['federation', 'the signed summary a portfolio layer reads'],
+    ['statusline', "one line for Claude Code's status line"],
+  ],
+};
+
+/** A group's heading, as the full list writes it: "plan — what to acquire next…". */
+function heading(group: string): string {
+  return HELP.split('\n').find(line => line.startsWith(`${group} — `)) ?? group;
 }
 
-export { HELP, HELP_SHORT, groupHelp };
+/**
+ * What a group owns, one line a verb, and how to run and read one.
+ *
+ * `ambit help` sends a reader to a group, and a group named with no verb
+ * after it was an unknown command, so the one piece of advice the short help
+ * gave led to an error. It then printed the group's whole section of
+ * `--all`, which for plan was sixty lines.
+ */
+function groupHelp(group: string): string {
+  const rows = INDEX[group];
+  if (!rows) return HELP_SHORT;
+  const width = Math.max(...rows.map(([usage]) => usage.length));
+  return [
+    heading(group),
+    '',
+    ...rows.map(([usage, says]) => `  ${usage.padEnd(width)}   ${says}`),
+    '',
+    `  Each runs as ambit <verb>, or ambit ${group} <verb>.`,
+    '  ambit help <verb> shows one in full, with its options.',
+  ].join('\n');
+}
+
+/**
+ * A group's section of the full list. Sections are separated by a blank line
+ * and none contains one, so the group's is the chunk that opens with its name.
+ */
+function groupSection(group: string): string | undefined {
+  return HELP.split('\n\n').find(part => part.startsWith(`${group} — `));
+}
+
+/**
+ * Every entry of the full list: a line at the two-space margin and the lines
+ * indented under it. A heading or a blank line closes one.
+ */
+function entries(): string[] {
+  const out: string[] = [];
+  let open = false;
+  for (const line of HELP.split('\n')) {
+    if (/^ {2}\S/.test(line)) {
+      out.push(line);
+      open = true;
+    } else if (open && /^ {3,}\S/.test(line)) out[out.length - 1] += `\n${line}`;
+    else open = false;
+  }
+  return out;
+}
+
+/**
+ * A command's entries from the full list, every form of it, or nothing for a
+ * word that is no command. `init` is not `init-rules`: the word has to end
+ * where the verb does.
+ */
+function commandHelp(verb: string): string | undefined {
+  const group = Object.keys(GROUPS).find(g => GROUPS[g].includes(verb));
+  const opens = group ? `${group} ${verb}` : verb;
+  const found = entries().filter(entry => {
+    const rest = entry.slice(2);
+    return rest.startsWith(opens) && /^(\s|$)/.test(rest.slice(opens.length));
+  });
+  if (!found.length) return undefined;
+  const runs = group ? `ambit ${verb}, or ambit ${group} ${verb}: the same command` : '';
+  return [...found, ...(runs ? ['', `  ${runs}`] : [])].join('\n');
+}
+
+/**
+ * What `ambit help <words>` is about, when it is a command or a group: a
+ * group alone is its index, a group and one of its verbs is that verb, and an
+ * old name is read as the one it became. Anything else is no topic here, and
+ * the caller looks the words up in the glossary.
+ */
+function helpTopic(words: string[]): { text: string; verb?: string } | undefined {
+  const named = (word: string | undefined) => {
+    const lower = word?.toLowerCase();
+    return lower && lower in ALIASES ? ALIASES[lower].to : lower;
+  };
+  let verb = named(words[0]);
+  if (!verb) return undefined;
+  if (verb in GROUPS) {
+    const sub = named(words[1]);
+    if (!sub || !GROUPS[verb].includes(sub)) return { text: groupHelp(verb) };
+    verb = sub;
+  }
+  const text = commandHelp(verb);
+  return text ? { text, verb } : undefined;
+}
+
+export { HELP, HELP_SHORT, INDEX, commandHelp, groupHelp, groupSection, helpTopic };

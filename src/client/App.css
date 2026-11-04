@@ -172,6 +172,14 @@ code, pre, .code, .sp-cli-cmd {
   outline: none;
 }
 
+/* Placeholder text in the muted token, not the browser's #757575: that was
+   3.9:1 on the inset fields, under the 4.5:1 text needs. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
 /* Text for screen readers only: the live region that announces a selection.
    It rendered as visible text in the top-left corner while this was missing. */
 .visually-hidden {
@@ -184,6 +192,33 @@ code, pre, .code, .sp-cli-cmd {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* The first stop for a keyboard, past the header to the view: out of sight
+   until it has the focus, and then over the brand where the eye starts. */
+.app-skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.app-skip:focus {
+  transform: none;
+}
+
+/* The view takes the focus from the skip link and a finished tour, as a
+   place to start from; a ring round all of it marks nothing. */
+.app-scene:focus {
+  outline: none;
 }
 
 /* Under reduced motion, nothing transitions. A transition of 0.01ms is still
@@ -684,6 +719,8 @@ button.app-sample-tag:hover {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   border-bottom-color: var(--border-subtle);
+  /* The whole row selects its entry, as the hover across its width says. */
+  cursor: pointer;
 }
 
 .setup-row:hover {
@@ -841,6 +878,7 @@ button.app-sample-tag:hover {
 
 /* A node this entry provides, as a link onto the map. */
 .setup-chip {
+  min-height: 24px;
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: 500;
@@ -1152,6 +1190,8 @@ button.app-sample-tag:hover {
 }
 
 .sp-close {
+  min-width: 24px;
+  min-height: 24px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -1177,7 +1217,12 @@ button.app-sample-tag:hover {
   margin: 0 0 4px;
   font-size: var(--fs-md);
   line-height: 1.4;
-  color: var(--warn);
+  color: var(--text-primary);
+}
+
+.sp-keystone-mark {
+  flex: none;
+  align-self: center;
 }
 
 .sp-evidence {
@@ -1378,7 +1423,7 @@ button.app-sample-tag:hover {
 }
 
 .sp-status--specified {
-  color: var(--warn);
+  color: var(--accent);
 }
 
 .sp-status--deprecated {
@@ -1448,13 +1493,13 @@ button.app-sample-tag:hover {
 }
 
 .sp-action-btn--unlock {
-  border: 1px solid var(--ok);
-  color: var(--ok);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
   font-size: var(--fs-md);
 }
 
 .sp-action-btn--unlock:hover {
-  background: var(--ok-soft);
+  background: var(--accent-soft);
 }
 
 .sp-cli-actions {
@@ -1606,9 +1651,11 @@ button.app-sample-tag:hover {
   font-weight: 500;
   letter-spacing: 0.2px;
   color: var(--text-secondary);
+  bottom: 10px;
   pointer-events: none;
   user-select: none;
-  transition: bottom 0.2s;
+  /* Lifted over a sheet by a transform, which moves no layout. */
+  transition: transform 0.2s;
 }
 
 /* A phone's screenshot is the one that loses the address bar; a desktop
@@ -1626,6 +1673,9 @@ button.app-sample-tag:hover {
   z-index: 5;
   display: flex;
   gap: 2px;
+  /* A fieldset, which a browser gives a margin and a minimum width. */
+  margin: 0;
+  min-width: 0;
   padding: 3px;
   border-radius: var(--radius-md);
   background: var(--bg-glass);
@@ -1865,6 +1915,24 @@ button.app-sample-tag:hover {
   stroke-linejoin: round;
 }
 
+/* A node's focus is a ring round its circle. The outline everything else
+   takes boxed the circle and its name together, with the box's edge through
+   the name and over the brackets. */
+.civ-node:focus-visible {
+  outline: none;
+}
+
+.civ-focus-ring {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.civ-node:focus-visible > .civ-focus-ring {
+  opacity: 1;
+}
+
 /* Room for the HUD above the era headers, so it never sits on a column name. */
 .civ-tree-svg {
   display: block;
@@ -1969,14 +2037,23 @@ button.app-sample-tag:hover {
   box-shadow: var(--shadow-md);
 }
 
+/* What the map is, in the key: the tab titles say it on hover only. */
+.civ-key-lead {
+  margin: 0 0 8px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .civ-key-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
+  gap: 1px;}
 
 .civ-key-head {
   padding: 4px 6px 2px;
@@ -2150,8 +2227,8 @@ button.app-sample-tag:hover {
 }
 
 .civ-sim-banner--acquisition {
-  border: 1px solid var(--ok-line);
-  color: var(--ok);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
 }
 
 .civ-sim-banner-close {
@@ -2331,7 +2408,8 @@ button.app-sample-tag:hover {
 
 .civ-finding--bad {
   border-color: var(--error-line);
-  background: #231416;
+  /* Opaque, since it sits over the map: the failing red a step into the glass. */
+  background: color-mix(in srgb, var(--error) 7%, var(--bg-glass));
 }
 
 .civ-finding-dot {
@@ -3395,6 +3473,32 @@ button.app-sample-tag:hover {
   color: var(--text-primary);
 }
 
+/* A line's actor, action or target as the filter it is: drawn as before, and
+   underlined when the pointer says it can be pressed. */
+.audit-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.audit-field:hover,
+.audit-field:hover code {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.audit-field[aria-pressed='true'],
+.audit-field[aria-pressed='true'] code {
+  color: var(--accent);
+}
+
 .audit-summary {
   flex: 1 1 200px;
   color: var(--text-secondary);
@@ -3457,6 +3561,13 @@ button.app-sample-tag:hover {
 }
 
 .app-guide-close {
+  /* The hit area reaches past the word, the box staying where the word sat:
+     it was the glyph alone, 10 by 15 for the readout's close. */
+  min-width: 24px;
+  min-height: 24px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -3465,15 +3576,12 @@ button.app-sample-tag:hover {
 }
 
 /* ─── TIME & COST DASHBOARD ─── */
-/* Fills the scene beside the panel rather than under it: the left inset is
-   set inline from the same state that positions the map. */
 .loop-dashboard {
   position: absolute;
   inset: 0;
   overflow-y: auto;
   padding: 24px 28px 40px;
   background: var(--bg-deep);
-  transition: left 0.15s ease;
 }
 
 .loop-inner {
@@ -3607,6 +3715,13 @@ button.app-sample-tag:hover {
   font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* What a second ranking on the page ranks by, under its title. */
+.loop-section-note {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
 
 .loop-filter-tabs {
@@ -4466,6 +4581,26 @@ button.app-sample-tag:hover {
   font-size: var(--fs-base);
 }
 
+.app-loading p {
+  max-width: 60ch;
+  margin: 0;
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* What a view threw, for the person to read out in a report. */
+.app-loading-error {
+  max-width: min(80ch, calc(100% - 32px));
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .app-loading-ring {
   width: 24px;
   height: 24px;
@@ -4592,6 +4727,23 @@ button.app-sample-tag:hover {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* The foot of the help overlay: the one link from the terms and the map to the
+   published pages. */
+.docs-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.docs-foot a {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.docs-foot a:hover {
+  text-decoration: underline;
 }
 
 .docs-lede {
@@ -4834,10 +4986,33 @@ button.app-sample-tag:hover {
   }
 }
 
-/* Up to 1270px the view tabs are icons: five of them no longer fit with
-   words on a phone, where the tab bar's own idiom is icon-first anyway, and
-   each keeps its name in aria-label and its tooltip. */
-@media (max-width: 1270px) {
+/* From 1024px to 1270px the view tabs give up their icons and keep a word,
+   the short one where a view has one (Setup, Cost): five drawings were five
+   things to learn before a tab could be read. The words cost about 120px
+   over the icons, which below 1024px the status pill needs: there it folded
+   to one count and then wrapped. So from 769px the tabs are icons again, as
+   on a phone, where that is the tab bar's own idiom. Each keeps its full name
+   in aria-label and its tooltip at every width. */
+.app-deck-tab-short {
+  display: none;
+}
+
+@media (min-width: 1024px) and (max-width: 1270px) {
+  .app-deck-nav .app-tab-icon,
+  .app-deck-nav .app-deck-tab-label--long {
+    display: none;
+  }
+
+  .app-deck-nav .app-deck-tab-short {
+    display: inline;
+  }
+
+  .app-deck-nav .app-deck-tab {
+    padding: 5px 9px;
+  }
+}
+
+@media (max-width: 1023px) {
   .app-deck-nav .app-deck-tab-label {
     display: none;
   }
@@ -4873,6 +5048,31 @@ button.app-sample-tag:hover {
   white-space: nowrap;
 }
 
+/* A finger is wider than a pointer: the small controls take 44px on a touch
+   screen, where 24 is enough for a mouse. */
+@media (pointer: coarse) {
+  .app-guide-close,
+  .sp-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .setup-chip {
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+
+  .setup-row-provides {
+    gap: 8px;
+  }
+
+  /* The map's tools were 24 to 26px tall, under a thumb at 375 wide. */
+  .civ-zoom-btn {
+    min-width: 40px;
+    height: 40px;
+  }
+}
+
 /* ─── RESPONSIVE RULES ─── */
 @media (max-width: 768px) {
   .star-panel {
@@ -4884,6 +5084,11 @@ button.app-sample-tag:hover {
     height: 60%;
     border-left: none;
     border-top: 1px solid var(--border);
+  }
+
+  /* A peek while a simulation runs: at 60% the sheet hid what it lit. */
+  .app--simulating .star-panel {
+    height: 34%;
   }
 
   .sp-grab-bar {
@@ -5242,8 +5447,9 @@ button.app-sample-tag:hover {
 }
 
 /* A lens the ledger has nothing for is offered, disabled, with the reason
-   in its tooltip. */
-.civ-lens-hud .app-deck-tab:disabled {
+   in its tooltip and its description. It stays focusable, so the reason is
+   read to a keyboard too. */
+.civ-lens-hud .app-deck-tab[aria-disabled='true'] {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -5474,7 +5680,7 @@ button.app-sample-tag:hover {
 .setup-unplaced {
   margin: 10px 0 4px;
   padding: 10px 14px;
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--accent-line);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
   font-size: var(--fs-base);
@@ -5736,6 +5942,9 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+/* What happens to a pasted config, at reading weight and beside the box: it
+   decides whether a visitor pastes one at all, and it used to be the last
+   muted note in the form. */
 .intake-trust {
   margin: 2px 0 0;
   font-size: var(--fs-sm);
@@ -5865,11 +6074,20 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+/* The last card holds three buttons, and at 800 wide they shared one row:
+   "Keep exploring" broke onto two lines and "Map yours" was clipped. A
+   button keeps its label on one line, and the row wraps before one does. */
 .app-tour-nav {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
   margin-top: 14px;
+}
+
+.app-tour-nav button {
+  white-space: nowrap;
 }
 
 .app-tour-dots {
@@ -6744,6 +6962,8 @@ button.app-sample-tag:hover {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  /* Right-aligned on its own: the desk says once what approving does. */
+  margin-left: auto;
 }
 
 /* ─── WHAT A NODE MAY DO, PER ACTION ─── */
@@ -7728,7 +7948,6 @@ button.app-sample-tag:hover {
 
 .sp-grant-rung {
   position: relative;
-  padding: 8px 0 0;
   /* Narrow, as the map's other short labels are: at the panel's width a
      fifth of it is 61px, and "Unattended" in the text face is wider. */
   font-family: var(--font-display);
@@ -7737,9 +7956,10 @@ button.app-sample-tag:hover {
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Two lines over an ellipsis: "Without as…" left the rung the ladder
+     exists to name unread. */
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .sp-grant-rung::before {
@@ -7751,6 +7971,41 @@ button.app-sample-tag:hover {
   height: 4px;
   border-radius: 2px;
   background: var(--border);
+  /* The bar is part of the rung's button underneath it. */
+  pointer-events: none;
+}
+
+/* The rung's label and its bar are one press, which says what the rung means. */
+.sp-grant-rung-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 0 2px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+  overflow-wrap: inherit;
+  cursor: pointer;
+}
+
+.sp-grant-rung-btn:hover,
+.sp-grant-rung-btn[aria-pressed='true'] {
+  color: var(--text-primary);
+}
+
+.sp-grant-meaning {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.sp-grant-meaning:empty {
+  margin: 0;
 }
 
 .sp-grant-rung.is-past::before {

@@ -95,7 +95,12 @@ function verifyCheck(
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
       });
-      if (out.status === 0) status = 'verified';
+      // A curated check is written for `sh`. Windows without one has not failed
+      // the check, it could not ask, and a failure would drop a working
+      // capability from every plan.
+      if (process.platform === 'win32' && cmd === 'sh' && (out.error as any)?.code === 'ENOENT') {
+        detail = 'this check needs sh on the PATH, which Git Bash provides';
+      } else if (out.status === 0) status = 'verified';
       else {
         status = 'failed';
         detail = (out.stderr || out.stdout || `exit ${out.status}`).toString().trim().slice(0, 160);
@@ -114,7 +119,12 @@ function verifyCheck(
     if (exists) {
       db.prepare(
         "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, ?)"
-      ).run(id, status, status === 'verified' ? 1 : 0, detail || null);
+      ).run(
+        id,
+        status === 'verified' ? 'passed' : status,
+        status === 'verified' ? 1 : 0,
+        detail || null
+      );
     }
   }
   return { id, name, status, detail, ms };
@@ -238,7 +248,7 @@ function runVerification(
           {
             ...r,
             reliability: history.length
-              ? `${history.filter((h: any) => h.action === 'verified').length}/${history.length}`
+              ? `${history.filter((h: any) => h.action === 'verified' || h.action === 'passed').length}/${history.length}`
               : undefined,
             lifecycle: db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get(which)
               ?.lifecycle,
@@ -267,7 +277,9 @@ function runVerification(
     const r = verifyAction(db, node, action);
     const history = evidenceFor(db, r.id);
     const runs = history.length;
-    const passes = history.filter((h: any) => h.action === 'verified').length;
+    const passes = history.filter(
+      (h: any) => h.action === 'verified' || h.action === 'passed'
+    ).length;
     deriveLifecycles(db);
     const authority = evaluatePromotions(db);
     recordDelegationState(db);
@@ -323,7 +335,9 @@ function settle(db: Db, results: any[], target?: string) {
   const withReliability = results.map((r: any) => {
     const history = evidenceFor(db, r.id);
     const runs = history.length;
-    const passes = history.filter((h: any) => h.action === 'verified').length;
+    const passes = history.filter(
+      (h: any) => h.action === 'verified' || h.action === 'passed'
+    ).length;
     return {
       ...r,
       reliability: runs ? `${passes}/${runs}` : undefined,

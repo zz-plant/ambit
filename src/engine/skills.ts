@@ -112,7 +112,7 @@ function registerSkill(
     detail: proof.detail,
     note:
       proof.status === 'verified'
-        ? `On the map, proven. It appears in ambit status, in the next briefing, and in ambit history since as gained by ${runtime}.`
+        ? `On the map, verified. It appears in ambit status, in the next briefing, and in ambit history since as gained by ${runtime}.`
         : 'Registered, and its check does not pass — so it reads as configured-but-failing everywhere availability is decided. Fix the check or the skill.',
   };
 }

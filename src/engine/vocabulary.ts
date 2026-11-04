@@ -14,6 +14,7 @@
  */
 
 import { shellQuote } from '../shared/shell.ts';
+import { BUILT_INS } from '../shared/runtimes.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
 
 /** States that mean the system can reach a capability. */
@@ -42,7 +43,7 @@ const FAILING = ['broken'] as const;
  * proven, because its evidence is mixed, so a summary counts it with the
  * unproven and says, where it names one, how many of its recent runs passed.
  */
-const RECOVERING = ['degraded'] as const;
+const RECOVERING = ['degraded', 'recovering'] as const;
 
 /** Lifecycles that mean a check has passed. */
 const PROVEN = ['verified', 'reliable'] as const;
@@ -91,8 +92,8 @@ const COUNTED_SQL = `kind NOT IN (${sqlList(['action', ...NON_FRONTIER_KINDS])})
  * asks which rows are check runs takes the fragment, and whatever reads the
  * outcome of one takes the word.
  */
-const CHECK_RUN = { passed: 'verified', failed: 'failed' } as const;
-const CHECK_RUN_SQL = `action IN (${sqlList([CHECK_RUN.passed, CHECK_RUN.failed])})`;
+const CHECK_RUN = { passed: 'passed', failed: 'failed' } as const;
+const CHECK_RUN_SQL = `action IN (${sqlList([CHECK_RUN.passed, 'verified', CHECK_RUN.failed])})`;
 
 /**
  * The command that runs a node's check again, as a surface prints it.
@@ -186,6 +187,45 @@ function graphCounts(
 }
 
 /**
+ * Reach in words, the same wherever a sentence states it: the curated
+ * capabilities reached of the tree's, then the reached nodes that are the
+ * person's own, their servers, models, runtimes, devices and skills. The readout, the map and the hosted page
+ * measure against the tree, and `ambit status`, the briefing and `ambit
+ * doctor` called the same setup "18 of 55" where the readout said "9 of 46".
+ * Both were true; a sentence holding both agrees with each.
+ *
+ * What every runtime brings (`BUILT_INS`) is seeded on every machine, with or
+ * without a config, so counting it as the person's own made an empty home read
+ * "4 of your own" on the screen that also said nothing of theirs was found. It
+ * is left out of the second figure.
+ */
+function reachPhrase(db: { prepare(sql: string): { get(...p: unknown[]): any } }): string {
+  const tree = graphCounts(db, 'tree');
+  const own = ownReached(db);
+  return (
+    `${tree.reached} of ${tree.total} capabilities reached` +
+    (own > 0 ? `, and ${own} of your own` : '')
+  );
+}
+
+/** The reached nodes that are the person's own: not the tree's, and not what every runtime brings. */
+function ownReached(db: { prepare(sql: string): { get(...p: unknown[]): any } }): number {
+  const builtIn = BUILT_INS.map(b => `'${b.id}'`).join(', ');
+  try {
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM capabilities
+         WHERE ${COUNTED_SQL} AND kind != 'capability' AND ${REACHED_SQL}
+           AND id NOT IN (${builtIn})`
+      )
+      .get();
+    return row?.n ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Characters to a token, for every token count the engine states.
  *
  * Roughly four, which is close enough to hold a budget and to compare one
@@ -222,7 +262,12 @@ function notSeeded(fix = 'ambit seed') {
  * nothing may ever propose removing them however often they recur. This list
  * existed twice under two names and a third time as a subset.
  */
-const MIDDLEWARE_KINDS = new Set([
+/**
+ * Normalized labor accounting classifications:
+ * - Compensatory friction: mechanical duct, shim, or glue to automate.
+ * - Sovereign discretion: essential human judgment, ethics, or fiduciary sign-off to preserve.
+ */
+const COMPENSATORY_FRICTION_KINDS = new Set([
   'clerical',
   'exception',
   'physical',
@@ -232,7 +277,13 @@ const MIDDLEWARE_KINDS = new Set([
   'permission block',
 ]);
 
-const KEEPER_KINDS = new Set(['judgment', 'knowledge']);
+const SOVEREIGN_DISCRETION_KINDS = new Set(['judgment', 'knowledge']);
+
+// Historical aliases: the engine's internal name was "middleware"/"keeper"; the
+// normalized names are canonical now. Kept so existing imports and stored
+// references keep resolving.
+const MIDDLEWARE_KINDS = COMPENSATORY_FRICTION_KINDS;
+const KEEPER_KINDS = SOVEREIGN_DISCRETION_KINDS;
 
 /** The middleware kinds that are a person being asked for permission. */
 const GATE_KINDS = ['authority', 'approval', 'permission block'] as const;
@@ -324,11 +375,15 @@ export {
   DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,
+  ownReached,
+  reachPhrase,
   type GraphCounts,
   NOT_SEEDED,
   notSeeded,
   MIDDLEWARE_KINDS,
   KEEPER_KINDS,
+  COMPENSATORY_FRICTION_KINDS,
+  SOVEREIGN_DISCRETION_KINDS,
   GATE_KINDS,
   AUDIT_OUTCOMES,
   ACT_OUTCOMES,

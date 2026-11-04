@@ -177,6 +177,12 @@ CREATE TABLE IF NOT EXISTS authority (
     -- Null expires_at means permanent grant. Expired autonomous grants
     -- fall back to confirm mode.
     expires_at TEXT,
+    -- §13.9: a condition a target must satisfy for this grant to cover it.
+    -- A narrow DSL only: `branch!=main` or `branch=main`, matched against the
+    -- target's last path segment. Grants are stored as a person declared them;
+    -- the gate evaluates the condition, so a bound can say "yes on this repo,
+    -- not on main".
+    condition TEXT,
     UNIQUE(capability_id, action, holder, scope, source)
 );
 

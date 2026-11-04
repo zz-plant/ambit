@@ -1617,7 +1617,7 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "degraded",
+          "lifecycle": "recovering",
           "lastChecked": "2026-09-24 09:00:00",
           "providers": [
             "mcp:sentry"
@@ -5020,7 +5020,7 @@
           "combo:local-typed-judgment": "unknown",
           "combo:model-routing": "unknown",
           "combo:notifications": "detected",
-          "combo:observability": "degraded",
+          "combo:observability": "recovering",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
           "combo:payments": "unknown",

@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import AppDeck, { mapCounts } from './components/AppDeck';
+import AppDeck, { mapCounts, VIEW_ID } from './components/AppDeck';
 import { dayOf, hasHistory, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, unlockedSince, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
@@ -38,6 +38,7 @@ import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg, type Showing } from '
 import type { ImageKind } from './components/civ/ImageMenu';
 import { embeddedFontCss } from './fonts';
 import { INSTALL } from './utils/copy';
+import { isMissingFile } from './utils/loadFailure';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 // Fetched when first opened: a visit lands on the map, and the views it
@@ -53,6 +54,19 @@ const ApprovalModal = React.lazy(() => import('./components/ApprovalModal'));
 /** The width of the detail panel. */
 const PANEL_W = 340;
 
+/**
+ * What the browser's tab says for each view, after the page's own title,
+ * which the map keeps since it is what a search result and a link show.
+ */
+const VIEW_TITLES: Record<View, string | null> = {
+  map: null,
+  setup: 'My Setup',
+  cost: 'Time & cost',
+  audit: 'Audit',
+  proposals: 'Proposals',
+};
+const PAGE_TITLE = typeof document === 'undefined' ? 'Ambit' : document.title;
+
 /** A view on its way, named: every view said "Loading the map…", Proposals and Audit included. */
 const Loading = ({ what }: { what: string }) => (
   <div className="app-loading">
@@ -62,34 +76,67 @@ const Loading = ({ what }: { what: string }) => (
 );
 
 /**
- * A view whose code could not be fetched, which is what an open page meets
- * after a deploy replaces the files it was built from. The suspense fallback
- * used to stay up forever; this says so and offers the one thing that works.
+ * A view that could not be shown, said for the reason it could not.
+ *
+ * Its code may not have arrived, which is what an open page meets after a
+ * deploy replaces the files it was built from: the suspense fallback used to
+ * stay up forever, and main.tsx reloads once before this is reached, so it is
+ * what a person sees when the reload did not help. Or the view threw while it
+ * drew, and every such error was reported as the first kind, with nothing of
+ * what was thrown: a person reloaded onto the same failure, and nobody could
+ * say what it was. A thrown error names itself here and in the console.
  */
 class ViewBoundary extends React.Component<
   { what: string; children: React.ReactNode },
-  { failed: boolean }
+  { error: unknown }
 > {
-  state = { failed: false };
+  state: { error: unknown } = { error: null };
 
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error: unknown) {
+    return { error: error ?? new Error('unknown error') };
+  }
+
+  componentDidCatch(error: unknown, info: React.ErrorInfo) {
+    console.error(`Ambit: ${this.props.what} failed to draw.`, error, info.componentStack);
   }
 
   render() {
-    if (!this.state.failed) return this.props.children;
+    const { error } = this.state;
+    if (!error) return this.props.children;
+    const what = this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1);
     return (
       <div className="app-loading" role="alert">
-        <p>
-          {this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1)} could not load. The
-          page may be older than the files it asks for.
-        </p>
+        {isMissingFile(error) ? (
+          <p>
+            {what} could not load. A newer build may have replaced the files this page was loaded
+            from. Reload to get it.
+          </p>
+        ) : (
+          <>
+            <p>{what} stopped with an error, which is a bug in the page and not your setup:</p>
+            <code className="app-loading-error">
+              {error instanceof Error ? `${error.name}: ${error.message}` : String(error)}
+            </code>
+          </>
+        )}
         <button type="button" className="tp-btn" onClick={() => window.location.reload()}>
           Reload
         </button>
       </div>
     );
   }
+}
+
+/**
+ * What arriving at a view reads, whether its tab was pressed or Back and
+ * Forward brought it. Back used to set the view and read nothing, so after a
+ * reload the trail said "Reading the trail…" for good.
+ */
+function readOnArrival(view: View) {
+  const s = useAmbitStore.getState();
+  if (view === 'cost' && !s.demo) s.loadLoop();
+  if (view === 'audit') s.loadAudit();
+  if (view === 'proposals') s.loadProposals();
 }
 
 /** A lazy view: named while it loads, and a way out when it cannot. */
@@ -163,6 +210,10 @@ export default function App() {
   const [view, setView] = useState<View>(() =>
     initialView(link, isNarrowScreen(), showGuide || Boolean(link.tour))
   );
+  useEffect(() => {
+    const name = VIEW_TITLES[view];
+    document.title = name ? `${name} · Ambit` : PAGE_TITLE;
+  }, [view]);
   // Which section of My Setup is showing. App owns it, so a link can open on
   // it and the address bar carries it.
   const [setupTab, setSetupTab] = useState<SetupTab>(() => link.tab);
@@ -289,6 +340,7 @@ export default function App() {
       const next = readLinkState(window.location.search);
       setLink(next);
       setView(next.view);
+      readOnArrival(next.view);
       setSetupTab(next.tab);
       setShowDocs(next.docsOpen);
       const s = useAmbitStore.getState();
@@ -379,23 +431,12 @@ export default function App() {
   const showView = (next: View) => {
     setView(next);
     // The detail panel is meaningful over the map and the list, and in the
-    // way over the figures. An era's ladder is the map's alone: it stayed open
-    // over My Setup, covering the right edge of the list.
+    // way over the figures, the trail and the decisions, which are pages of
+    // their own. An era's ladder is the map's alone: it stayed open over My
+    // Setup, covering the right edge of the list.
     if (next !== 'map' && useAmbitStore.getState().selectedEra !== null) selectEra(null);
-    if (next === 'cost') {
-      selectItem(null);
-      if (!demo) loadLoop();
-    }
-    if (next === 'audit') {
-      selectItem(null);
-      loadAudit();
-    }
-    // The decisions are a page of their own: the panel over it was the map's
-    // business, and the queue decides in its own transaction anyway.
-    if (next === 'proposals') {
-      selectItem(null);
-      loadProposals();
-    }
+    if (next === 'cost' || next === 'audit' || next === 'proposals') selectItem(null);
+    readOnArrival(next);
   };
 
   /**
@@ -524,6 +565,9 @@ export default function App() {
   const selected = selectedId ? shown.find(i => i.id === selectedId) : undefined;
   // A node the observation on screen did not hold has no panel to open.
   const detailOpen = Boolean(showDetailPanel && ((selectedId && selected) || selectedEra !== null));
+  // On a phone the sheet steps down to a peek while a simulation runs, so
+  // what it lights is on the screen the sheet would otherwise cover.
+  const simulating = useAmbitStore(s => s.simulationMode !== 'none');
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in
@@ -597,7 +641,7 @@ export default function App() {
     // The readout narrates the map as the tour does, so on a phone it puts the
     // map's controls away too: two rows of buttons sat over the nodes it named.
     <div
-      className={`app${touring || readout ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}`}
+      className={`app${touring || readout ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}${simulating ? ' app--simulating' : ''}`}
     >
       <AppDeck
         view={view}
@@ -642,7 +686,16 @@ export default function App() {
         }
       />
 
-      <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
+      <main
+        id={VIEW_ID}
+        tabIndex={-1}
+        className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}
+      >
+        {/* One h1 per view. My Setup, Audit and Proposals show their name as
+            their title; the map and Time & cost lead with what they found. */}
+        {(view === 'map' || view === 'cost') && (
+          <h1 className="visually-hidden">{view === 'map' ? 'Map' : 'Time & cost'}</h1>
+        )}
         {loading && !items.length && <Loading what="your setup" />}
         {error && (
           <div className="app-error">
@@ -715,6 +768,9 @@ export default function App() {
             onSample={
               reading
                 ? () => {
+                    // A step pressed in the readout plays its unlock, and the
+                    // sample's map drew it on over its own finding.
+                    useAmbitStore.getState().clearSimulation();
                     seedDemo();
                     setReadoutOpen(false);
                     showView('map');
@@ -730,10 +786,11 @@ export default function App() {
               onShowProposals={showProposals}
               onMapped={mapped}
               start={tourStart}
+              covered={mapYoursOpen || showApprovalModal || showDocs || finderOpen}
             />
           )
         )}
-      </div>
+      </main>
 
       {/* On a phone the panel is a bottom sheet, and so is the tour card: while
           the tour narrates the node, the sheet under it said the same thing. */}

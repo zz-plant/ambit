@@ -22,9 +22,15 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
-import type { DoctorReport } from '../doctor.ts';
+import { HELP_SHORT, helpTopic } from './help.ts';
+import { commandWords } from './groups.ts';
+import { nearest } from '../../shared/nearest.ts';
+import { setupGaps, type DoctorReport } from '../doctor.ts';
+import { analyzeRepo } from '../repo-inspect.ts';
 import { markSeen, movedLines, unseenSince } from './seed.ts';
 import { seedSources } from '../discovery.ts';
+import type { ConnectResult } from '../connect.ts';
+import type { SetupStep } from '../wiring.ts';
 import { checkableNames, recovering } from '../assurance.ts';
 import type { usageWindows } from '../telemetry.ts';
 import {
@@ -34,6 +40,9 @@ import {
   PROBE_COMMAND,
   REACHED_SQL,
   graphCounts,
+  isReached,
+  ownReached,
+  reachPhrase,
   recheckCommand,
 } from '../vocabulary.ts';
 
@@ -51,17 +60,20 @@ function ago(ts: string | null | undefined): string | undefined {
 /**
  * What the graph can prove versus what it merely lists.
  *
- * Reached nodes split by the worth of their evidence: proven (check passed),
- * unproven (configured and never checked, or recovering: the last run passed
+ * Reached nodes split by the worth of their evidence: verified (check passed),
+ * unverified (configured and never checked, or recovering: the last run passed
  * and recent ones did not), failing (the last check failed), and entries,
  * which carry no check of their own. The four are `graphCounts`'s, so they add
- * up to the reached figure the head prints. The unproven-with-a-declared-check
+ * up to the reached figure the head prints. The unverified-with-a-declared-check
  * set is named, because it is the one a single command turns into evidence —
  * and an inventory that cannot say "installed is not working" is the failure
  * this project exists to prevent.
  */
 function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
-  const { proven, unproven, failing, entries } = graphCounts(db);
+  const { proven, unproven, failing, entries, reached } = graphCounts(db);
+  // What every runtime brings: entries, and in no one's config, so the row
+  // that counts entries says how many of them these are.
+  const builtIn = reached - graphCounts(db, 'tree').reached - ownReached(db);
   // The unproven, split by what would move each: a check never run, a check
   // passing again after failures, or no check at all. The third is the
   // remainder, which is why `checkableNames` and `recovering` count over the
@@ -77,12 +89,13 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
     unproven,
     failing,
     entries,
+    built_in: builtIn,
     recovering: recoveringNow,
     no_check: unproven - recoveringNow - checkable.length,
     last_check: ago(last?.t) || 'never',
     provable_now: checkable,
     note: checkable.length
-      ? `configured is not working — ambit verify would turn ${checkable.length} of the unproven into evidence`
+      ? `configured is not working — ambit verify would turn ${checkable.length} of the unverified into evidence`
       : undefined,
   };
 }
@@ -116,13 +129,30 @@ interface NextMove {
  * In the order a person would fix things. A check that fails comes first,
  * because nothing built on it can be trusted. A draft waiting on a decision
  * comes next, since an agent stays idle until someone makes it. Then the
- * checks that turn configured into proven, which is the whole of a fresh
- * install. Last is the capability `ambit next` ranks first. Absent when none
+ * checks that turn configured into verified, which is the whole of a fresh
+ * install. Then the agents: until they can ask and what they do is recorded,
+ * the ledger's reports have nothing to read. Last is the capability
+ * `ambit next` ranks first. Absent when none
  * of them has anything to say, and the report then ends without the line.
  */
+/**
+ * The next of connecting the agents and recording them, if either is missing.
+ * The gate is left to `doctor` and `connect`: it puts a question on every tool
+ * call with no grant, which is a person's choice to make and not a next move.
+ * Reading the machine's files is never the reason a report fails to print.
+ */
+function wiringStep(home?: string) {
+  try {
+    return setupGaps(home).find(step => step.kind !== 'gate');
+  } catch {
+    return undefined;
+  }
+}
+
 function nextMove(
   db: any,
-  found: { degraded: { id: string; name: string }[]; drafts: number; checkable: number }
+  found: { degraded: { id: string; name: string }[]; drafts: number; checkable: number },
+  home?: string
 ): NextMove | undefined {
   const [first] = found.degraded;
   if (first) {
@@ -156,9 +186,11 @@ function nextMove(
   if (found.checkable) {
     return {
       command: 'ambit verify',
-      why: `turns ${found.checkable} of the unproven into evidence`,
+      why: `turns ${found.checkable} of the unverified into evidence`,
     };
   }
+  const wiring = wiringStep(home);
+  if (wiring) return { command: wiring.command, why: wiring.says };
   // The hint is the least important line of a health report, so a failure
   // ranking it must never be the reason the report does not print.
   try {
@@ -177,7 +209,7 @@ function nextMove(
 
 // The report `status` composes. One surface for "how are we doing", so the
 // person does not have to learn six commands to answer one question.
-function statusReport(db: any) {
+function statusReport(db: any, env: { home?: string } = {}) {
   const counts = graphCounts(db);
   const g = { ...counts, verified: counts.proven };
   // Over the nodes the head counts, so the domains' totals add up to its total.
@@ -238,10 +270,13 @@ function statusReport(db: any) {
   const worried = worries({ failing: g.failing, spofs, pending });
   const checkable = checkableNames(db);
 
+  const reach = reachPhrase(db);
   return {
-    summary:
-      `${g.reached}/${g.total} capabilities reached` +
-      (worried.length ? ` · ${worried.join(' · ')}` : ' · nothing failing'),
+    // The same sentence the head prints. It read "39/70 capabilities reached",
+    // the graph's own count, beside a head saying "15 of 46" of the same setup,
+    // so a script and a person were told two different headlines.
+    summary: `${reach} · ${worried.length ? worried.join(' · ') : 'nothing failing'}`,
+    reach,
     reached: g.reached,
     total: g.total,
     verified: g.verified,
@@ -265,22 +300,30 @@ function statusReport(db: any) {
     evidence: [evidenceReport(db, checkable)],
     domains,
     degraded: degraded.length ? degraded : undefined,
-    // Counted with the unproven above, and named here with how their recent
+    // Counted with the unverified above, and named here with how their recent
     // runs went, since a pass after a failure reads as fixed.
     recovering: recoveringNow.length ? recoveringNow : undefined,
     spofs,
-    bottlenecks: findBottlenecks(db).slice(0, 10),
+    // Only what the ranking calls a bottleneck: the rest were rows saying
+    // `is bottleneck: false` under the heading that promised bottlenecks.
+    bottlenecks: findBottlenecks(db)
+      .filter(b => b.is_bottleneck)
+      .slice(0, 10),
     // The empty case belongs to `ambit deficits`, which explains how they get
     // recorded. Here it would be a paragraph of advice inside a health report.
     deficits: Array.isArray(recorded) ? recorded : undefined,
     frontier: ledgerHistory(db).slice(-5),
     pending,
     // Last, because it is what the report ends on when a person reads it.
-    next: nextMove(db, {
-      degraded,
-      drafts: pending.filter((p: any) => p.status === 'draft').length,
-      checkable: checkable.length,
-    }),
+    next: nextMove(
+      db,
+      {
+        degraded,
+        drafts: pending.filter((p: any) => p.status === 'draft').length,
+        checkable: checkable.length,
+      },
+      env.home
+    ),
   };
 }
 
@@ -289,28 +332,17 @@ type StatusReport = ReturnType<typeof statusReport>;
 /** The four columns every report in this CLI indents by. */
 const GUTTER = '    ';
 
-/** The keys the head of `renderStatus` says, so the details beneath it skip them. */
-const SAID_IN_HEAD = new Set([
-  'summary',
-  'reached',
-  'total',
-  'verified',
-  'failing',
-  'evidence',
-  'next',
-]);
-
 /**
  * `ambit status` as a person reads it, as lines.
  *
- * The head carries the two numbers that matter, reached and proven, and the
+ * The head carries the two numbers that matter, reached and verified, and the
  * worries the report's own summary names. Under a rule come the evidence
  * counts in one aligned column that adds up to the reached figure, with a
- * marker on the one that wants a person: a failing check before an unproven
+ * marker on the one that wants a person: a failing check before an unverified
  * one, since a repair comes before an acquisition. The marker is a character
  * and colour only adds to it, so the row is found in a pipe and by someone
  * who cannot tell the colours apart. A row whose number another line repeats
- * in part says which part, so "11 of the unproven" on the last line has its
+ * in part says which part, so "11 of the unverified" on the last line has its
  * 11 above it. Whatever else the report found follows as it always has, and
  * the last line is the one thing to type next, taken from the report's `next`.
  *
@@ -319,7 +351,8 @@ const SAID_IN_HEAD = new Set([
  */
 function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const ev = report.evidence[0];
-  const lead = `${report.reached} of ${report.total} reached · ${ev.proven} proven`;
+  // Eighty columns hold the head without its noun, and the rows say what is counted.
+  const lead = `${report.reach.replace(' capabilities reached', ' reached')} · ${ev.proven} verified`;
   const worried = worries(report);
   const tail = worried.length ? worried.join(' · ') : 'nothing failing';
 
@@ -329,19 +362,25 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
     ev.no_check ? `${ev.no_check} with no check` : null,
   ].filter(Boolean);
   const rows: [label: string, value: string, gloss?: string][] = [
-    ['proven', String(ev.proven)],
-    ['unproven', String(ev.unproven), unprovenParts.join(' · ') || undefined],
+    ['verified', String(ev.proven)],
+    ['unverified', String(ev.unproven), unprovenParts.join(' · ') || undefined],
     ['failing', String(ev.failing)],
     [
       'entries',
       String(ev.entries),
-      ev.entries ? 'from your config; checks run on what they provide' : undefined,
+      !ev.entries
+        ? undefined
+        : ev.built_in >= ev.entries
+          ? 'built into the runtime; checks run on what they provide'
+          : ev.built_in
+            ? `from your config, and ${ev.built_in} built into the runtime`
+            : 'from your config; checks run on what they provide',
     ],
     ['last check', ev.last_check],
   ];
   const labelWidth = Math.max(...rows.map(([label]) => label.length));
   const valueWidth = Math.max(...rows.map(([, value]) => value.length));
-  const wants = ev.failing ? 'failing' : ev.unproven ? 'unproven' : undefined;
+  const wants = ev.failing ? 'failing' : ev.unproven ? 'unverified' : undefined;
 
   const head = [
     `${GUTTER}${c.bold}${lead}${c.reset} · ${tail}`,
@@ -356,23 +395,104 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
     }),
   ];
 
-  // What the head does not say, as it was always drawn. The names `verify`
-  // would check stay here, since the head only has room for how many, and the
-  // ones past the eighth are counted, so the list and its count agree. The
-  // failing list keeps its old key for scripts and is labelled for a person,
-  // since a degraded capability is one that is recovering.
-  const rest = Object.fromEntries(
-    Object.entries(report)
-      .filter(([key]) => !SAID_IN_HEAD.has(key))
-      .map(([key, value]) => [key === 'degraded' ? 'not_working' : key, value])
+  // What the head does not say, a row per finding. It fell through to the
+  // generic formatter, which printed every field of every record: rows saying
+  // `is bottleneck: false` under the bottlenecks heading, Shell Execution twice
+  // (the capability and the tool that provides it), `provider id: tool:bash`.
+  // The totals of actions and of the frontier ledger led a line each and
+  // competed with the head; they stay in `--json`. Each list stops at five and
+  // counts the rest, which `--json` holds whole.
+  const details: string[] = [];
+  const section = (title: string, rows: string[], total = rows.length) => {
+    if (!rows.length) return;
+    details.push('', `${GUTTER}${c.bold}${title}${c.reset}`);
+    for (const row of rows.slice(0, 5)) details.push(`${GUTTER}  ${row}`);
+    if (total > 5)
+      details.push(`${GUTTER}  ${c.grey}… ${total - 5} more · --json for all${c.reset}`);
+  };
+  const width = (names: string[]) => Math.min(Math.max(0, ...names.map(n => n.length)), 28);
+  const named = (name: string, w: number, rest: string) =>
+    `${name.padEnd(w)}  ${c.grey}${rest}${c.reset}`;
+
+  if (ev.provable_now.length) {
+    const shown = ev.provable_now.slice(0, 8).join(', ');
+    const more = ev.provable_now.length > 8 ? ` and ${ev.provable_now.length - 8} more` : '';
+    details.push('', `${GUTTER}${c.bold}Provable now${c.reset}  ${shown}${more}`);
+  }
+  // The bars are the generic formatter's; the heading is this report's.
+  const [, ...domains] = formatGeneric({ domains: report.domains }, c).filter(l => l !== '');
+  if (domains.length) details.push('', `${GUTTER}${c.bold}By domain${c.reset}`, ...domains);
+
+  const degraded = (report.degraded ?? []) as { id: string; name: string }[];
+  const dw = width(degraded.map(d => d.name));
+  section(
+    'Not working',
+    degraded.map(d => named(d.name, dw, recheckCommand(d.id)))
   );
-  const provable =
-    ev.provable_now.length > 8
-      ? `${ev.provable_now.slice(0, 8).join(', ')} and ${ev.provable_now.length - 8} more`
-      : ev.provable_now;
-  const details = formatGeneric({ actions: rest.actions, provable_now: provable, ...rest }, c);
+  const recoveringNow = (report.recovering ?? []) as { name: string; recent: string }[];
+  const rw = width(recoveringNow.map(r => r.name));
+  section(
+    'Recovering',
+    recoveringNow.map(r => named(r.name, rw, r.recent))
+  );
+
+  // A sole provider that is also a bottleneck is said once, with what it
+  // unlocks; a bottleneck is said once by name, since the capability and the
+  // tool that provides it often share one.
+  const unlocks = new Map<string, number>();
+  for (const b of report.bottlenecks as { name: string; unlocks_count: number }[]) {
+    if (!unlocks.has(b.name)) unlocks.set(b.name, b.unlocks_count);
+  }
+  const spofs = (Array.isArray(report.spofs) ? report.spofs : []) as {
+    capability: string;
+    provider_id: string;
+  }[];
+  const sw = width(spofs.map(s => s.capability));
+  section(
+    'Single points of failure',
+    spofs.map(s => {
+      const n = unlocks.get(s.capability);
+      return named(s.capability, sw, `only from ${s.provider_id}${n ? ` · unlocks ${n}` : ''}`);
+    })
+  );
+  const sole = new Set(spofs.map(s => s.capability));
+  const choke = [...unlocks].filter(([name]) => !sole.has(name));
+  const bw = width(choke.map(([name]) => name));
+  section(
+    'Bottlenecks',
+    choke.map(([name, n]) => named(name, bw, `unlocks ${n}`))
+  );
+
+  const recorded = (report.deficits ?? []) as {
+    name: string;
+    times_blocked: number;
+    verdict: string;
+    why?: string;
+  }[];
+  const fw = width(recorded.map(d => d.name));
+  section(
+    'Work blocked on',
+    recorded.map(d =>
+      named(d.name, fw, `${d.times_blocked}× · ${d.verdict}${d.why ? ` · last: ${d.why}` : ''}`)
+    )
+  );
+  const pending = report.pending as { id: string; goal: string; status: string }[];
+  section(
+    'Waiting on a decision',
+    pending.map(p => named(p.id, 0, `${p.status} · ${p.goal}`))
+  );
+  const unattended = report.unattended?.[0];
+  if (unattended) {
+    const parts = [
+      unattended.sandboxes ? `${unattended.sandboxes} sandboxes` : null,
+      unattended.standing_budgets ? `${unattended.standing_budgets} standing budgets` : null,
+    ].filter(Boolean);
+    details.push(
+      '',
+      `${GUTTER}${c.grey}Unattended${c.reset}  ${parts.join(' · ')} ${c.grey}· ambit authority lists what each one covers${c.reset}`
+    );
+  }
   while (details[0] === '') details.shift();
-  while (details[details.length - 1] === '') details.pop();
 
   const next = report.next
     ? `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${report.next.command}${c.reset} ${c.grey}· ${report.next.why}${c.reset}`
@@ -392,13 +512,13 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
  * check before leaning on it.
  *
  * `status` is the whole report, and a first run that printed it opened on a
- * count of what was unproven and sixty lines of single providers and
+ * count of what was unverified and sixty lines of single providers and
  * bottlenecks, ending on a suggestion to run checks. That is the guardrail
  * shown before the purpose. This leads with the next steps `ambit next` ranks,
- * keeps a failing check and the unproven count as the two things worth
+ * keeps a failing check and the unverified count as the two things worth
  * knowing first, and leaves the rest of the fragility detail to `status`.
  */
-function briefReport(db: any) {
+function briefReport(db: any, env: { cwd?: string; home?: string } = {}) {
   const sources = seedSources(db);
   // Measured against the tree, as the map and the hosted page measure it: the
   // graph's own count took in the person's servers, so the same three servers
@@ -430,6 +550,8 @@ function briefReport(db: any) {
   const since = seen ? (ledgerSince(db, seen) as any) : null;
   if (seen) markSeen(db);
   return {
+    wiring: wiringStep(env.home),
+    project: projectSuggestion(env.cwd ?? process.cwd(), env.home),
     // Null for a graph seeded before sources were recorded; [] when nothing
     // of the person's was found, which is an answer and changes the screen.
     read: sources,
@@ -439,6 +561,7 @@ function briefReport(db: any) {
         : undefined,
     reached: counts.reached,
     total: counts.total,
+    reach: reachPhrase(db),
     proven: ev.proven,
     unproven: ev.unproven,
     no_check: ev.no_check,
@@ -451,6 +574,26 @@ function briefReport(db: any) {
 }
 
 type BriefReport = ReturnType<typeof briefReport>;
+
+/**
+ * What `ambit repo` would suggest for the folder this ran in, when it holds a
+ * project: the first thing to do and how many there are. Only what has a command
+ * counts, since `repo` also reports what is already in place. It reads the
+ * project's manifest as data and prints none of it.
+ */
+function projectSuggestion(
+  cwd: string,
+  home?: string
+): { first: string; more: number } | undefined {
+  try {
+    const { repo, superpowers } = analyzeRepo(cwd, home);
+    const steps = superpowers.filter(s => s.command);
+    if (!repo.indicators.length || !steps.length) return undefined;
+    return { first: steps[0].title, more: steps.length - 1 };
+  } catch {
+    return undefined;
+  }
+}
 
 /** "Claude Code (3 servers), Cursor (2 servers) and Ollama (4 models)". */
 function readFrom(read: { label: string; servers: string[]; models?: string[] }[]): string {
@@ -468,7 +611,7 @@ function readFrom(read: { label: string; servers: string[]; models?: string[] }[
  *
  * It is the readout every first surface gives, in one order: what was read,
  * how much of the tree it reaches, the next step and what it opens, what is
- * not proven yet, and one thing to do. The hosted page and `ambit web` say the
+ * not verified yet, and one thing to do. The hosted page and `ambit web` say the
  * same five things about the same setup. `typed` writes a command the way the
  * person ran Ambit: under npx, `npx ambit-cli web`.
  */
@@ -486,7 +629,8 @@ function renderBrief(
   const close = [
     '',
     `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${typed('ambit web')}${c.reset}  ${c.grey}the same, on the map${c.reset}`,
-    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit --help')} for every command${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit help')} for the other commands${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit share')} for the map as one file, safe to post${c.reset}`,
     '',
   ];
 
@@ -497,14 +641,16 @@ function renderBrief(
       `${GUTTER}Nothing of yours is in the graph yet.`,
       `${GUTTER}${c.grey}Add an agent config and run ${typed('ambit seed')}, which lists where it looks.${c.reset}`,
       '',
-      `${GUTTER}${c.grey}${typed('ambit --help')} for every command${c.reset}`,
+      `${GUTTER}${c.grey}${typed('ambit help')} for the commands${c.reset}`,
       '',
     ];
   }
 
   if (report.read) lines.push(`${GUTTER}${c.grey}Read from ${readFrom(report.read)}${c.reset}`);
   lines.push(
-    `${GUTTER}You reach ${report.reached} of ${report.total} capabilities · ${report.proven} proven`
+    // The sentence every surface leads with, and the glossary's word for a
+    // passing check: this line alone said "proven".
+    `${GUTTER}${report.reach} · ${report.proven} verified`
   );
   const moved = report.moved ? movedLines(report.moved, c) : [];
   if (moved.length) {
@@ -531,8 +677,15 @@ function renderBrief(
       lines.push(`${GUTTER}${c.grey}Also one step away: ${also}${c.reset}`);
     }
   }
+  if (report.project) {
+    const more = report.project.more ? `, and ${report.project.more} more` : '';
+    lines.push(
+      '',
+      `${GUTTER}For this project: ${report.project.first}${more} ${c.grey}· ${typed('ambit repo')}${c.reset}`
+    );
+  }
 
-  if (report.failing.length || report.unproven) {
+  if (report.failing.length || report.unproven || report.wiring) {
     lines.push('', heading('Before you lean on it'));
     if (report.failing.length) {
       const shown = report.failing
@@ -555,11 +708,49 @@ function renderBrief(
           ? `${verify} checks ${checked} of them`
           : 'none of them declares a check';
       lines.push(
-        `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ${how}${c.reset}`
+        `${GUTTER}${report.unproven} configured and not yet verified ${c.grey}· ${how}${c.reset}`
+      );
+    }
+    if (report.wiring) {
+      lines.push(
+        `${GUTTER}${report.wiring.says} ${c.grey}· ${typed(report.wiring.command)}${c.reset}`
       );
     }
   }
   return [...lines, ...close];
+}
+
+/**
+ * `ambit connect` as a person reads it: what changed, what could not be, and
+ * what is still missing. It printed every runtime it did not find, up to the
+ * limit, and stopped there, so the last thing on the screen was a list of
+ * agents the person does not run. Those are counted, and `--json` lists them.
+ */
+function renderConnect(
+  result: ConnectResult & { still_missing?: SetupStep[] },
+  c: Palette = C,
+  typed: (command: string) => string = command => command
+): string[] {
+  const lines = [''];
+  for (const row of result.configured) {
+    const said = row.action === 'already_configured' ? 'already in place' : row.action;
+    lines.push(`  ${c.green}✓${c.reset} ${row.label}  ${c.grey}${said} · ${row.path}${c.reset}`);
+  }
+  const absent = (s: { reason: string }) => / not found on host$/.test(s.reason);
+  for (const row of result.skipped.filter(s => !absent(s))) {
+    lines.push(`  ${c.yellow}!${c.reset} ${row.label}  ${row.reason}`);
+  }
+  const notFound = result.skipped.filter(absent).length;
+  if (notFound) lines.push(`${GUTTER}${c.grey}${notFound} other runtimes not found here${c.reset}`);
+  if (result.note) lines.push('', `${GUTTER}${c.grey}${result.note}${c.reset}`);
+  if (result.still_missing?.length) {
+    lines.push('', `${GUTTER}${c.bold}Still missing${c.reset}`);
+    for (const step of result.still_missing) {
+      lines.push(`${GUTTER}${step.says}`, `${GUTTER}${c.grey}${typed(step.command)}${c.reset}`);
+    }
+  }
+  lines.push('');
+  return lines;
 }
 
 /** A step of a plan, as `planFor` returns it. */
@@ -664,15 +855,20 @@ function renderPlan(
   if (asked?.others.length) {
     lines.push(`${GUTTER}${c.grey}Also matched: ${asked.others.join(', ')}${c.reset}`);
   }
-  if (first) {
-    // `ambit propose` drafts a description for a step like these, which a
-    // person then does by hand, so the honest next move is the step itself.
-    lines.push(
-      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
-    );
-  }
+  if (first) lines.push(stepLine(first, c));
   lines.push('');
   return lines;
+}
+
+/**
+ * The line a plan ends on: the first step as a command to type. It named the
+ * step and stopped, so the last line of a plan was the one line with nothing
+ * to paste. `ambit fix` prints the ways to set the step up, with each patch,
+ * and writes nothing, which is the next move a person makes by hand.
+ */
+function stepLine(step: { id: string; name: string }, c: Palette): string {
+  const fix = `ambit fix ${shellQuote(step.id.replace(/^combo:/, ''))}`;
+  return `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${fix}${c.reset}${c.grey} · the ways to set up ${step.name}, then ambit seed: the list moves as each step lands${c.reset}`;
 }
 
 /** What `specGoal` returns for a spec it could read. */
@@ -800,11 +996,8 @@ function renderSpec(report: SpecReport, c: Palette = C): string[] {
 
   lines.push('');
   const first = report.steps[0];
-  if (first) {
-    lines.push(
-      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
-    );
-  } else if (report.failing.length) {
+  if (first) lines.push(stepLine(first, c));
+  else if (report.failing.length) {
     lines.push(
       `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${report.failing[0].check}${c.reset}`
     );
@@ -1163,12 +1356,14 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
   const lines = [
     '',
     `${GUTTER}${c.bold}${head}${c.reset}`,
-    `${GUTTER}${cap.reached} of ${cap.total} reached · ${cap.proven} proven · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
+    `${GUTTER}${report.reach} · ${cap.proven} verified · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
   ];
   if (!report.grade) {
-    lines.push(
-      `${GUTTER}${c.grey}No check has run, so nothing is proven or failing yet.${c.reset}`
-    );
+    // "Not graded" said nothing of what a grade is, so the line says what it
+    // scores and what would give it one.
+    const why =
+      'A grade, A to F, scores what passes its check against what fails, what rests on one provider, and whether Ambit is connected. No check has run yet: ambit verify runs them.';
+    lines.push(...wrapped(why, GUTTER).map(l => `${c.grey}${l}${c.reset}`));
   }
   for (const d of cap.degraded.slice(0, 5)) {
     lines.push(`  ${c.yellow}!${c.reset} ${d.name} is failing its check`);
@@ -1178,6 +1373,15 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
       .map(r => `${r.label}${r.has_ambit ? '' : ` ${c.grey}(Ambit not connected)${c.reset}`}`)
       .join(', ');
     lines.push(`${GUTTER}Runtimes: ${runtimes}`);
+  }
+  if (report.bloat?.length) {
+    lines.push('', `${GUTTER}${c.yellow}Context bloat warnings:${c.reset}`);
+    for (const b of report.bloat) {
+      const kTokens = (b.tokens / 1000).toFixed(1);
+      lines.push(
+        `  ${c.yellow}!${c.reset} ${b.runtime} carries ${c.bold}${kTokens}K tokens${c.reset} of tool schemas across ${b.servers} servers (${Math.round((b.tokens / b.ceiling) * 100)}% of ${b.ceiling / 1000}K ceiling)`
+      );
+    }
   }
   if (report.recommendations.length) {
     lines.push('', `${GUTTER}${c.bold}What to do${c.reset}`);
@@ -1189,45 +1393,160 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
   return lines;
 }
 
-/** The concept glossary, shared with the visualiser so the two cannot drift. */
-function explain(wanted: string): void {
-  const { concepts } = JSON.parse(
-    readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8')
+/**
+ * `ambit fix <capability>` as a person reads it: what state it is in, the one
+ * command that re-checks it, and — for something not yet reached — the ways to
+ * acquire it, each with the config patch a person can paste.
+ *
+ * It prints and never writes. The point is to remove the "what do I type now?"
+ * step, not to become a package manager.
+ */
+function renderFix(report: any, c: Palette = C): string[] {
+  if (report.error) return formatGeneric(report, c);
+  const head = `Fix ${report.capability}`;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
+  ];
+  const row = (label: string, value: string) =>
+    `${GUTTER}${c.grey}${label.padEnd(9)}${c.reset}  ${value}`;
+  // In the glossary's words: `locked` is the store's, and a person reads a
+  // next step or blocked. A lifecycle no check has set is no answer about it,
+  // so it is left out (AGENTS.md rule 16), as is the re-check of what is not
+  // reached.
+  const reached = isReached(report.state);
+  if (report.stands) {
+    const behind = report.blocked_by?.length ? `, behind ${report.blocked_by.join(', ')}` : '';
+    lines.push(row('state', `${report.stands}${behind}`));
+  } else if (report.state) lines.push(row('state', String(report.state)));
+  if (report.lifecycle && report.lifecycle !== 'unknown') {
+    lines.push(row('lifecycle', String(report.lifecycle)));
+  }
+  if (report.lifecycle === 'broken') {
+    lines.push(
+      `${GUTTER}${c.yellow}Its last check failed.${c.reset} Re-run it, then look at what the check said:`
+    );
+  } else if (report.state && !reached) {
+    lines.push(`${GUTTER}${c.grey}Not reached yet.${c.reset} The ways to acquire it are below.`);
+  }
+  if (report.check) {
+    lines.push('', `${GUTTER}${c.bold}Check${c.reset}  ${c.bold}${report.check}${c.reset}`);
+  }
+  const options: any[] = report.options ?? [];
+  if (options.length) {
+    lines.push('', `${GUTTER}${c.bold}Ways to acquire it${c.reset}`);
+    for (const o of options) {
+      const cost = [
+        o.setup ? `setup ${o.setup}` : null,
+        o.total_first_year_dollars != null ? `$${o.total_first_year_dollars}/yr` : null,
+        o.recurring_dollars_per_month != null ? `$${o.recurring_dollars_per_month}/mo` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      lines.push(
+        `  ${c.accent}›${c.reset} ${o.provider}${cost ? ` ${c.grey}· ${cost}${c.reset}` : ''}`
+      );
+      if (o.install) {
+        for (const line of o.install.split('\n')) lines.push(`     ${c.grey}${line}${c.reset}`);
+      }
+    }
+  } else {
+    lines.push(
+      `${GUTTER}${c.grey}No catalogued acquisition. \`ambit goal ${shellQuote(report.id.replace(/^combo:/, ''))}\` routes the longer path.${c.reset}`
+    );
+  }
+  lines.push(
+    '',
+    `${GUTTER}${c.grey}This command prints; it never writes. \`ambit apply\` is the only writer, and only for an approved proposal.${c.reset}`,
+    ''
   );
-  // Matched against the whole entry, not just its name: a concept the CLI and
-  // the map call different things — keystone on the map, bottlenecks in
-  // `ambit status` — says so in its own text, and looking up either word
-  // should find it.
-  const picked = wanted
-    ? concepts.filter((c: any) =>
-        [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
-      )
-    : concepts;
+  return lines;
+}
+
+type Concept = { key: string; term: string; short: string; long: string; seen: string };
+
+/** The concept glossary, shared with the visualiser so the two cannot drift. */
+function concepts(): Concept[] {
+  return JSON.parse(readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8'))
+    .concepts;
+}
+
+/** The words a concept is called by: its key, and each word of its term. */
+function namesOf(c: Concept): string[] {
+  return [c.key, ...c.term.toLowerCase().split(/[^a-z]+/)].filter(Boolean);
+}
+
+/** The word to type for a concept on its own: the first of its term. */
+function lookupWord(c: Concept): string {
+  return c.term.toLowerCase().split(/[^a-z]+/)[0];
+}
+
+/**
+ * The concept a command rests on, if one does: `verify` and Verified,
+ * `propose` and Proposal, `weigh` and Carry weight. Matched on the first five
+ * letters of a word of its name, so a verb finds the noun it acts on.
+ */
+function conceptOf(verb: string): Concept | undefined {
+  const stem = (w: string) => (w.length >= 5 ? w.slice(0, 5) : w);
+  return concepts().find(c =>
+    namesOf(c).some(w => w === verb || (verb.length >= 5 && stem(w) === stem(verb)))
+  );
+}
+
+/** Text wrapped at a width, each line indented. */
+function wrapText(text: string, width = 76, indent = '  '): string {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if ((line + word).length > width) {
+      out.push(indent + line.trim());
+      line = '';
+    }
+    line += word + ' ';
+  }
+  if (line.trim()) out.push(indent + line.trim());
+  return out.join('\n');
+}
+
+/**
+ * One word from the glossary, or every one that mentions it.
+ *
+ * A word that names a concept shows that concept alone: "frontier" printed
+ * Ambit's entry first, because Ambit's text says frontier, and a reader asking
+ * one word had three to read. Only when no name matches is the whole entry
+ * searched, because a concept the CLI and the map call different things
+ * (keystone on the map, bottlenecks in `ambit status`) says so in its own
+ * text, and looking up either word should find it.
+ */
+function explain(wanted: string): void {
+  const all = concepts();
+  const singular = wanted.replace(/s$/, '');
+  const named = all.filter(
+    c => c.term.toLowerCase() === wanted || namesOf(c).some(w => w === wanted || w === singular)
+  );
+  const picked = !wanted
+    ? all
+    : named.length
+      ? named
+      : all.filter(c =>
+          [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
+        );
   // An agent asks what a term means as readily as a person does, and reads
   // the answer through a pipe.
   const paint = terminalPalette();
   if (picked.length === 0) {
-    console.log(`${paint.yellow}No concept matching "${wanted}".${paint.reset}`);
-    console.log(`Try: ${concepts.map((c: any) => c.key).join(', ')}`);
+    const meant = nearest(wanted, [...commandWords(), ...all.map(lookupWord)], 3);
+    console.log(`${paint.yellow}No command or concept matching "${wanted}".${paint.reset}`);
+    if (meant.length) console.log(`Did you mean ${meant.map(m => `ambit help ${m}`).join(', ')}?`);
+    console.log(`Words: ${all.map(lookupWord).join(', ')}`);
+    console.log(`${paint.grey}ambit help --all lists every command.${paint.reset}`);
     return;
   }
-  const wrap = (text: string, width = 76, indent = '  ') => {
-    const out: string[] = [];
-    let line = '';
-    for (const word of text.split(' ')) {
-      if ((line + word).length > width) {
-        out.push(indent + line.trim());
-        line = '';
-      }
-      line += word + ' ';
-    }
-    if (line.trim()) out.push(indent + line.trim());
-    return out.join('\n');
-  };
   console.log('');
   for (const c of picked) {
     console.log(`${paint.bold}${c.term}${paint.reset} ${paint.grey}— ${c.short}${paint.reset}`);
-    console.log(wrap(c.long));
+    console.log(wrapText(c.long));
     console.log(`  ${paint.grey}Where you see it: ${c.seen}${paint.reset}`);
     console.log('');
   }
@@ -1235,14 +1554,157 @@ function explain(wanted: string): void {
     console.log(`${paint.grey}ambit help <term> for one of these on its own.${paint.reset}\n`);
 }
 
+/**
+ * `ambit help <words>`: a group's index, a command in full with the word it
+ * rests on, or the glossary. `ambit help verify` explained the word Verified
+ * and never said how the command is typed.
+ */
+function help(words: string[]): void {
+  if (!words.length) {
+    console.log(HELP_SHORT);
+    return;
+  }
+  const topic = helpTopic(words);
+  if (!topic) {
+    explain(words.join(' ').toLowerCase());
+    return;
+  }
+  console.log(topic.text);
+  const word = topic.verb && conceptOf(topic.verb);
+  if (word) {
+    const paint = terminalPalette();
+    console.log(
+      `  ${paint.grey}${word.term}: ${word.short.charAt(0).toLowerCase()}${word.short.slice(1)}. ambit help ${lookupWord(word)}${paint.reset}`
+    );
+  }
+}
+
+function renderPort(result: any, c: Palette = C): string[] {
+  if (result.error) return formatGeneric(result, c);
+  if (result.servers) {
+    const lines = [
+      '',
+      `${GUTTER}${c.bold}MCP Servers across agent runtimes${c.reset}`,
+      `${GUTTER}${c.grey}${result.summary}${c.reset}`,
+      `${GUTTER}${c.grey}${'─'.repeat(64)}${c.reset}`,
+    ];
+    for (const s of result.servers) {
+      const conf = s.configured_in.join(', ');
+      const avail = s.available_to_port.length
+        ? ` · ${c.grey}can port to: ${s.available_to_port.join(', ')}${c.reset}`
+        : ` · ${c.green}in all detected runtimes${c.reset}`;
+      lines.push(`  ${c.bold}${s.name.padEnd(20)}${c.reset} ${conf}${avail}`);
+    }
+    lines.push(
+      '',
+      `${GUTTER}To port a server to another agent:`,
+      `  ${c.accent}ambit port <server> --to=<runtime>${c.reset}`,
+      `  e.g. ambit port ${result.servers[0]?.name || 'playwright'} --to=claude-code`,
+      ''
+    );
+    return lines;
+  }
+
+  const lines = [''];
+  if (result.dry_run) {
+    lines.push(`${GUTTER}${c.yellow}[dry run] Would port ${result.server}:${c.reset}`);
+  }
+  for (const r of result.results || []) {
+    const act =
+      r.action === 'already_configured'
+        ? 'already configured in'
+        : r.action === 'updated'
+          ? 'updated in'
+          : 'ported to';
+    const mark = r.action === 'already_configured' ? `${c.grey}=` : `${c.green}✓`;
+    lines.push(`  ${mark} ${result.server} ${act} ${r.label} (${r.path})${c.reset}`);
+    if (r.backup) {
+      lines.push(`    ${c.grey}Backup saved to ${r.backup}${c.reset}`);
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
+function renderRepo(report: any, c: Palette = C): string[] {
+  if (report.error) return formatGeneric(report, c);
+  const stack = report.repo;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}Repository stack in ${stack.name}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(50)}${c.reset}`,
+  ];
+  if (stack.languages?.length)
+    lines.push(`  ${c.grey}Languages:   ${c.reset}${stack.languages.join(', ')}`);
+  if (stack.frameworks?.length)
+    lines.push(`  ${c.grey}Frameworks:  ${c.reset}${stack.frameworks.join(', ')}`);
+  if (stack.databases?.length)
+    lines.push(`  ${c.grey}Databases:   ${c.reset}${stack.databases.join(', ')}`);
+  if (stack.testing?.length)
+    lines.push(`  ${c.grey}Testing:     ${c.reset}${stack.testing.join(', ')}`);
+  if (stack.infra?.length)
+    lines.push(`  ${c.grey}Infra:       ${c.reset}${stack.infra.join(', ')}`);
+
+  if (report.superpowers?.length) {
+    lines.push('', `${GUTTER}${c.bold}Recommended agent superpowers for this project:${c.reset}`);
+    report.superpowers.forEach((sp: any, i: number) => {
+      lines.push(`  ${c.accent}${i + 1}. ${sp.title}${c.reset}`);
+      lines.push(`     ${sp.reason}`);
+      if (sp.command) {
+        lines.push(`     ${c.accent}${sp.command}${c.reset}`);
+      }
+    });
+  } else {
+    lines.push(
+      '',
+      `  ${c.green}✓ Your agent setup already carries tools matching this project stack.${c.reset}`
+    );
+  }
+  lines.push('');
+  return lines;
+}
+
+function renderToggle(result: any, c: Palette = C): string[] {
+  if (result.error) return formatGeneric(result, c);
+  const lines = [''];
+  const dry = result.dry_run ? `${c.yellow}[dry run] ${c.reset}` : '';
+  const stateWord = result.state === 'disabled' ? 'Disabled' : 'Enabled';
+  const color = result.state === 'disabled' ? c.yellow : c.green;
+
+  lines.push(`${GUTTER}${dry}${color}${c.bold}${stateWord} ${result.server}${c.reset}`);
+
+  for (const r of result.results || []) {
+    if (r.state === 'unchanged') {
+      lines.push(`  ${c.grey}= ${r.label} (${r.path}) · already ${result.state}${c.reset}`);
+    } else {
+      lines.push(`  ${c.green}✓ ${r.label} (${r.path})${c.reset}`);
+      if (r.backup) {
+        lines.push(`    ${c.grey}Backup saved to ${r.backup}${c.reset}`);
+      }
+    }
+  }
+
+  const opposite = result.state === 'disabled' ? '--on' : '--off';
+  lines.push(
+    '',
+    `${GUTTER}${c.grey}To switch back: ambit toggle ${result.server} ${opposite}${c.reset}`,
+    ''
+  );
+  return lines;
+}
+
 export {
   ago,
   briefReport,
   renderBrief,
+  renderConnect,
   renderImpact,
   renderNext,
   renderApply,
   renderDoctor,
+  renderPort,
+  renderRepo,
+  renderToggle,
   renderCarry,
   renderWindows,
   renderPlan,
@@ -1250,8 +1712,10 @@ export {
   evidenceReport,
   statusReport,
   renderStatus,
+  renderFix,
   worries,
   explain,
+  help,
   type BriefReport,
   type ImpactReport,
   type NextReport,

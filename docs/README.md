@@ -1,6 +1,14 @@
 # Ambit documentation
 
-Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what you and your agents can do now, what one more step would open, and which pieces fail their checks. The quickest look is [the live demo](https://zz-plant.github.io/ambit/?demo=1), a sample setup with nothing to install. On your own machine it is `npx ambit-cli`, and [the guide](../README.md) has the other ways in and what each command answers.
+Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what you and your agents can do now, what one more step would open, and which pieces fail their checks.
+
+- **Try it**: [the live demo](https://zz-plant.github.io/ambit/?demo=1), a sample setup, with nothing to install.
+- **Install it, or connect it to Claude Code or OpenCode**: [Get started](../README.md).
+- **See what it reads, and what leaves your machine**: [the FAQ](./faq.md).
+- **Audit what your agent already has**: [Auditing an MCP server setup](./audit-mcp-servers.md).
+- **Find the single points of failure**: [What breaks if a server goes](./mcp-outage.md).
+- **Compare it with a gateway**: [Ambit and MCP gateways](./compare.md).
+- **Understand why it exists**: [The ideas behind Ambit](./ideas.md).
 
 The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with [Your loadout, from A to B](./loadout.md). For the argument, [The ideas behind Ambit](./ideas.md) is the one-page version. The pages are grouped by the kind of claim each one makes, which a file listing cannot tell you.
 

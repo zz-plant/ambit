@@ -115,6 +115,7 @@ export type AuthorityRow = {
   source: string;
   note: string | null;
   expires_at?: string | null;
+  condition?: string | null;
 };
 
 export type PreferenceRow = {

@@ -94,7 +94,7 @@ test('the time-and-cost view is offered on a real machine, not only in the demo'
   expect(deck()).toContain('Time &amp; cost');
 });
 
-test('each view tab keeps its name where it shows only its icon', () => {
+test('each view tab keeps its name where it shows a short word or only its icon', () => {
   // Between a phone and a wide screen the tabs give up their words, as the
   // buttons beside them already did, or Docs was pushed past the right edge
   // (at 1024px Docs started at x=1035).
@@ -104,7 +104,10 @@ test('each view tab keeps its name where it shows only its icon', () => {
       new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
     );
   }
-  expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(5);
+  // Every tab has a word; two have a shorter one for the width where the
+  // icons go (Setup, Cost).
+  expect(html.match(/class="app-deck-tab-label[ "]/g)).toHaveLength(7);
+  expect(html.match(/app-deck-tab-short/g)).toHaveLength(2);
   // And the one on screen says so: only a class marked it.
   expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
@@ -195,7 +198,7 @@ test('a ledger with nothing in it still says what the graph proves', () => {
   const html = renderToStaticMarkup(<LoopDashboard />);
 
   expect(html).toContain('What the graph can prove');
-  expect(html).toContain('8 of 19 proved');
+  expect(html).toContain('8 of 19 verified');
   // and still asks for the half that is missing
   expect(html).toContain('ambit-telemetry.js');
 });
@@ -242,7 +245,9 @@ test('nothing fragile draws no finding', () => {
     loopEmpty: false,
   });
 
-  expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('What could break');
+  // The fragility line, by its class: the council's seat on the same
+  // question is named "What could break" too.
+  expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('fig--line');
 });
 
 test("a machine's own figures are not labelled as samples", () => {
@@ -478,8 +483,10 @@ test('the pill and the era headers count one map: a failing node is apart from r
         onHover={() => {}}
       />
     );
+    // The fade is the circle's, inside the node and after its focus ring; the
+    // name keeps its own.
     return html.match(
-      /opacity="([\d.]+)"[^>]*aria-label="Browser Automation, Combo, failing"/
+      /aria-label="Browser Automation, Combo, failing"[^>]*>(?:<circle[^>]*>(?:<\/circle>)?)?<g opacity="([\d.]+)"/
     )?.[1];
   };
   expect(opacityOf('Verified')).toBe('0.15');
@@ -539,8 +546,8 @@ test('the governance half is on the page: authority, next steps, and the week', 
   // until now, and the most decision-shaped data the engine holds.
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
-  expect(html).toContain('What may act without asking');
-  expect(html).toContain('Proven enough to stop asking');
+  expect(html).toContain('What runs without asking');
+  expect(html).toContain('Earned enough to stop asking');
   expect(html).toContain('What to reach next');
   expect(html).toContain('emergent');
 });
@@ -553,8 +560,8 @@ test('a proposal card carries what deciding on it needs', () => {
   expect(html).toContain('Forecast');
   expect(html).toContain('Costs');
   expect(html).toContain('Undo');
-  expect(html).toContain('every step is a config change with an inverse');
-  expect(html).toContain('privacy local accepted 4 of 4');
+  expect(html).toContain('ambit apply can make every change');
+  expect(html).toContain('Local changes: you approved 4 of 4');
 });
 
 test('a blocked node says what it is blocked by, and prices the gap', () => {
@@ -838,7 +845,7 @@ test('the map has an authority lens, keyed by what the demo actually grants', ()
     />
   );
   expect(html).toMatch(/aria-pressed="true"[^>]*>Authority</);
-  for (const label of ['Acts without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
+  for (const label of ['Runs without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
     expect(html).toContain(label);
   }
 });

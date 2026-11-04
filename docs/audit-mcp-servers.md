@@ -11,7 +11,7 @@ Servers are declared per runtime and sometimes per project, in files with differ
 ```bash
 npx ambit-cli              # reads every runtime's user-level config on this machine
 npm install -g ambit-cli   # keeps the `ambit` command the steps below use
-ambit status               # what is reached, what is proven, what is failing
+ambit status               # what is reached, what is verified, what is failing
 ```
 
 The map's **My Setup** view is the same list, one row per server, agent, model or command, with which runtime declared it and whether it is enabled.
@@ -25,9 +25,9 @@ ambit verify            # run every declared check, and record the result
 ambit doctor            # setup health: what works, what fails, what rests on one piece
 ```
 
-A capability with a passing check is **proven**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
+A capability with a passing check is **verified**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
 
-A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unproven. They still count as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
+A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unverified. They still count as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
 
 ## 3. See what each one may do without asking
 

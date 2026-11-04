@@ -219,7 +219,9 @@ test('the gap is every plan merged: a shared prerequisite once, ahead of what ne
   const lines = renderSpec(report, PLAIN).join('\n');
   expect(lines).toContain(`1. ${shared.name}`);
   expect(lines).toMatch(/needed by [^\n]*Payments/);
-  expect(lines).toContain(`Next  ${shared.name}, then ambit seed`);
+  expect(lines).toContain(
+    `Next  ambit fix ${shared.id.replace(/^combo:/, '')} · the ways to set up ${shared.name}, then ambit seed`
+  );
 });
 
 test('a task the vocabulary cannot route is listed, never guessed', () => {

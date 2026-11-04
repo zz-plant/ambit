@@ -429,7 +429,7 @@ describe('the session briefing', () => {
     const b = briefing(db) as any;
     expect(graphCounts(db).failing).toBe(1);
     expect(b.environment).toBe(
-      '2/2 capabilities reached · 1 proven · 1 failing · 1 failing action'
+      '2 of 2 capabilities reached · 1 verified · 1 failing · 1 failing action'
     );
     // The list is still the finest-grained answer, and names both.
     expect(b.broken.map((x: any) => x.id).sort()).toEqual([
@@ -448,7 +448,7 @@ describe('the session briefing', () => {
     });
     const b = briefing(db) as any;
     expect(b.environment).toBe(
-      '1/1 capabilities reached · 1 proven · 0 failing · 1 failing action'
+      '1 of 1 capabilities reached · 1 verified · 0 failing · 1 failing action'
     );
     expect(b.broken).toHaveLength(1);
     db.close();
@@ -463,7 +463,7 @@ describe('the session briefing', () => {
     learn(db, 'combo:version-control', 'failed', { score: 0 });
     learn(db, 'combo:version-control', 'verified');
     const b = briefing(db) as any;
-    expect(b.environment).toBe('1/1 capabilities reached · 0 proven · 0 failing');
+    expect(b.environment).toBe('1 of 1 capabilities reached · 0 verified · 0 failing');
     expect(b.broken).toBeUndefined();
     expect(b.recovering).toEqual([
       { id: 'combo:version-control', name: 'Version Control', recent: '1 of the last 2 passed' },
@@ -605,7 +605,7 @@ describe('authority that widens on evidence', () => {
           .prepare("SELECT lifecycle FROM capabilities WHERE id = 'combo:version-control'")
           .get() as any
       ).lifecycle;
-    expect(lifecycle()).toBe('degraded');
+    expect(lifecycle()).toBe('recovering');
 
     expect(evaluatePromotions(db).promoted).toHaveLength(0);
     // Usable, so the grant decides, and the grant still asks.
@@ -758,7 +758,7 @@ describe('re-running what is failing', () => {
       // One pass brings it back: the latest check decides. Its record is
       // still mixed, so it is recovering, usable and not yet proven, and the
       // run says how its recent checks went.
-      expect(lifecycle('skill:deploy-notes')).toBe('degraded');
+      expect(lifecycle('skill:deploy-notes')).toBe('recovering');
       expect(usable(lifecycle('skill:deploy-notes'))).toBe(true);
       expect(again.now_unavailable).toBeUndefined();
       expect(again.recovering).toEqual([

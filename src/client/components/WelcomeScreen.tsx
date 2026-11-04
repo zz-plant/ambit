@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useConfigImport } from '../hooks/useConfigImport';
 import { useCopied } from '../hooks/useCopied';
-import { mergeGraphs } from '../store/ambitStore';
+import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { INSTALL } from '../utils/copy';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { BrandMark } from './BrandMark';
-import { bandSpan, COL_W, columnCentre, mapFindings, unlockCascade } from './civ/layout';
+import { bandSpan, COL_W, columnCentre, isEntry, mapFindings, unlockCascade } from './civ/layout';
 import { MapStill, stillLayout } from './civ/MapScene';
 import ConfigIntake from './ConfigIntake';
 
@@ -39,15 +39,20 @@ export const RUNTIMES = [
  */
 export const RUNTIMES_READ = 16;
 
+/** What the owner of an empty graph runs, which the page copies and never runs. */
+const SEED = 'ambit seed';
+
 /** The published docs, beside the app on the hosted site. */
 const DOCS = `${import.meta.env.BASE_URL}docs/`;
 
 /**
- * The sample setup's best next step and how much it would open, on the graph
- * the demo seeds and by the walk the map draws, so the number here is the one
- * the tour's first step then shows. With it, a still of the columns it lights,
- * for a wide screen: the front door was all words, and a screenshot of it
- * showed no product.
+ * The sample setup's best next step, how much it would open, and where the
+ * setup stands before and after it, on the graph the demo seeds and by the
+ * walk the map draws, so the number here is the one the tour's first step
+ * then shows. "More than what?" had no answer: a bare delta left the reader
+ * to guess at a denominator, so the card carries the baseline it is a delta
+ * from. With it, a still of the columns it lights, for a wide screen: the
+ * front door was all words, and a screenshot of it showed no product.
  */
 function demoNextStep() {
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
@@ -57,6 +62,7 @@ function demoNextStep() {
     demoSnapshot().next.map(n => n.id)
   );
   if (!best) return null;
+  const tree = items.filter(i => !isEntry(i));
   const layout = stillLayout(items, connections);
   const cascade = unlockCascade(items, connections, best.item.id);
   const lit = [best.item.id, ...cascade].flatMap(id => layout.positions.get(id) ?? []);
@@ -67,6 +73,9 @@ function demoNextStep() {
   return {
     name: best.item.name,
     reaches: best.reaches,
+    /** Reached, and the tree's size: the two halves of the baseline. */
+    reached: tree.filter(i => i.status === 'built').length,
+    total: tree.length,
     still: {
       items,
       connections,
@@ -99,6 +108,10 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
   const [dropping, setDropping] = useState(false);
   const [copied, copy] = useCopied();
   const next = useMemo(demoNextStep, []);
+  // Served by `ambit web` against a graph nothing has been read into: the
+  // person here already has Ambit, so the visitor's install line and sample
+  // pitch answer a question they did not ask. The demo stays one link away.
+  const owner = useAmbitStore(s => s.backend === 'live' && !s.demo);
 
   return (
     // The whole page takes a dropped file, so there is no target to aim at;
@@ -128,53 +141,91 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           What can you and your agents do, and what would one more step open up?
         </h1>
         <p className="app-welcome-lede">
-          That reach is your <em>ambit</em>. Ambit reads the configs of {RUNTIMES.join(', ')} and{' '}
-          {RUNTIMES_READ - RUNTIMES.length} more, and draws it as one map: what works, which next
-          step would open the most, and what stops if a piece goes away.
+          Ambit reads the configs of {RUNTIMES_READ} agent runtimes, including {RUNTIMES[0]},{' '}
+          {RUNTIMES[1]}, {RUNTIMES[2]} and {RUNTIMES[3]}, and draws what they add up to as one map:
+          what works, which next step would open the most, and what stops if a piece goes away. That
+          reach is your <em>ambit</em>.
         </p>
 
-        {next && (
+        {owner && (
+          <div className="app-welcome-yours">
+            <h2>Nothing has been read on this machine yet</h2>
+            <p className="app-welcome-local">
+              The graph this page reads is empty, which means Ambit has not run here, not that your
+              setup can do nothing. Run this in a terminal: it reads every agent runtime&apos;s
+              config on this machine into the local graph, and this page draws the map once it is
+              done. <code>ambit</code> on its own does the same on a first run, then says where you
+              stand.
+            </p>
+            <div className="app-welcome-install">
+              <code className="app-welcome-cmd">{SEED}</code>
+              <button
+                type="button"
+                className="app-welcome-copy"
+                onClick={() => copy('seed', SEED)}
+                aria-label="Copy the seed command"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+            <button type="button" className="app-welcome-link" onClick={onExploreDemo}>
+              Look at the sample setup meanwhile
+            </button>
+          </div>
+        )}
+
+        {next && !owner && (
           <button type="button" className="app-welcome-fact" onClick={onExploreDemo}>
             <span className="app-welcome-fact-figure">{next.reaches}</span>
             <span className="app-welcome-fact-text">
-              more things a sample developer&apos;s agents could do once {next.name} is set up.
+              more capabilities a sample developer&apos;s agents would reach once {next.name} is set
+              up: {next.reached} of {next.total} today, {next.reached + next.reaches} after.
               <strong className="app-welcome-fact-go">Watch it open →</strong>
             </span>
           </button>
         )}
 
-        <div className="app-welcome-yours">
-          <h2>Or map your own config</h2>
-          <ConfigIntake onMapped={onMapped} />
-          {dropError && (
-            <p className="intake-error" role="alert">
-              {dropError}
-            </p>
-          )}
-        </div>
+        {!owner && (
+          <div className="app-welcome-yours">
+            <h2>Or map your own config</h2>
+            <ConfigIntake onMapped={onMapped} />
+            {dropError && (
+              <p className="intake-error" role="alert">
+                {dropError}
+              </p>
+            )}
+          </div>
+        )}
 
-        <div className="app-welcome-install">
-          <code className="app-welcome-cmd">{INSTALL}</code>
-          <button
-            type="button"
-            className="app-welcome-copy"
-            onClick={() => copy('install', INSTALL)}
-            aria-label="Copy the install command"
-          >
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
-        </div>
-        <p className="app-welcome-local">
-          Runs the CLI with nothing installed, and maps every runtime on the machine. To keep it,
-          install with Homebrew or <code>npm install -g ambit-cli</code>.
-        </p>
+        {!owner && (
+          <>
+            <div className="app-welcome-install">
+              <code className="app-welcome-cmd">{INSTALL}</code>
+              <button
+                type="button"
+                className="app-welcome-copy"
+                onClick={() => copy('install', INSTALL)}
+                aria-label="Copy the install command"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+            <p className="app-welcome-local">
+              No install needed: npx fetches it for the run, and it maps every runtime on this
+              machine. To keep the command, install with Homebrew or{' '}
+              <code>npm install -g ambit-cli</code>.
+            </p>
+          </>
+        )}
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>
             Time &amp; cost
           </button>
-          <a href={`${DOCS}loadout/`}>From configs to work done without you</a>
-          <a href={`${DOCS}guide/`}>Guide</a>
-          <a href={`${DOCS}faq/`}>What it reads, and what leaves your machine</a>
+          <a href={`${DOCS}guide/`}>Get started</a>
+          <a href={`${DOCS}faq/`}>What stays on your machine</a>
+          <a href={`${DOCS}loadout/`}>From configs to work done</a>
+          <a href={`${DOCS}mcp-outage/`}>What breaks if a server goes</a>
+          <a href={`${DOCS}compare/`}>Ambit and MCP gateways</a>
           <a href="https://github.com/zz-plant/ambit" rel="noopener">
             Source on GitHub
           </a>
@@ -183,7 +234,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
       {/* On a wide screen, the step the fact names, already lit: the button
           beside it plays it on the live map. Hidden on a narrow one, where
           the hero is the whole width. */}
-      {next && (
+      {next && !owner && (
         <button
           type="button"
           className="app-welcome-still"

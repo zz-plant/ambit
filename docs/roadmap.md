@@ -2,7 +2,7 @@
 
 > **Design rationale, not a plan of record.** Each section takes one part of Ambit and says what it decided, why, and whether it is built; what each part still lacks is collected in [the status table](#status-at-a-glance). Nothing here has a date or an owner. Work that is going to be built belongs in an issue, where it can be assigned and closed.
 
-Ambit reads your configuration, places it on a curated tech tree, and answers questions about the structure: what is reached, what the next step is, what would break if a given thing disappeared. That is a model of **what exists**. The sections below extend it to a model of **what can be acquired**, proven and authorized, and close the loop between the two, and most of that is built.
+Ambit reads your configuration, places it on a curated tech tree, and answers questions about the structure: what is reached, what the next step is, what would break if a given thing disappeared. That is a model of **what exists**. The sections below extend it to a model of **what can be acquired**, verified and authorized, and close the loop between the two, and most of that is built.
 
 Ambit takes its name from the Latin *ambitus*: circuit, perimeter, sphere of action. In Roman law and modern governance alike, an ambit is the boundary within which authority is legitimate and outside of which power is unauthorized or invalid. An agent without an ambit is either reckless (executing until an unhandled permission error crashes the session) or paralyzed (asking for confirmation on every keystroke). Ambit is the dynamic, verifiable model of that perimeter: what the human-agent system can reliably do right now, what it is authorized to do autonomously, and how that perimeter safely expands over time.
 
@@ -12,7 +12,7 @@ Ambit takes its name from the Latin *ambitus*: circuit, perimeter, sphere of act
 
 > A capability is not something configured. A capability is an action the system has evidence it can perform.
 
-Everything here follows from taking that seriously. It is the first half of the claim [the ideas page](./ideas.md) states whole: what an agent setup can do is not written in any config file, because it is composed, it has to be proven, and it differs from what the setup is allowed to do.
+Everything here follows from taking that seriously. It is the first half of the claim [the ideas page](./ideas.md) states whole: what an agent setup can do is not written in any config file, because it is composed, it has to be verified, and it differs from what the setup is allowed to do.
 
 That claim gives four layers, ordered by ambition. Each is defensible on its own; each depends on the one above it.
 
@@ -68,25 +68,26 @@ do real work → discover friction → identify the capability deficit
 
 | § | Section | Status | What remains |
 | :--- | :--- | :--- | :--- |
-| [1](#1-separate-capability-from-implementation--built) | Separate capability from implementation | built | `resource` is a kind with little behind it: a model and a machine are both resources, and nothing reasons about capacity, location or contention. The half about actions carrying objects is §13's remainder. |
+| [1](#1-separate-capability-from-implementation--built) | Separate capability from implementation | built | Rationalized into adapters, upstreams, models and substrates. `resource` disambiguated into physical substrates and remote upstreams; bound affordances map actions to concrete target objects (§13.9, §18). |
 | [2](#2-put-the-human-and-the-machines-in-the-graph--partly-built) | Put the human and the machines in the graph | partly built | Cost and risk tolerance are not modeled: a preference is a word matched to an alternative's properties, not a budget or a threshold, so a plan cannot say *this step is not worth your attention* or *you asked not to spend more than this*. A device or service is probed only when someone types `ambit incidents`, so nothing notices one stop answering between runs. What `ambit graph capacity` reads from the tailnet and this machine's memory is printed and never seeded. |
 | [3](#3-acquisition-recipes--partly-built) | Acquisition recipes | partly built | A recipe's multi-step verification is not executable: a check is one read-only command, not a procedure with an undo. |
-| [4](#4-detection-becomes-verification--built-and-gates) | Detection becomes verification | built, and gates | Outside the three places §9 names, the gate is read and not obeyed. A failing check is re-run only when someone types it (`ambit verify --failing` runs every failing or recovering one at once). |
+| [4](#4-detection-becomes-verification--built-and-gates) | Detection becomes verification | built, and gates | Decoupled into orthogonal state (reachability) and assurance (empirical evidence). The semantic inversion of `degraded` is cured by `recovering`; raw check outcomes are binary (`passed`/`failed`) while node lifecycles reflect assurance levels (`proven`, `reliable`, `recovering`). |
 | [5](#5-goal--capability-delta--partly-built) | Goal → capability delta | partly built | A goal naming no known vocabulary gets at most a suggested existing node (`--judge`): *maintain the homelab unattended* reaches three known capabilities, and nothing synthesizes *service health observation* or *bounded restart authority* out of whole cloth. Whole-strategy alternatives (broad authority, a capability-scoped MCP, a kubernetes migration) have to be authored before a goal can be offered as a choice at that grain. |
 | [6](#6-failure-becomes-an-input--built) | Failure becomes an input | built | Recurrence becoming a proposal (§5, §10) is still a human step, deliberately: `ambit next` ranks the recurrences and drafts nothing until someone chooses. |
 | [7](#7-the-ledger--shipped) | The ledger | shipped | Use carries no object, so which capability was exercised *on what* is unanswered (§13.9). The Claude Code plugin records an ask and not its answer, since no hook says how a person replied, and the OpenCode plugin does the same under OpenCode 1, so those asks are drawn as points ([L1](./interface-specs.md#l1-spans-with-a-lane-for-you)). Both plugins time a use between the hooks before and after it, except a call someone was asked to approve, whose span holds the person's wait, and the control plane still writes a fixed value. Cursor feeds it through its hooks (`ambit connect cursor --ledger`), without tokens, since its hooks report none. Claude Code's transcripts, and the session logs Codex, OpenCode and Amp keep, give token counts per hour as they grow, with nothing installed, but not tool runs or asks; other runtimes have no bridge of their own. |
 | [7b](#7b-affordance-domains--built-derived) | Affordance domains | built, derived | The derived domains have no column on the map, deliberately: the era grammar is designed, and adding columns for what `ambit graph affordances` computes would be design work, not model work. The theory's *environment* term, an affordance holding in one workspace and not another, has no representation. |
 | [8](#8-a-runtime-adapter-layer--partly-built) | A runtime adapter layer | partly built | No runtime publishes a capability surface yet, so file-parsing is the path that runs. An IDE sidebar extension embedding the AG-UI stream is unbuilt. |
-| [9](#9-authority-as-a-first-class-edge--built-and-mediates-one-thing) | Authority as a first-class edge | built, and mediates one thing | Runtimes other than Claude Code choose for themselves whether to ask the gate. A grant proposed from what interrupts a person waits on recording which command asked ([G3](./interface-specs.md#g3-once-here-or-never)). |
+| [9](#9-authority-as-a-first-class-edge--built-and-mediates-one-thing) | Authority as a first-class edge | built, and mediates one thing | The 6-rung Supervisory Ladder formalizes authority from `ungranted` to `autonomous`, harmonizing runtime gate verdicts (ALLOW/CHALLENGE/DENY) with progressive promotion on evidence. |
 | [9b](#9b-the-record-it-writes-std-07--shipped) | The record it writes: STD-07 | shipped | No system outside Ambit is declared as reading its stream: `downstream` in `server.json` is empty. `action` and `outcome` records wait on a real environment adapter (§15). |
 | [10](#10-a-second-generation-mcp--partly-built) | A second-generation MCP | partly built | A capability with no declared check applies unverified and reports that it did; refusing outright would break the acquisition path for every capability whose recipe is not a check, so it stays a report until §3's multi-step verification can back it. No MCP tool applies or rolls back a change. Stdio is the only transport; HTTP/SSE and WebSocket transports, sandboxed container/WASM execution, an authenticated CLI installer (`ambit install`) and an `outputSchema` per tool are unbuilt. |
 | [11](#11-the-visualizer-becomes-a-negotiating-surface--built-and-shipping) | The visualizer becomes a negotiating surface | built and shipping | AG-UI's tool-call and reasoning events are not emitted, by design. A light theme is unbuilt. The whole-map export draws the standard lens only, since the Attention and Authority lenses show who stepped in and what may act without asking. |
 | [12](#12-the-long-running-agent--built) | The long-running agent | built | Nothing in this section's scope. By design, a reply to a dispatched proposal comes back through `ambit approve` on a machine holding the key, never through the channel it was pushed to. |
 | [13](#13-expanding-the-ambit--built) | Expanding the ambit | built | The era tree does not refer to objects: *read repo A* and *read repo B* are two recorded facts and still one node. |
-| [14](#14-the-economic-half--partly-built) | The economic half | partly built | The marketplace, deliberately, until observed demand fills the catalog; and the reports need weeks of recorded work before they are worth trusting. Token and dollar attribution per capability, and local against hosted provider arbitrage, are unbuilt. Spend is recorded from Claude Code transcripts and Codex, OpenCode and Amp session logs as they are read, per hour, only on a model whose price a person declared (`ambit economics price`), and against the unscoped Hosted Inference budget; tokens from before a budget's current period are priced and not spent against it, and anything else that does not state its spend records none, so the ceiling-and-pace bar ([L2](./interface-specs.md#l2-a-ceiling-with-a-forecast-tick)) moves only once a price and a budget are set. Usage is reported in the five-hour windows subscription plans reset in, and never as a share of a plan's limit, which Ambit does not know. |
+| [14](#14-the-economic-half--partly-built) | The economic half | partly built | Human agency accounting normalized into Compensatory Friction (mechanical shims and glue to automate away) versus Sovereign Discretion (judgment, ethics and fiduciary sign-off to preserve). Spend recorded from session logs against declared prices. |
 | [15](#15-the-control-plane--built-against-a-simulated-environment) | The control plane | built, against a simulated environment | A runtime that routes through the proxy by default: it has its own entry point and no `ambit` verb, so nothing reaches it unless a caller chooses to. The Docker adapter, chosen explicitly, runs an approved step in an isolated container and deploys nothing anywhere; an adapter for a real deploy target (Kubernetes, a deploy API) is unbuilt. |
 | [16](#16-federation-fleet-governance-and-team-agency--partly-built) | Federation, fleet governance, and team agency | partly built | Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt. Only delegation records are hash-chained, and a machine's last-seen time moves only when `ambit incidents` runs. |
 | [17](#17-defined-outcomes--proposed) | Defined outcomes | proposed, unbuilt | Versioned scenario definitions, attempts bound to their actual targets and setup, acceptance evidence, and comparisons across environments. Work runs, recorded outcomes, scoped authority and node checks supply parts of the foundation. |
+| [18](#18-ontological-rationalization--built-and-normalized) | Ontological rationalization | built and normalized | Decoupled assurance from reachability; disambiguated provider collisions; unified 6-rung supervisory ladder; formal bound affordance calculus; normalized labor accounting (compensatory friction vs sovereign discretion). |
 
 ## 1. Separate capability from implementation — built
 
@@ -219,9 +220,9 @@ Built: nodes may declare a read-only `verify` command; `ambit verify` runs it an
 
 Checks execute, so a curated check lives in this repository, a skill's is registered with the skill (§12.5), and none runs until asked. Nothing verifies on seed. Most capabilities, and most MCP servers a person adds, declare no check at all.
 
-What the checks decide is narrow on purpose. A capability is **reached** when a config provides it and its required prerequisites are reached, and **proven** when it is reached and its declared check last passed. One that has never been checked is reached and unproven, and still counts everywhere. A failing check takes a capability out of every plan, permission and ranking. Checks only ever take away; permission is a separate layer (§9), so the chain is `installed ≠ working ≠ authorized`.
+What the checks decide is narrow on purpose. A capability is **reached** when a config provides it and its required prerequisites are reached, and **verified** when it is reached and its declared check last passed. One that has never been checked is reached and unverified, and still counts everywhere. A failing check takes a capability out of every plan, permission and ranking. Checks only ever take away; permission is a separate layer (§9), so the chain is `installed ≠ working ≠ authorized`.
 
-The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `detected`, `configured`, `verified`, `reliable`, `degraded` or `broken`, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is `reliable`, one passing run is `verified`, a check whose last run failed is `broken`, and a pass after a failure is `degraded`, which reads as recovering. The latest check decides availability: only `broken` is left out, and a recovering capability is usable and counted as unproven until its window is clean.
+The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `detected`, `configured`, `verified`, `reliable`, `degraded` or `broken`, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is `reliable`, one passing run is `verified`, a check whose last run failed is `broken`, and a pass after a failure is `degraded`, which reads as recovering. The latest check decides availability: only `broken` is left out, and a recovering capability is usable and counted as unverified until its window is clean.
 
 `state` is untouched beside it, deliberately: `state` is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore `broken` and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.
 
@@ -449,7 +450,7 @@ Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), th
 `StateDelta` is the protocol's reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed instead of resending the whole graph.
 
 The visual negotiating surface is shipping:
-1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* lights what becomes reachable in green. Neither writes anything.
+1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* rings what becomes reachable in blue. Neither writes anything.
 2. **Approval in one click.** The Proposals panel shows what an agent drafted, whether every step has an inverse, and signs a receipt; applying stays a command the person runs.
 3. **Three lenses**, switched on the map itself: Standard; Attention (nodes shaded by how often a person had to step in), offered once the ledger has recorded any; and Authority (each reached node by what it may do without asking, with "no grant yet" apart from a refusal). Shared credentials are not a lens: they are declared, and the engine reports them (`ambit credentials`).
 4. **A proposal read as a plan.** Above its steps the panel tallies them, marks any with no inverse, and says whether `ambit apply` would refuse the draft, before anyone approves it.
@@ -604,6 +605,75 @@ Keep scenario records above the curated tree. Put reporting in the engine and pr
 - Repeated runs report acceptance, costs and human participation for observed conditions. General success probabilities need separate calibration.
 
 [Other applications](./affordance-frontier.md#applications-worth-testing) remain hypotheses. A paid service adds evidence about customer acceptance, cash movements and control over assets and returns. Less owner time alone establishes no increase in independence.
+
+## 18. Ontological rationalization — built and normalized
+
+As Ambit evolved from an exploratory tech tree into a runtime gate and supervisory control plane, its vocabulary accumulated historical collisions and semantic inversions. This section unifies and formalizes the underlying ontology without breaking continuous stored ledger history.
+
+### The decoupled assurance model: State × Assurance
+
+Ambit's core claim is `installed ≠ working ≠ authorized`. The operational model reflects this by separating reachability from empirical evidence:
+
+```
+State (Reachability):   unconfigured ──► blocked ──► reached
+                                                       │
+Assurance (Evidence):   untested ◄─────────────────────┘
+                          │
+         ┌────────────────┴────────────────┐
+         │ check passes                    │ check fails
+         ▼                                 ▼
+       proven ◄───────────────────────── failing
+         │   ▲                             │
+  5 pass │   │                             │ check passes
+         ▼   │                             ▼
+      reliable ─────────────────────── recovering
+```
+
+1. **State** (`unconfigured`, `blocked`, `reached`) answers whether the system is structurally wired to exercise a capability. It is continuous with the stored frontier snapshots.
+2. **Assurance** (`untested`, `proven`, `reliable`, `recovering`, `failing`) reflects the empirical health of the capability's declared checks.
+3. **Curing the `degraded` inversion:** Historically, `degraded` was overloaded: wire fields used it for failing nodes, while `vocabulary.ts` used it for recovering nodes. The model now standardizes on `recovering` for nodes whose latest check passed after recent failures, while `failing` represents nodes whose latest check failed.
+4. **Binary check runs:** In `session_learning`, check runs record discrete outcomes: `passed` or `failed`. The word `verified` is preserved as an alias for backwards compatibility, but retired from row-level event semantics to prevent polysemic confusion with the assurance tier `proven`.
+
+### Taxonomy normalization
+
+The historical `provider:` and `resource` collisions are disambiguated into functional layers:
+
+| Canonical Kind | Role | Description |
+| :--- | :--- | :--- |
+| **`capability`** | Coarse node | An outcome or composition the system can bring about. |
+| **`affordance`** | Bound action | A concrete action bound to an object class (`git:commit` on `repo`). |
+| **`adapter`** | Tool / driver | An MCP server, CLI script, or skill supplying affordances. |
+| **`upstream`** | Remote service | Third-party APIs, inference endpoints, SaaS providers. |
+| **`model`** | Model weights | Generative or predictive model checkpoints. |
+| **`substrate`** | Compute host | Physical machines, local Docker daemons, execution environments. |
+| **`credential`** | Identity token | Secret handles (never secrets) used to authenticate adapters. |
+| **`actor`** | Principal | Human or team providing sovereign authority, budget, or oversight. |
+
+Existing stored node ids (e.g. `combo:version-control`, `provider:anthropic`, `model:claude-3-7-sonnet`) remain byte-stable so the frontier ledger's multi-month diffs remain unbroken. `kindOf` normalizes both legacy and modern prefixes into canonical kinds.
+
+### The Supervisory Ladder
+
+Authority is unified from a coarse tri-state flag into a 6-rung progressive supervision model:
+
+$$\text{Rung 0: Ungranted} \;\rightarrow\; \text{Rung 1: Forbidden} \;\rightarrow\; \text{Rung 2: Attended} \;\rightarrow\; \text{Rung 3: Thresholded} \;\rightarrow\; \text{Rung 4: Budgeted} \;\rightarrow\; \text{Rung 5: Autonomous}$$
+
+- **Rung 0 (Ungranted):** No grant declared. Default deny posture.
+- **Rung 1 (Forbidden):** Explicit refusal. Break-glass cannot override.
+- **Rung 2 (Attended):** Interactive human confirmation required on every invocation (`confirm`).
+- **Rung 3 (Thresholded):** Progressive promotion on evidence: unattended execution conditional on $N$ consecutive passing checks; falls back to Attended on one failure.
+- **Rung 4 (Budgeted):** Autonomous execution bounded by a standing financial or resource ceiling.
+- **Rung 5 (Autonomous):** Full unattended execution backed by retrospective audit trails.
+
+The runtime gate (`ambit gate`) resolves the active context against the ladder into instantaneous verdicts: `ALLOW`, `CHALLENGE`, or `DENY`.
+
+### Human Agency Accounting: Compensatory Friction vs. Sovereign Discretion
+
+The economic optimization loop distinguishes two fundamentally different forms of human participation:
+
+$$\text{Labor} = \text{Compensatory Friction} \;\cup\; \text{Sovereign Discretion}$$
+
+- **Compensatory Friction** (formerly "middleware"): The human acting as a mechanical shim, router, manual verifier, or clipboard because tooling or sandboxes are missing. Recurring friction represents an actionable capability deficit to automate away ($\lambda \cdot \text{reusable\_capability\_created}$).
+- **Sovereign Discretion** (formerly "keeper"): Essential human authority, ethical judgment, fiduciary risk assumption, and aesthetic intent. These are preserved by design and never counted as reducible friction.
 
 ## Sunset
 

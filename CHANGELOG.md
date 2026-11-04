@@ -4,7 +4,55 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 An entry that refers to the previous entry therefore points down the page, not up.
 
-## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
+## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.0...main)
+
+### Windows
+
+Ambit found no config on Windows and wrote its graph under the current directory, because Windows sets `USERPROFILE` and no `HOME`. It now takes the home directory from either, in the CLI and in the plugins that transcribe the spool's path, and reads the six runtimes that keep their file under `%APPDATA%` there. A check written for `sh` on a machine with no `sh` stays unverified, since it could not ask: counting that as a failure would have dropped working capabilities from every plan. A new CI job runs the CLI on Windows against a throwaway home.
+
+`./bootstrap.sh` does not run there, and `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, since doing so needs a shell and it starts servers with none.
+
+## [0.7.0](https://github.com/zz-plant/ambit/releases/tag/v0.7.0) — 2026-11-04
+
+The release that gives a newcomer one answer wherever they start, and measures more of what an agent setup costs. In short:
+
+- **One readout, wherever you start.** The hosted demo, `npx ambit-cli`, `ambit web` and the Claude Code plugin now state the same reach and the same next steps for the same setup, and a test holds the tab and the terminal to it. The demo asks for your setup on its first card, not its fifth.
+- **`ambit weigh`** measures what each local tool server's tool list costs in context every session, per runtime.
+- **More of the spend, measured.** Tokens from Codex, OpenCode and Amp are read from the logs those agents keep, Claude Code's as a session runs, and `ambit usage --windows` reports them in five-hour windows. `ambit connect cursor --ledger` feeds Cursor into the work ledger.
+- **More of the machine, read.** Copilot CLI, Amp, Goose, Kiro and VS Code's own MCP servers join the runtimes Ambit reads, with the models Ollama and LM Studio keep on disk.
+- **An approved change reaches the runtime you use.** `ambit apply <id> --to=claude-code` writes that runtime's config and `ambit rollback` gives the file its bytes back; where it cannot write, it prints that runtime's own command.
+- **The latest check decides.** One passing check brings a capability back into every plan, where it took five in a row, and it reads as recovering until its recent runs pass.
+- **A first session that starts small.** `ambit help` lists the eight commands a first session uses, and `--help` after any command says what it does and runs nothing. It used to run it, so `ambit verify --help` ran every check and `ambit approve <id> --help` approved.
+- **Control plane.** An opt-in Docker adapter runs an approved step's command in a throwaway container with no network and no host mount by default.
+- **Three fixes to what may reach you.** The API server refuses a page on another local port, where any page on `localhost` used to pass. `ambit apply` writes a step's patch only when it is the shipped tree's, so an overlay in a cloned repository cannot give a step its own command. A service that stops answering stops counting as reached.
+
+### A Node too old for Ambit says so
+
+The package declares Node 22.18 or newer, and on anything older `npx ambit-cli` died on a flag or a missing module with nothing saying why. It now names the version it found and the one it needs. The status line and the gate stay silent on an old Node, since neither may clutter a screen or block work. The first screen also names `ambit share`, and the demo's paste box says it needs only the server names.
+
+### What was missing says so where you already look
+
+A grant of `forbidden` printed success and `ambit can` answered DENY, and nothing said that a tool call only stops once the gate is on. `ambit authority grant` and `ambit budget set` now say so when it is off, `ambit doctor` lists it, and `ambit connect claude-code --gate` adds the hook where the plugin is not used.
+
+Bare `ambit` and `ambit status` never named connecting the agents or recording them, though the ledger's reports are empty until both are done. Each now names the next missing step for the runtimes found here, and `ambit connect` ends on what is still missing where it used to end on the runtimes it did not find. `ambit doctor` also counted a Claude Code install with the plugin as not connected, and no longer does.
+
+`ambit repo`, which recommends what to add for the project in the current folder, was listed in `ambit help plan` and nowhere else. Bare `ambit` now says what it would suggest when run inside a project, and it joins the first-session help, the README and the plugin's skill.
+
+### Help that starts small, and `--help` that runs nothing
+
+`ambit help` was meant to cover a first session and listed seventeen commands with their options, `--judge[=url]` and `goal --spec` among them. It now lists the eight a first session uses, in the order a person meets them, and the five groups with a line each. `ambit plan` printed the group's whole section of `--all`, sixty lines of which the judge's options were most; each group now prints one line a command, and `ambit help <command>` shows that command's entry in full with the word it rests on (`ambit help verify` ends on Verified). `ambit help verify` used to explain the word and never the command, and `ambit help frontier` printed Ambit's entry first because its text mentions the frontier: a word that names a concept now shows that concept alone, and a slip is offered what it was probably meant to be.
+
+`--help` after a command was one more flag the command ignored, so `ambit verify --help` ran every declared check, `ambit approve <id> --help` approved, `ambit mcp --help` started a server waiting on stdin, and `ambit web --help` opened the map. `--help` and `-h` anywhere after a command now print its entry and run nothing. Help no longer opens the graph, so it no longer waits on the spools and session logs, or creates a graph on a fresh machine. Bare `ambit graph` on a terminal prints its group's index where it printed a hundred kilobytes of JSON on one line; a pipe and `--json` still get the export.
+
+### One reach, one step, said the same way everywhere
+
+Bare `ambit` said "9 of 46 capabilities" where `ambit status`, the agent's briefing, `ambit doctor` and My Setup's journey said "18 of 55" of the same setup. The larger figure counts the person's own servers, models and runtimes as well, and both are true. Every sentence that states reach now holds both, "9 of 46 capabilities reached, and 9 of your own", so each agrees with the other surfaces and the evidence rows under `ambit status` still add up. The page's Time & cost and journey count the tree, as the map does, and `ambit_stats` carries the sentence for an agent to quote.
+
+The map lit what a step would make reachable eventually, taking each next step it opened as reached and going on past it. So Hosting lit Launch Ready, three steps away, beside a sentence naming the three next steps on the way. What a step brings is now one rule in `src/shared/nextSteps.ts`, the capabilities reached with it and the next steps that leaves, which the map lights, the finding counts, the banner and the panel state, and the readout names. On the demo, Embeddings opens two where the map said four.
+
+A frame on the map may zoom out to fit what is lit, and now zooms back to the person's own zoom for the next thing lit and when the simulation ends. It used to keep the smaller zoom the previous frame chose, so an unlock after a selection drew its names at eight pixels. On a phone an outage keeps its root's callout in frame, and a sheet open on the simulated node takes the banner's place, which repeated its sentence in three lines over the era names. `npm run shots` photographs an unlock after a zoom by hand and an outage rooted in the first column, and flags a banner over an era name and a callout off the map. The hero recording holds its ten-pixel floor in every beat that is read, and ends a simulation by the button's real name, which it had been missing, so its selection beat no longer showed the unlock still running.
+
+The concurrency test ran its "concurrent" writers one after another, and a writer that failed said nothing of why. They now hold the lock against each other and report their stderr. The status line's half-second budget scales with the machine's load, so a saturated machine no longer fails it.
 
 ### An approved change reaches the runtime you use
 

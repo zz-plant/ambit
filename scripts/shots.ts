@@ -94,6 +94,36 @@ export const SHOTS: Shot[] = [
       "document.querySelector('.app-tour') && document.querySelector('.civ-scroll svg g[role=button]')",
   },
   {
+    // An unlock the page does not narrate, after a zoom by hand: the map frames
+    // it itself, and its banner sits a row under the controls. Only the hero
+    // recording ever showed that banner lying over the era names.
+    name: 'map-unlock',
+    path: `${D}&view=map&guide=off`,
+    sizes: ['desk', 'wide', 'phone'],
+    ready: "document.querySelector('.civ-finding-btn')",
+    act: `(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const zoomIn = document.querySelector('[aria-label="Zoom in"]');
+      for (let i = 0; i < 3; i++) {
+        zoomIn.click();
+        await wait(200);
+      }
+      [...document.querySelectorAll('.civ-finding-btn')].find(b => b.textContent.trim() === 'Preview').click();
+      return true;
+    })()`,
+  },
+  {
+    // An outage rooted in the first column, whose callout reaches past the map's edge.
+    name: 'map-outage-edge',
+    path: `${D}&view=map&guide=off&focus=combo:shell-execution`,
+    sizes: ['desk', 'phone'],
+    ready: "document.querySelector('.app-detail-panel')",
+    act: `(() => {
+      [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Simulate an outage').click();
+      return true;
+    })()`,
+  },
+  {
     name: 'readout',
     path: D,
     sizes: ['desk', 'phone'],
@@ -193,6 +223,21 @@ const CHECKS = `(() => {
       if (under) found.push('a column runs under the detail panel');
     }
   }
+  const banner = document.querySelector('.civ-sim-banner')?.getBoundingClientRect();
+  if (banner) {
+    const over = [...document.querySelectorAll('.civ-era-head')].some(head => {
+      const h = head.getBoundingClientRect();
+      return (
+        h.width > 0 && h.left < banner.right && h.right > banner.left &&
+        h.top < banner.bottom && h.bottom > banner.top
+      );
+    });
+    if (over) found.push("a simulation's banner lies over an era name");
+  }
+  const callout = document.querySelector('.civ-callout')?.getBoundingClientRect();
+  const map = scroll?.getBoundingClientRect();
+  if (callout && map && (callout.left < map.left - 1 || callout.top < map.top - 1))
+    found.push("the outage's callout runs off the map");
   if (document.querySelector('.app-loading')) found.push('a view is still loading');
   return found;
 })()`;
@@ -396,15 +441,23 @@ async function main() {
         if (!ready) await sleep(200);
       }
       await cdp.eval('document.fonts.ready.then(() => true)').catch(() => {});
-      if (shot.act)
-        await cdp.eval(shot.act).catch(e => console.error(`${shot.name}: ${e.message}`));
+      // A shot whose action failed is of some other state, and says so.
+      const acted = shot.act
+        ? await cdp.eval(shot.act).then(
+            () => true,
+            e => {
+              console.error(`${shot.name}: ${e.message}`);
+              return false;
+            }
+          )
+        : true;
       // Framing scrolls smoothly, and a simulation settles over a second.
       await sleep(2200);
       const found: string[] = !arrived
         ? ['the page never arrived']
-        : ready
-          ? await cdp.eval(CHECKS)
-          : ['the view never drew'];
+        : !ready
+          ? ['the view never drew']
+          : [...(acted ? [] : ['the action before the shot failed']), ...(await cdp.eval(CHECKS))];
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' }, 30_000);
       const file = `${shot.name}--${sizeName}.png`;
       writeFileSync(join(out, file), Buffer.from(data, 'base64'));

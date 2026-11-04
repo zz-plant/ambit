@@ -189,7 +189,7 @@ function evidenceCount(db: Db, capability: string, days: number, scope?: string)
   const checks = db
     .prepare(
       `SELECT
-         SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passes,
+         SUM(CASE WHEN action IN ('verified', 'passed') THEN 1 ELSE 0 END) AS passes,
          SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
          MAX(timestamp) AS last_seen
        FROM session_learning
@@ -312,7 +312,7 @@ function evaluatePromotions(db: Db) {
     const runs = db
       .prepare(
         `SELECT timestamp FROM session_learning
-         WHERE capability_id = ? AND action = 'verified' AND timestamp >= datetime('now', ?)
+         WHERE capability_id = ? AND action IN ('verified', 'passed') AND timestamp >= datetime('now', ?)
          ORDER BY timestamp DESC LIMIT 20`
       )
       .all(g.capability_id, `-${days} days`)
@@ -376,7 +376,7 @@ function promotionReport(db: Db) {
   if (!rows.length) {
     return {
       note: suggested.length
-        ? 'No thresholds set, and there are grants proven enough to stop asking once one is. `ambit authority promote <cap> <action> --after=N --by=<person>` is how a person says "stop asking me once this has proved itself".'
+        ? 'No thresholds set, and there are grants that have earned enough to stop asking once one is. `ambit authority promote <cap> <action> --after=N --by=<person>` is how a person says "stop asking me once this has proved itself".'
         : 'No promotion thresholds set. `ambit authority promote <cap> <action> --after=N --by=<person>` is how a person says "stop asking me once this has proved itself".',
       worth_promoting: suggested.length ? suggested : undefined,
       ...changes,
@@ -561,6 +561,7 @@ function grantAuthority(
     expires?: string;
     by?: string;
     note?: string;
+    condition?: string;
   }
 ) {
   const capability =
@@ -582,6 +583,11 @@ function grantAuthority(
   // told not to do, the same shape §12.6 refuses for thresholds.
   if (mode === 'forbidden' && (input.ttl || input.expires)) {
     return { error: 'A forbidden grant takes no TTL. Revoke it by declaring another mode.' };
+  }
+  // A condition bounds a scope. Without one the gate would silently ignore it,
+  // which is a grant that looks narrower than it is.
+  if (input.condition && !input.scope) {
+    return { error: 'A condition bounds a scope; pass --scope=<target> too.' };
   }
 
   let expiresAt: string | null = null;
@@ -611,11 +617,13 @@ function grantAuthority(
   const by = input.by ? (input.by.startsWith('human:') ? input.by : `human:${input.by}`) : null;
   const holder = input.holder || '';
   const scope = input.scope || '';
+  const condition = input.condition || null;
   const source = input.source || 'human';
   const note =
     input.note ||
     [
       expiresAt ? `temporary ${mode} elevation (${expiresDesc})` : null,
+      condition ? `bound ${scope || '<any>'} ${condition}` : null,
       by ? `declared by ${by}` : null,
     ]
       .filter(Boolean)
@@ -623,14 +631,15 @@ function grantAuthority(
     null;
 
   db.prepare(`
-    INSERT INTO authority (capability_id, action, mode, holder, scope, source, note, expires_at, promote_set_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO authority (capability_id, action, mode, holder, scope, source, note, expires_at, condition, promote_set_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(capability_id, action, holder, scope, source) DO UPDATE SET
       mode = excluded.mode,
       note = excluded.note,
       expires_at = excluded.expires_at,
+      condition = excluded.condition,
       promote_set_by = COALESCE(excluded.promote_set_by, authority.promote_set_by)
-  `).run(capability, action, mode, holder, scope, source, note, expiresAt, by);
+  `).run(capability, action, mode, holder, scope, source, note, expiresAt, condition, by);
 
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes, object) VALUES ('authority', ?, 'grant-written', 1, ?, ?)"
@@ -642,6 +651,7 @@ function grantAuthority(
     action,
     mode,
     scope: scope || undefined,
+    condition: condition || undefined,
     holder: holder || undefined,
     declared_by: by || undefined,
     expires_at: expiresAt || undefined,

@@ -22,6 +22,7 @@ import {
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
 import type { AuthorityLadder } from '../../shared/api';
+import { KeystoneMark } from './civ/marks';
 import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
@@ -33,12 +34,28 @@ import { Command } from './Command';
 
 /** The rungs a grant climbs, bottom first, as the panel draws them. */
 const RUNGS = ['ungranted', 'confirm', 'threshold', 'autonomous', 'budgeted'] as const;
-const RUNG_LABEL: Record<(typeof RUNGS)[number], string> = {
+type Rung = (typeof RUNGS)[number];
+const RUNG_LABEL: Record<Rung, string> = {
   ungranted: 'No grant',
   confirm: 'Asks',
   threshold: 'Threshold',
-  autonomous: 'Unattended',
+  autonomous: 'Without asking',
   budgeted: 'Ceiling',
+};
+/**
+ * What a rung means, said when it is pressed. The ladder drew five labelled
+ * segments, which read as a switch, and a press on "Without asking" did
+ * nothing. A grant moves one rung at a time, by the command under the ladder.
+ */
+const RUNG_MEANING: Record<Rung, string> = {
+  ungranted: 'No grant: nobody has decided yet whether it may run.',
+  confirm: 'Asks: it runs only when a person approves the run.',
+  threshold:
+    'Threshold: it asks until it has the passing checks and successful uses a person set, then stops asking.',
+  autonomous:
+    'Without asking: it runs unattended until a check fails, which puts it back to asking.',
+  budgeted:
+    'Ceiling: it runs unattended, and is refused once its spend passes the most a person set for the period.',
 };
 
 /** How many steps of a route the panel lists before it counts the rest. */
@@ -100,6 +117,8 @@ function LinkList({
 }
 
 export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPanelProps = {}) {
+  /** The button that starts and ends a simulation, which keeps the keyboard. */
+  const simButton = React.useRef<HTMLButtonElement>(null);
   const storeItems = useAmbitStore(s => s.items);
   const items = pastItems ?? storeItems;
   const connections = useAmbitStore(s => s.connections);
@@ -125,6 +144,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const [copiedCmd, copy] = useCopied();
   const [toggling, setToggling] = React.useState(false);
   const [toggleError, setToggleError] = React.useState<string | null>(null);
+  // The rung whose meaning is showing, for the node it was pressed on: a
+  // different node opens with none.
+  const [rungPick, setRungPick] = React.useState<{ node: string; rung: Rung } | null>(null);
 
   // An era header opens its ladder in the same panel, where a node would be,
   // counted from the same observation as the header it was opened from.
@@ -345,7 +367,16 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
 
       {isKeystone && (
         <p className="sp-keystone">
-          <span aria-hidden="true">★</span>
+          {/* The map's wedge, where a star said the same in a second shape. */}
+          <svg
+            className="sp-keystone-mark"
+            width="12"
+            height="10"
+            viewBox="-6 -5 12 10"
+            aria-hidden="true"
+          >
+            <KeystoneMark />
+          </svg>
           <span>
             <Term name="keystone" /> · {enables.length} other{' '}
             {enables.length === 1 ? 'capability depends' : 'capabilities depend'} on this
@@ -447,42 +478,49 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                     : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
                 </p>
               )}
-              {isSimulated ? (
+              {/* One button whatever it starts or ends, so the press that
+                  starts a simulation leaves the keyboard on the button that
+                  ends it. Two buttons in turn, each replaced the other, and
+                  the focus fell to the page. */}
+              {!isSimulated && item.status !== 'built' && missing.length > 0 && (
                 <button
                   type="button"
-                  className="sp-action-btn sp-action-btn--sim"
-                  onClick={clearSim}
+                  className="sp-action-btn sp-action-btn--gap"
+                  onClick={() => {
+                    startGap(item.id);
+                    // This button goes when the steps show; the one that ends them stays.
+                    requestAnimationFrame(() => simButton.current?.focus());
+                  }}
                 >
-                  End simulation
+                  Show the steps on the map
                 </button>
-              ) : item.status === 'built' ? (
-                <button
-                  type="button"
-                  className={`sp-action-btn ${stops ? 'sp-action-btn--outage' : ''}`}
-                  onClick={() => startOutage(item.id)}
-                >
-                  Simulate an outage
-                </button>
-              ) : (
-                <>
-                  {missing.length > 0 && (
-                    <button
-                      type="button"
-                      className="sp-action-btn sp-action-btn--gap"
-                      onClick={() => startGap(item.id)}
-                    >
-                      Show the steps on the map
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="sp-action-btn sp-action-btn--unlock"
-                    onClick={() => startAcquisition(item.id)}
-                  >
-                    Simulate unlocking this
-                  </button>
-                </>
               )}
+              <button
+                ref={simButton}
+                type="button"
+                className={`sp-action-btn ${
+                  isSimulated
+                    ? 'sp-action-btn--sim'
+                    : item.status === 'built'
+                      ? stops
+                        ? 'sp-action-btn--outage'
+                        : ''
+                      : 'sp-action-btn--unlock'
+                }`}
+                onClick={
+                  isSimulated
+                    ? clearSim
+                    : item.status === 'built'
+                      ? () => startOutage(item.id)
+                      : () => startAcquisition(item.id)
+                }
+              >
+                {isSimulated
+                  ? 'End simulation'
+                  : item.status === 'built'
+                    ? 'Simulate an outage'
+                    : 'Simulate unlocking this'}
+              </button>
             </div>
           );
         })()}
@@ -509,7 +547,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           {authority.ungranted
             ? 'No grant yet: an agent asking to run it is refused until someone grants one'
             : authority.execute === 'autonomous'
-              ? 'Acts without asking'
+              ? 'Runs without asking'
               : authority.execute === 'confirm'
                 ? 'Asks before acting'
                 : 'Forbidden to act'}
@@ -528,37 +566,59 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           Up takes a person's command or a threshold one set; down takes one
           failing check and nobody. A refusal is on no rung. */}
       {ladder && (
-        <div className="sp-grant" aria-label="How far its grant has climbed">
+        <div className="sp-grant">
           {ladder.rung === 'forbidden' ? (
             <p className="sp-grant-note">{ladder.note}</p>
           ) : (
-            <ol className="sp-grant-rungs">
-              {RUNGS.map((r, i) => {
-                const at = RUNGS.indexOf(ladder.rung as (typeof RUNGS)[number]);
-                return (
-                  <li
-                    key={r}
-                    className={`sp-grant-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
-                    aria-current={i === at ? 'step' : undefined}
-                  >
-                    {RUNG_LABEL[r]}
-                  </li>
-                );
-              })}
-            </ol>
+            <>
+              <ol className="sp-grant-rungs" aria-label="How far its grant has climbed">
+                {RUNGS.map((r, i) => {
+                  const at = RUNGS.indexOf(ladder.rung as Rung);
+                  const shown = rungPick?.node === item.id && rungPick.rung === r;
+                  return (
+                    <li
+                      key={r}
+                      className={`sp-grant-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
+                      aria-current={i === at ? 'step' : undefined}
+                    >
+                      <button
+                        type="button"
+                        className="sp-grant-rung-btn"
+                        aria-pressed={shown}
+                        onClick={() => setRungPick(shown ? null : { node: item.id, rung: r })}
+                      >
+                        {RUNG_LABEL[r]}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+              <p className="sp-grant-meaning" aria-live="polite">
+                {rungPick?.node === item.id ? RUNG_MEANING[rungPick.rung] : ''}
+              </p>
+            </>
           )}
           {ladder.rung !== 'forbidden' && ladder.note && (
             <p className="sp-grant-note">{ladder.note}</p>
           )}
+          {/* The command is on the button, as the failing check's is: "copy
+              the command" named none, so what it would do was a hover away
+              and no tap reached it. */}
           {ladder.next && (
-            <button
-              type="button"
-              className={`sp-cli-copy-btn sp-grant-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
-              title={ladder.next.command}
-              onClick={() => copy('ladder', ladder.next!.command)}
-            >
-              {copiedCmd === 'ladder' ? 'Copied ✓' : `${ladder.next.label}: copy the command`}
-            </button>
+            <>
+              <p className="sp-grant-note">{ladder.next.label}:</p>
+              <button
+                type="button"
+                className="sp-verdict-btn sp-grant-next"
+                onClick={() => copy('ladder', ladder.next!.command)}
+                aria-label={`Copy command ${ladder.next.command}`}
+              >
+                <code>
+                  <Command text={ladder.next.command} />
+                </code>
+                <span>{copiedCmd === 'ladder' ? 'Copied ✓' : 'Copy'}</span>
+              </button>
+            </>
           )}
         </div>
       )}

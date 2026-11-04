@@ -32,7 +32,7 @@ const PUBLIC_DIR = join(process.cwd(), 'src', 'client', 'public');
 
 const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
-/** The line the README leads with; index.html, package.json and CITATION.cff quote it too. */
+/** The brand line; package.json quotes it, and index.html and CITATION.cff say the same. */
 const TAGLINE =
   'What you, your agents, and your machines can jointly do — and where your own time is going.';
 

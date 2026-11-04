@@ -104,6 +104,13 @@ export function setupSummary(entries: Item[], provides: Map<string, Item[]>): st
   return said.length ? `${head}: ${said.join(', ')}.` : `${head}.`;
 }
 
+/**
+ * What inside a row answers a press of its own: the name, the switch, a copy
+ * button, a chip, a glossary word and its card. A press anywhere else on the
+ * row is a press on the row.
+ */
+const OWN_PRESS = 'button, a, input, label, summary, [role="button"], [role="switch"], .term-wrap';
+
 /** "a", "a and b", "a, b and 3 more": names in a sentence, never a wall of them. */
 const nameList = (names: string[]) =>
   names.length <= 2
@@ -257,7 +264,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
       <div className="setup-inner">
         <div className="setup-head">
           <div>
-            <h2 className="setup-title">My Setup</h2>
+            <h1 className="setup-title">My Setup</h1>
             {!placed && entries.length > 0 && tab === 'entries' && (
               <div className="setup-unplaced">
                 <p>
@@ -271,7 +278,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
               </div>
             )}
             <p className="setup-subtitle">
-              {demo ? "A sample developer's setup. " : ''}
+              {demo ? "A sample developer's setup. " : 'What your agent configs declare. '}
               {setupSummary(entries, provides)}
             </p>
             {anySwitch && tab === 'entries' && (
@@ -463,7 +470,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
               ...(other.length ? [{ type: 'other', label: 'Other', rows: other }] : []),
             ].map(g => (
               <section key={g.type} className="setup-group" aria-label={g.label}>
-                <h3 className="setup-group-title">
+                <h2 className="setup-group-title">
                   {'term' in g && g.term ? <Term name={g.term}>{g.label}</Term> : g.label}
                   <span className="setup-group-n">{g.rows.length}</span>
                   {g.type === 'mcp-server' && carried.length > 0 && (
@@ -479,7 +486,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                       measures it
                     </span>
                   )}
-                </h3>
+                </h2>
                 <div className="setup-rows">
                   {g.rows.map(item => {
                     const proves = provides.get(item.id) || [];
@@ -499,9 +506,16 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                     const on = item.status === 'built';
                     const selected = selectedId === item.id;
                     return (
+                      // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: The row lights up across its width, and a press on it selects what its name button selects; that button is the keyboard's way to the same thing.
                       <div
                         key={item.id}
                         className={`setup-row ${selected ? 'setup-row--sel' : ''}`}
+                        onClick={e => {
+                          if ((e.target as Element).closest(OWN_PRESS)) return;
+                          // Dragging across a row to copy its text is not a press on it.
+                          if (window.getSelection()?.toString()) return;
+                          selectItem(item.id);
+                        }}
                       >
                         <button
                           type="button"
@@ -560,7 +574,12 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                                   : undefined
                             }
                           >
-                            {evidence?.text ?? ''}
+                            {/* The one word here a reader has not met elsewhere. */}
+                            {evidence?.recovering ? (
+                              <Term name="recovering">{evidence.text}</Term>
+                            ) : (
+                              (evidence?.text ?? '')
+                            )}
                           </span>
                           {trail && <HistoryStrip runs={trail.runs} of={trail.node.name} />}
                           {carry && (
@@ -652,7 +671,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                 is no ledger to read, and the section is not offered. */}
             {backend === 'live' && (
               <section className="setup-unmapped" aria-label="Not on the map">
-                <h3 className="setup-group-title">Not on the map</h3>
+                <h2 className="setup-group-title">Not on the map</h2>
                 <UnmappedPanel report={unmapped} />
               </section>
             )}

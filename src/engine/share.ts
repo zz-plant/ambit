@@ -165,7 +165,7 @@ main{overflow:auto;padding:0 16px}
 footer{padding:16px 32px 28px;font-size:12px;color:${t['text-muted']}}a{color:${t.accent}}</style></head>
 <body>
 <header><h1>An agent capability map</h1>
-<p>${reachedCount} of ${total} capabilities reached · ${provenCount} proven by a passing check · filled circles are reached, ✓ is a passing check, ! is a failing one</p></header>
+<p>${reachedCount} of ${total} capabilities reached · ${provenCount} verified by a passing check · filled circles are reached, ✓ is a passing check, ! is a failing one</p></header>
 <main><svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <rect width="${width}" height="${height}" fill="${t['bg-canvas']}"/>
 ${headers}

@@ -64,7 +64,33 @@ jobs:
           # across builds while the hashes it names change, and a skipped
           # index.html is exactly what once shipped a page whose bundles 404'd.
           # Force a content comparison so the entry HTML can never go stale.
-          rsync -a --delete --ignore-times --exclude '.git' dist/ /tmp/pages/
+          #
+          # Assets are copied apart from the rest and never deleted here: a
+          # build replaces every hashed filename it had, so a page open across
+          # a deploy would ask for files that are gone. They are pruned by the
+          # manifest below instead, which keeps the last five builds.
+          rsync -a --delete --ignore-times --exclude '.git' --exclude 'assets' dist/ /tmp/pages/
+          mkdir -p /tmp/pages/assets
+          cd /tmp/pages
+
+          BUILDS=assets/.builds
+          if [ ! -s "$BUILDS" ]; then
+            # The first run of this rule: whatever is published now is the
+            # build before this one, and is kept as such.
+            echo "legacy $(ls assets 2>/dev/null | tr '\n' ' ')" > "$BUILDS"
+          fi
+          rsync -a --ignore-times "$GITHUB_WORKSPACE/dist/assets/" assets/
+          echo "${GITHUB_SHA::7} $(ls "$GITHUB_WORKSPACE/dist/assets" | tr '\n' ' ')" >> "$BUILDS"
+          tail -n 5 "$BUILDS" > "$BUILDS.new"
+          mv "$BUILDS.new" "$BUILDS"
+
+          # Every file any retained build published. Anything else is a build
+          # too old to keep, which is where the branch stops growing.
+          KEEP=$(cut -d' ' -f2- "$BUILDS" | tr ' ' '\n' | sort -u)
+          for f in assets/*; do
+            name=${f#assets/}
+            printf '%s\n' "$KEEP" | grep -qxF "$name" || rm -f "$f"
+          done
 
           # Coherence gate: every asset index.html names must actually exist in
           # the published tree. A broken deploy fails here instead of shipping a
@@ -79,7 +105,6 @@ jobs:
               done
           echo "index.html references are coherent."
 
-          cd /tmp/pages
           git add -A
           if git diff --cached --quiet; then
             echo "Demo unchanged — nothing to deploy."

@@ -8,7 +8,13 @@
  */
 import { expect, test } from 'vitest';
 import type { AuditEvent } from '../../shared/api';
-import { matchesAudit, parseAuditQuery } from './auditQuery';
+import {
+  canQualify,
+  matchesAudit,
+  narrowsTo,
+  parseAuditQuery,
+  toggleQualifier,
+} from './auditQuery';
 
 const events: AuditEvent[] = [
   {
@@ -69,4 +75,30 @@ test('an empty query, or a qualifier still being typed, narrows nothing', () => 
   expect(ids('')).toHaveLength(3);
   expect(ids('   ')).toHaveLength(3);
   expect(ids('actor:')).toHaveLength(3);
+});
+
+test('a press on a field narrows to it, a second press lets it go, and typed words stay', () => {
+  const once = toggleQualifier('shell', 'actor', 'human:web');
+  expect(once).toBe('shell actor:human:web');
+  expect(narrowsTo(once, 'actor', 'human:web')).toBe(true);
+  expect(ids(once)).toEqual(['prop-a#approved']);
+  expect(toggleQualifier(once, 'actor', 'human:web')).toBe('shell');
+  // Case is the bar's to ignore, as the match does.
+  expect(toggleQualifier('actor:HUMAN:WEB', 'actor', 'human:web')).toBe('');
+});
+
+test('a field takes the place of another for the same field, and leaves the rest', () => {
+  // Two actors would match nothing, since a line has one.
+  expect(toggleQualifier('actor:human:web target:prop-a', 'actor', 'human:webmaster')).toBe(
+    'target:prop-a actor:human:webmaster'
+  );
+  expect(toggleQualifier('action:approved', 'target', 'prop-a')).toBe(
+    'action:approved target:prop-a'
+  );
+});
+
+test('a value with a space cannot be a qualifier, since the bar splits terms on spaces', () => {
+  expect(canQualify('human:web')).toBe(true);
+  expect(canQualify('grant narrowed')).toBe(false);
+  expect(canQualify('')).toBe(false);
 });

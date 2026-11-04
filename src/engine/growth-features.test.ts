@@ -21,6 +21,9 @@ import { ambitCommand, cursorLedgerScript, typedCommand } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
+import { listPortStatus, portServer } from './port.ts';
+import { toggleServer } from './toggle.ts';
+import { inspectRepoStack, analyzeRepo } from './repo-inspect.ts';
 
 let testDir: string;
 const origEnv = { ...process.env };
@@ -520,9 +523,9 @@ describe('ambit receipt', () => {
   test('counts what the ledger recorded: use, refusals and blocks, and failures', () => {
     const db = seed(LOCAL_ONLY);
     db.close();
-    // Two refusals from the decision API, which file themselves.
-    cli('can', 'quantum-teleportation', '--tool=qtp');
-    cli('can', 'quantum-teleportation-two', '--tool=qtp2');
+    // Two refusals from the decision API, asked as an agent asks, which files them.
+    cli('can', 'quantum-teleportation', '--tool=qtp', '--record');
+    cli('can', 'quantum-teleportation-two', '--tool=qtp2', '--record');
     const graph = getDb(join(dir, 'graph.db'));
     const { run } = beginRun(graph, { goal: 'receipt' });
     addEvent(graph, run, { kind: 'intercept', actor: 'ambit:control_plane', action: 'block' });
@@ -675,5 +678,153 @@ describe('ambit connect on the runtimes it only read before', () => {
     expect(typedCommand('ambit web', brew)).toBe('ambit web');
     // Only the command word is replaced, never a name that starts with it.
     expect(typedCommand('ambitious plan', npx)).toBe('ambitious plan');
+  });
+});
+
+describe('ambit port (cross-runtime MCP server porter)', () => {
+  test('lists portable servers across detected runtimes and ports a server safely', () => {
+    // Setup Cursor with a filesystem MCP server
+    const cursor = join(testDir, '.cursor', 'mcp.json');
+    mkdirSync(dirname(cursor), { recursive: true });
+    writeFileSync(
+      cursor,
+      JSON.stringify({
+        mcpServers: {
+          files: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+          },
+        },
+      })
+    );
+
+    // Setup Claude Code with empty servers
+    const claude = join(testDir, '.claude.json');
+    writeFileSync(claude, JSON.stringify({ mcpServers: {} }));
+
+    // List port status
+    const status = listPortStatus(testDir);
+    expect(status.servers.some(s => s.name === 'files')).toBe(true);
+    const filesServer = status.servers.find(s => s.name === 'files')!;
+    expect(filesServer.configured_in).toContain('cursor');
+    expect(filesServer.available_to_port).toContain('claude-code');
+
+    // Dry run does not write
+    const dry = portServer('files', { to: 'claude-code', home: testDir, dryRun: true });
+    expect(dry.ok).toBe(true);
+    expect(dry.results[0].action).toBe('added');
+    const claudeContentBefore = JSON.parse(readFileSync(claude, 'utf8'));
+    expect(claudeContentBefore.mcpServers.files).toBeUndefined();
+
+    // Actual port creates backup and configures destination
+    const res = portServer('files', { to: 'claude-code', home: testDir });
+    expect(res.ok).toBe(true);
+    expect(res.results[0].action).toBe('added');
+    expect(existsSync(claude + '.bak')).toBe(true);
+    const claudeContentAfter = JSON.parse(readFileSync(claude, 'utf8'));
+    expect(claudeContentAfter.mcpServers.files).toEqual({
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+    });
+
+    // Second run reports already configured
+    const again = portServer('files', { to: 'claude-code', home: testDir });
+    expect(again.results[0].action).toBe('already_configured');
+  });
+
+  test('suggests nearest names on typo', () => {
+    const cursor = join(testDir, '.cursor', 'mcp.json');
+    mkdirSync(dirname(cursor), { recursive: true });
+    writeFileSync(cursor, JSON.stringify({ mcpServers: { playwright: { command: 'pw' } } }));
+
+    const res = portServer('playright', { to: 'claude-code', home: testDir });
+    expect(res.ok).toBe(false);
+    expect(res.error).toContain('Did you mean: playwright');
+  });
+});
+
+describe('ambit repo (repository stack intelligence)', () => {
+  test('inspects package.json dependencies, database, and recommends superpowers', () => {
+    const projectDir = join(testDir, 'my-app');
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, 'package.json'),
+      JSON.stringify({
+        name: 'my-app',
+        dependencies: {
+          next: '14.0.0',
+          '@prisma/client': '^5.0.0',
+          'better-sqlite3': '^9.0.0',
+        },
+        devDependencies: {
+          typescript: '^5.0.0',
+          playwright: '^1.40.0',
+        },
+      })
+    );
+    mkdirSync(join(projectDir, '.git'));
+    writeFileSync(join(projectDir, 'app.db'), '');
+
+    const stack = inspectRepoStack(projectDir);
+    expect(stack.name).toBe('my-app');
+    expect(stack.languages).toContain('TypeScript');
+    expect(stack.frameworks).toContain('Next.js');
+    expect(stack.databases).toContain('SQLite');
+    expect(stack.databases).toContain('Prisma');
+    expect(stack.testing).toContain('Playwright');
+    expect(stack.infra).toContain('Git');
+
+    const analysis = analyzeRepo(projectDir, testDir);
+    expect(analysis.superpowers.length).toBeGreaterThan(0);
+    expect(analysis.superpowers.some(sp => sp.title.includes('Database'))).toBe(true);
+    expect(analysis.superpowers.some(sp => sp.title.includes('Playwright'))).toBe(true);
+  });
+});
+
+describe('ambit toggle (MCP server context bloat manager)', () => {
+  test('disables and re-enables MCP servers across JSON and TOML runtimes', () => {
+    // Setup Cursor config with heavy-tool
+    const cursor = join(testDir, '.cursor', 'mcp.json');
+    mkdirSync(dirname(cursor), { recursive: true });
+    writeFileSync(
+      cursor,
+      JSON.stringify({
+        mcpServers: {
+          heavy: { command: 'node', args: ['server.js'] },
+        },
+      })
+    );
+
+    // Setup Codex config with heavy-tool
+    const codex = join(testDir, '.codex', 'config.toml');
+    mkdirSync(dirname(codex), { recursive: true });
+    writeFileSync(codex, '[mcp_servers.heavy]\ncommand = "node"\nargs = ["server.js"]\n');
+
+    // Toggle off with dry-run writes nothing
+    const dry = toggleServer('heavy', { off: true, home: testDir, dryRun: true });
+    expect(dry.ok).toBe(true);
+    const cursorRawBefore = JSON.parse(readFileSync(cursor, 'utf8'));
+    expect(cursorRawBefore.mcpServers.heavy.disabled).toBeUndefined();
+
+    // Toggle off
+    const off = toggleServer('heavy', { off: true, home: testDir });
+    expect(off.ok).toBe(true);
+    const cursorRawAfter = JSON.parse(readFileSync(cursor, 'utf8'));
+    expect(cursorRawAfter.mcpServers.heavy.disabled).toBe(true);
+    expect(existsSync(cursor + '.bak')).toBe(true);
+
+    const codexTextAfter = readFileSync(codex, 'utf8');
+    expect(codexTextAfter).toContain('[disabled_mcp_servers.heavy]');
+    expect(codexTextAfter).not.toContain('[mcp_servers.heavy]');
+
+    // Toggle back on
+    const on = toggleServer('heavy', { on: true, home: testDir });
+    expect(on.ok).toBe(true);
+    const cursorRawRestored = JSON.parse(readFileSync(cursor, 'utf8'));
+    expect(cursorRawRestored.mcpServers.heavy.disabled).toBeUndefined();
+
+    const codexTextRestored = readFileSync(codex, 'utf8');
+    expect(codexTextRestored).toContain('[mcp_servers.heavy]');
+    expect(codexTextRestored).not.toContain('[disabled_mcp_servers.heavy]');
   });
 });

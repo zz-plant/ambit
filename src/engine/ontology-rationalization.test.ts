@@ -1,0 +1,74 @@
+import { describe, expect, test } from 'vitest';
+import { kindOf } from './ontology.ts';
+import {
+  CHECK_RUN_SQL,
+  COMPENSATORY_FRICTION_KINDS,
+  MIDDLEWARE_KINDS,
+  SOVEREIGN_DISCRETION_KINDS,
+  KEEPER_KINDS,
+} from './vocabulary.ts';
+import { usable } from './assure/lifecycle.ts';
+import { LIFECYCLES, SUPERVISORY_RUNGS, LABOR_CLASSIFICATIONS } from '../shared/types.ts';
+
+describe('Ontological rationalization', () => {
+  test('kindOf resolves normalized prefixes to canonical kinds', () => {
+    expect(kindOf('combo:shell-execution')).toBe('capability');
+    expect(kindOf('act:version-control/commit')).toBe('action');
+    expect(kindOf('human:alice')).toBe('actor');
+    expect(kindOf('runtime:opencode')).toBe('runtime');
+    expect(kindOf('cred:github-pat')).toBe('credential');
+
+    // Rationalized prefixes
+    expect(kindOf('upstream:anthropic')).toBe('resource');
+    expect(kindOf('endpoint:ollama')).toBe('resource');
+    expect(kindOf('substrate:mac-studio')).toBe('resource');
+    expect(kindOf('host:docker-daemon')).toBe('resource');
+    expect(kindOf('model:claude-3-7-sonnet')).toBe('resource');
+    expect(kindOf('adapter:github-mcp')).toBe('provider');
+    expect(kindOf('mcp:git')).toBe('provider');
+    expect(kindOf('skill:pr-review')).toBe('provider');
+    expect(kindOf('tool:bash')).toBe('provider');
+  });
+
+  test('LIFECYCLES includes recovering and backward compatible degraded', () => {
+    expect(LIFECYCLES).toContain('recovering');
+    expect(LIFECYCLES).toContain('degraded');
+    expect(LIFECYCLES).toContain('broken');
+    expect(LIFECYCLES).toContain('verified');
+    expect(LIFECYCLES).toContain('reliable');
+  });
+
+  test('usable() correctly classifies recovering vs failing states', () => {
+    expect(usable('verified')).toBe(true);
+    expect(usable('reliable')).toBe(true);
+    expect(usable('configured')).toBe(true);
+    expect(usable('degraded')).toBe(true);
+    expect(usable('recovering')).toBe(true);
+    expect(usable('broken')).toBe(false);
+  });
+
+  test('CHECK_RUN_SQL matches both passed and verified', () => {
+    expect(CHECK_RUN_SQL).toContain("'passed'");
+    expect(CHECK_RUN_SQL).toContain("'verified'");
+    expect(CHECK_RUN_SQL).toContain("'failed'");
+  });
+
+  test('Labor accounting classifications alias cleanly', () => {
+    expect(COMPENSATORY_FRICTION_KINDS).toBe(MIDDLEWARE_KINDS);
+    expect(SOVEREIGN_DISCRETION_KINDS).toBe(KEEPER_KINDS);
+    expect(COMPENSATORY_FRICTION_KINDS.has('clerical')).toBe(true);
+    expect(SOVEREIGN_DISCRETION_KINDS.has('judgment')).toBe(true);
+  });
+
+  test('Supervisory rungs and labor types are defined', () => {
+    expect(SUPERVISORY_RUNGS).toEqual([
+      'ungranted',
+      'forbidden',
+      'attended',
+      'thresholded',
+      'budgeted',
+      'autonomous',
+    ]);
+    expect(LABOR_CLASSIFICATIONS).toEqual(['compensatory_friction', 'sovereign_discretion']);
+  });
+});

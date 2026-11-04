@@ -576,7 +576,11 @@ export interface LoopDemand {
  */
 /** What runs without a person, what does not, and what could. */
 export interface LoopAuthority {
-  /** Reached capabilities by the mode their execute grant resolves to. */
+  /**
+   * Actions, not capabilities, by the mode their grant resolves to: one
+   * capability can carry several. Autonomous and confirm count actions on
+   * what is reached; forbidden counts every refusal, reached or not.
+   */
   autonomous: number;
   confirm: number;
   forbidden: number;

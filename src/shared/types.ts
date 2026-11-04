@@ -54,9 +54,30 @@ export const LIFECYCLES = [
   'verified',
   'reliable',
   'degraded',
+  'recovering',
   'broken',
 ] as const;
 export type Lifecycle = (typeof LIFECYCLES)[number];
+
+export const SUPERVISORY_RUNGS = [
+  'ungranted',
+  'forbidden',
+  'attended',
+  'thresholded',
+  'budgeted',
+  'autonomous',
+] as const;
+export type SupervisoryRung = (typeof SUPERVISORY_RUNGS)[number];
+
+export const LABOR_CLASSIFICATIONS = ['compensatory_friction', 'sovereign_discretion'] as const;
+export type LaborClassification = (typeof LABOR_CLASSIFICATIONS)[number];
+
+export interface BoundAffordance {
+  action: string;
+  target: string;
+  scope?: string;
+  condition?: Record<string, unknown>;
+}
 
 export const STATES = ['reached', 'next', 'blocked'] as const;
 export type State = (typeof STATES)[number];

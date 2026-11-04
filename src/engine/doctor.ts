@@ -1,11 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
-import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
+import { FAILING_SQL, REACHED_SQL, graphCounts, reachPhrase } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
 import { clientConfigs } from './mcp-clients.ts';
 import { parseJsonc } from '../shared/opencode.ts';
 import { checkableNames } from './assurance.ts';
+import { carryById } from './weight.ts';
+import { carryByRuntime } from '../shared/carry.ts';
+import { type SetupStep, claudePluginEnabled, setupSteps } from './wiring.ts';
 
 export interface DoctorRuntime {
   runtime: string;
@@ -14,11 +17,20 @@ export interface DoctorRuntime {
   has_ambit: boolean;
 }
 
+export interface DoctorBloat {
+  runtime: string;
+  tokens: number;
+  servers: number;
+  ceiling: number;
+}
+
 export interface DoctorReport {
   /** Null until any check has proved or failed something: there is nothing to grade. */
   score: number | null;
   grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
   summary: string;
+  /** "9 of 46 capabilities reached, and 9 of your own", as every surface says it. */
+  reach: string;
   capabilities: {
     total: number;
     reached: number;
@@ -28,6 +40,7 @@ export interface DoctorReport {
   };
   spofs: { capability: string; provider: string }[];
   runtimes_detected: DoctorRuntime[];
+  bloat?: DoctorBloat[];
   recommendations: string[];
 }
 
@@ -81,6 +94,8 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
     } catch {
       // unreadable file
     }
+    // The plugin registers the server itself, in no file this reads.
+    if (c.runtime === 'claude-code' && claudePluginEnabled(home, 'ambit@ambit')) hasAmbit = true;
     detected.push({ runtime: c.runtime, label: c.label, path: p, has_ambit: hasAmbit });
   }
   for (const c of clientConfigs(home)) {
@@ -92,6 +107,11 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
     });
   }
   return detected;
+}
+
+/** What is still missing on this machine, from its runtimes as this module detects them. */
+export function setupGaps(home = process.env.HOME || '/'): SetupStep[] {
+  return setupSteps(detectRuntimes(home), home);
 }
 
 /**
@@ -186,29 +206,66 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   // round in a circle.
   if (provable > 0) {
     recommendations.push(
-      `Verify ${provable} unproven ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into proven`
+      `Verify ${provable} unverified ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into verified`
     );
   }
-  if (runtimes.length > 0 && !hasConnected) {
-    recommendations.push(
-      'Connect Ambit meta-MCP: run "ambit connect" to register pre-flight briefing with agent runtimes'
-    );
+  for (const step of setupSteps(runtimes, home ?? process.env.HOME ?? '/')) {
+    recommendations.push(`${step.says}: run "${step.command}"`);
   }
+  // The head counts every single provider; this counts the ones a person can
+  // do something about, and says which the difference is, since the two
+  // numbers sat four lines apart and read as a contradiction.
   if (fixable.length > 0) {
+    const builtIn = spofs.length - fixable.length;
+    const of = builtIn ? ` of the ${spofs.length} with a single provider` : '';
+    const rest = builtIn
+      ? `; the other ${builtIn} ${builtIn === 1 ? 'rests' : 'rest'} on a tool every runtime ships`
+      : '';
     recommendations.push(
-      `${fixable.length} ${fixable.length === 1 ? 'capability rests' : 'capabilities rest'} on one server or model alone: "ambit status" lists them, and a second provider for any of them raises the grade`
+      `${fixable.length}${of} ${fixable.length === 1 ? 'rests' : 'rest'} on one server or model alone${rest}. "ambit status" lists them, and a second provider for any of them raises the grade`
     );
   }
-  recommendations.push('Inspect interactive tech tree: run "ambit web" to explore your setup map');
 
+  const bloat: DoctorBloat[] = [];
+  try {
+    const carried = carryById(db);
+    if (carried.size > 0) {
+      const byRuntime = carryByRuntime(
+        [...carried.values()].map(c => ({ tokens: c.tokens, runtimes: c.runtimes }))
+      );
+      for (const r of byRuntime) {
+        if (r.tokens > 15000) {
+          bloat.push({
+            runtime: r.runtime,
+            tokens: r.tokens,
+            servers: r.servers,
+            ceiling: 15000,
+          });
+        }
+      }
+    }
+  } catch {
+    // skip if carryById fails or table missing
+  }
+
+  for (const b of bloat) {
+    recommendations.push(
+      `Context bloat: ${b.runtime} carries ${(b.tokens / 1000).toFixed(1)}K tokens of tool schemas per session. Run "ambit weigh" to inspect heaviest tools`
+    );
+  }
+
+  recommendations.push('See it on the map: run "ambit web"');
+
+  const reach = reachPhrase(db);
   const summary = evidence
-    ? `${grade} (${score}/100) : ${counts.reached}/${counts.total} reached, ${counts.proven} verified, ${counts.failing} failing`
-    : `Not graded yet: ${counts.reached}/${counts.total} reached, and no check has run, so nothing is proven or failing. ambit verify runs them.`;
+    ? `${grade} (${score}/100) : ${reach}, ${counts.proven} verified, ${counts.failing} failing`
+    : `Not graded yet: ${reach}, and no check has run, so nothing is verified or failing. ambit verify runs them.`;
 
   return {
     score,
     grade,
     summary,
+    reach,
     capabilities: {
       total: counts.total,
       reached: counts.reached,
@@ -221,6 +278,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       provider: String(s.provider || ''),
     })),
     runtimes_detected: runtimes,
+    bloat: bloat.length ? bloat : undefined,
     recommendations,
   };
 }

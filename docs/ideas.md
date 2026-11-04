@@ -27,7 +27,7 @@ The [glossary](https://zz-plant.github.io/ambit/docs/glossary/) defines the prod
 
 1. **Composition is computed.** A vector store and local embeddings may satisfy the authored prerequisites of semantic retrieval, even though neither config names it. The frontier ledger distinguishes direct acquisitions from combinations reached through other changes. Built: `ambit history since`.
 
-2. **Checks change availability.** Structure (`state`) and verification health (`lifecycle`) are separate. A failing check excludes a capability from plans, permission decisions, rankings and simulations until it passes again. A node without a check remains unproven. Built: `ambit verify`.
+2. **Checks change availability.** Structure (`state`) and verification health (`lifecycle`) are separate. A failing check excludes a capability from plans, permission decisions, rankings and simulations until it passes again. A node without a check remains unverified. Built: `ambit verify`.
 
 3. **Automatic authority changes are asymmetric.** Promotion needs a threshold set by a person; demotion follows one failing check. A forbidden grant wins at any specificity. Built: `ambit can` and `ambit authority promote`.
 

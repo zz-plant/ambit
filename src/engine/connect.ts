@@ -6,6 +6,7 @@ import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
 import { shellQuote } from '../shared/shell.ts';
 import { clientPaths } from './mcp-clients.ts';
 import { ambitCommand, cursorLedgerScript } from './paths.ts';
+import { gateHookEntry, gateInstalled } from './wiring.ts';
 
 /**
  * Where a runtime keeps its servers, in the shape it reads them:
@@ -67,10 +68,7 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
   {
     runtime: 'claude-desktop',
     label: 'Claude Desktop',
-    paths: [
-      'Library/Application Support/Claude/claude_desktop_config.json',
-      '.config/Claude/claude_desktop_config.json',
-    ],
+    paths: home => clientPaths('claude-desktop', home),
     kind: 'mcpServers',
   },
   {
@@ -330,18 +328,28 @@ function startsAmbit(entry: any): boolean {
 }
 
 /**
+ * Append or configure an arbitrary MCP server table in Codex config.toml.
  * Codex keeps servers in TOML, which the engine reads with a reader of its
- * own and has no writer for. A table is appended when none is named ambit;
- * one that exists is left alone, since rewriting TOML by hand risks the rest.
+ * own and has no writer for. A table is appended when none is named; one that
+ * exists is left alone, since rewriting TOML by hand risks the rest.
  */
-function configureCodex(
+export function configureCodexServer(
   filePath: string,
+  server: ServerSpec,
   dryRun: boolean
 ): { action: 'added' | 'already_configured'; backup?: string } {
   const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';
-  if (/^\[mcp_servers\.ambit\]\s*$/m.test(text)) return { action: 'already_configured' };
-  const { command, args } = serverCommand();
-  const table = `[mcp_servers.ambit]\ncommand = ${JSON.stringify(command)}\nargs = [${args.map(a => JSON.stringify(a)).join(', ')}]\n`;
+  const escaped = server.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`^\\[mcp_servers\\.${escaped}\\]\\s*$`, 'm').test(text)) {
+    return { action: 'already_configured' };
+  }
+  let table = `[mcp_servers.${server.name}]\ncommand = ${JSON.stringify(server.command)}\nargs = [${server.args.map(a => JSON.stringify(a)).join(', ')}]\n`;
+  if (server.env && Object.keys(server.env).length) {
+    const envEntries = Object.entries(server.env)
+      .map(([k, v]) => `${JSON.stringify(k)} = ${JSON.stringify(v)}`)
+      .join(', ');
+    table += `env = { ${envEntries} }\n`;
+  }
   let backup: string | undefined;
   if (!dryRun) {
     backup = keepBackup(filePath);
@@ -354,17 +362,14 @@ function configureCodex(
   return { action: 'added', backup };
 }
 
-/** Add or update the ambit entry in a client configuration. */
-function configureFile(
+/** Add or update any server entry in a client configuration. */
+export function configureServerEntry(
   filePath: string,
   kind: ConfigKind,
+  server: ServerSpec,
   dryRun = false
 ): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
-  if (kind === 'codex') return configureCodex(filePath, dryRun);
-  // A file that does not parse is left as it is. Replacing it with `{}` plus
-  // one entry deleted every other server, agent and key a person had in it,
-  // and a commented `.jsonc` file, which OpenCode reads and JSON.parse does
-  // not, was exactly such a file.
+  if (kind === 'codex') return configureCodexServer(filePath, server, dryRun);
   let parsed: any = {};
   if (existsSync(filePath)) {
     const text = readFileSync(filePath, 'utf8');
@@ -378,7 +383,7 @@ function configureFile(
       } catch {}
       throw new Error(
         commented
-          ? `${filePath} has comments, and writing it would delete them; add the ambit server by hand`
+          ? `${filePath} has comments, and writing it would delete them; add the ${server.name} server by hand`
           : `${filePath} is not valid JSON; left unchanged`
       );
     }
@@ -389,37 +394,54 @@ function configureFile(
   if (kind === 'mcpServers' || kind === 'servers' || kind === 'context_servers') {
     if (!parsed[kind] || typeof parsed[kind] !== 'object') parsed[kind] = {};
     const servers = parsed[kind];
-    const existing = Object.hasOwn(servers, 'ambit') ? servers.ambit : undefined;
-    if (existing && startsAmbit(existing)) {
+    const existing = Object.hasOwn(servers, server.name) ? servers[server.name] : undefined;
+    const same =
+      server.name === 'ambit'
+        ? existing && startsAmbit(existing)
+        : existing &&
+          existing.command === server.command &&
+          JSON.stringify(existing.args ?? []) === JSON.stringify(server.args ?? []);
+    if (same) {
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      servers.ambit = entryOf(kind, serverCommand());
+      servers[server.name] = entryOf(kind, server);
     }
   } else if (kind === 'opencode') {
     if (!parsed.mcp || typeof parsed.mcp !== 'object') {
       parsed.mcp = {};
     }
-    // OpenCode 2 keeps servers under `mcp.servers` and switches one off with
-    // `disabled`; the entry goes into whichever shape the file is already in.
     const { bag, v2 } = mcpEntries(parsed);
     const servers = bag as Record<string, any>;
-    const existing = Object.hasOwn(servers, 'ambit') ? servers.ambit : undefined;
+    const existing = Object.hasOwn(servers, server.name) ? servers[server.name] : undefined;
     const off = existing && (existing.enabled === false || existing.disabled === true);
-    if (existing && !off) {
+    const same =
+      server.name === 'ambit'
+        ? existing && !off
+        : existing &&
+          JSON.stringify(existing.command ?? []) ===
+            JSON.stringify([server.command, ...server.args]);
+    if (same) {
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      const command = [...ambitCommand(), 'mcp'];
-      servers.ambit = v2
-        ? { type: 'local', command, disabled: false }
-        : { type: 'local', command, enabled: true };
+      const command = [server.command, ...server.args];
+      servers[server.name] = v2
+        ? {
+            type: 'local',
+            command,
+            disabled: false,
+            ...(server.env && Object.keys(server.env).length ? { environment: server.env } : {}),
+          }
+        : {
+            type: 'local',
+            command,
+            enabled: true,
+            ...(server.env && Object.keys(server.env).length ? { environment: server.env } : {}),
+          };
     }
   }
 
-  // The file is someone's own config, rewritten whole, so what it held is
-  // kept in `<file>.bak` first. A backup that cannot be made throws, and the
-  // file is left as it was.
   let backup: string | undefined;
   if (action !== 'already_configured' && !dryRun) {
     backup = keepBackup(filePath);
@@ -428,6 +450,15 @@ function configureFile(
   }
 
   return { action, backup };
+}
+
+/** Add or update the ambit entry in a client configuration. */
+function configureFile(
+  filePath: string,
+  kind: ConfigKind,
+  dryRun = false
+): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
+  return configureServerEntry(filePath, kind, { name: 'ambit', ...serverCommand() }, dryRun);
 }
 
 /** Connect Ambit as meta-MCP server to detected or specified agent runtimes. */
@@ -439,6 +470,7 @@ export function runConnect(
     force?: boolean;
     ledger?: boolean;
     statusline?: boolean;
+    gate?: boolean;
   } = {}
 ): ConnectResult {
   const home = options.home || process.env.HOME || '/';
@@ -507,6 +539,7 @@ export function runConnect(
 
   if (options.ledger) connectCursorLedger(runtimeName, home, options, configured, skipped);
   if (options.statusline) connectStatusLine(runtimeName, home, options, configured, skipped);
+  if (options.gate) connectGate(runtimeName, home, options, configured, skipped);
 
   return {
     ok: configured.length > 0 || skipped.length === 0,
@@ -656,6 +689,101 @@ function connectStatusLine(
       action,
       ...(backup ? { backup } : {}),
       hook: statusLineEntry().command,
+    });
+  } catch (err: any) {
+    skipped.push({
+      runtime: 'claude-code',
+      label,
+      reason: err?.message || 'Failed to update settings',
+    });
+  }
+}
+
+/**
+ * Add the gate to Claude Code's PreToolUse hooks, beside any already there, and
+ * do nothing where the plugin or an earlier run already put it on. The array is
+ * rewritten whole, so a comment inside it does not survive; the file is kept in
+ * `<file>.bak` first.
+ */
+function configureGate(
+  filePath: string,
+  home: string,
+  dryRun: boolean
+): { action: 'added' | 'already_configured'; backup?: string } {
+  if (gateInstalled(home)) return { action: 'already_configured' };
+  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '{}\n';
+  let parsed: { hooks?: unknown } | undefined;
+  try {
+    parsed = parseJsonc(text);
+  } catch {
+    throw new Error(`${filePath} is not valid JSON; left unchanged`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${filePath} is not a settings object; left unchanged`);
+  }
+  const hooks = parsed.hooks;
+  if (hooks !== undefined && (!hooks || typeof hooks !== 'object' || Array.isArray(hooks))) {
+    throw new Error(`${filePath} has a hooks value that is not an object; left unchanged`);
+  }
+  const theirs = (hooks as { PreToolUse?: unknown } | undefined)?.PreToolUse;
+  if (theirs !== undefined && !Array.isArray(theirs)) {
+    throw new Error(`${filePath} has a PreToolUse value that is not a list; left unchanged`);
+  }
+  const entry = gateHookEntry([...ambitCommand(), 'gate'].join(' '));
+  let backup: string | undefined;
+  if (!dryRun) {
+    backup = keepBackup(filePath);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, setIn(text, ['hooks', 'PreToolUse'], [...(theirs ?? []), entry]));
+  }
+  return { action: 'added', backup };
+}
+
+/**
+ * `--gate`: `ambit gate` on every Claude Code tool call. Only Claude Code has
+ * the hook. A copy run through npx is not written in: the hook runs before every
+ * call with a ten-second limit, and npx would resolve the package again each
+ * time, so a slow resolve would pass the call through with no answer.
+ */
+function connectGate(
+  runtimeName: string | undefined,
+  home: string,
+  options: { dryRun?: boolean; force?: boolean },
+  configured: ConnectResult['configured'],
+  skipped: ConnectResult['skipped']
+) {
+  const label = 'Claude Code gate';
+  if (runtimeName && runtimeName.toLowerCase() !== 'claude-code') {
+    skipped.push({
+      runtime: runtimeName,
+      label,
+      reason: '--gate puts the gate on Claude Code, the one runtime with the hook it needs',
+    });
+    return;
+  }
+  const path = join(home, '.claude', 'settings.json');
+  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
+    skipped.push({ runtime: 'claude-code', label, reason: 'Claude Code not found on host' });
+    return;
+  }
+  if (ambitCommand()[0] === 'npx') {
+    skipped.push({
+      runtime: 'claude-code',
+      label,
+      reason:
+        'The gate runs before every tool call, and npx would resolve the package again each time: install with `npm install -g ambit-cli` and run this again',
+    });
+    return;
+  }
+  try {
+    const { action, backup } = configureGate(path, home, options.dryRun ?? false);
+    configured.push({
+      runtime: 'claude-code',
+      label,
+      path,
+      action,
+      ...(backup ? { backup } : {}),
+      hook: [...ambitCommand(), 'gate'].join(' '),
     });
   } catch (err: any) {
     skipped.push({

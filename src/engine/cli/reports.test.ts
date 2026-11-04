@@ -7,6 +7,8 @@
  * column with a marker on the one that wants a person, and the last line is the
  * one thing to type next. Colour is added on top and never changes a line.
  */
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { learn, makeGraph, type CapabilityFixture } from '../testing/graph.ts';
 import { asProcess } from '../testing/terminal.ts';
@@ -15,6 +17,7 @@ import {
   briefReport,
   explain,
   renderBrief,
+  renderFix,
   renderImpact,
   renderStatus,
   statusReport,
@@ -28,10 +31,13 @@ const ANSI = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
 const plain = (s: string) => s.replace(ANSI, '');
 
 /** A status report over a graph holding exactly these nodes. */
+// A home with no agents in it, so what these report does not depend on the machine's.
+const NO_AGENTS = join(tmpdir(), `ambit-test-no-agents-${process.pid}`);
+
 function reportOf(capabilities: CapabilityFixture[]) {
   const db = makeGraph({ capabilities });
   try {
-    return statusReport(db);
+    return statusReport(db, { home: NO_AGENTS });
   } finally {
     db.close();
   }
@@ -53,7 +59,7 @@ const ALL_PROVEN: CapabilityFixture[] = [
 
 /** The five evidence rows of a rendering, wherever they sit. */
 const evidenceRows = (lines: string[]) =>
-  lines.filter(l => /^( {4}| {2}› )(proven|unproven|failing|entries|last check) /.test(l));
+  lines.filter(l => /^( {4}| {2}› )(verified|unverified|failing|entries|last check) /.test(l));
 
 /** A row up to the end of its value, leaving out what is said beside it. */
 const cellsOf = (row: string) => row.match(/^( {4}| {2}› )\S+(?: \S+)? +\S+/)?.[0] ?? row;
@@ -70,12 +76,12 @@ describe('the head of the report', () => {
   it('leads with the two numbers that matter, then what is wrong', () => {
     const lines = renderStatus(reportOf(MIXED), PLAIN);
     expect(lines[0]).toBe('');
-    expect(lines[1]).toBe('    3 of 4 reached · 1 proven · 1 failing');
+    expect(lines[1]).toBe('    3 of 4 reached · 1 verified · 1 failing');
   });
 
   it('says so when nothing is wrong', () => {
     const lines = renderStatus(reportOf(ALL_PROVEN), PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 2 proven · nothing failing');
+    expect(lines[1]).toBe('    2 of 2 reached · 2 verified · nothing failing');
   });
 
   it('takes its worries from the same place as the summary the data carries', () => {
@@ -117,8 +123,8 @@ describe('the evidence counts', () => {
   it('read down one column, labels on the left and values on the right', () => {
     const rows = evidenceRows(renderStatus(reportOf(MIXED), PLAIN));
     expect(rows).toEqual([
-      '    proven          1',
-      '    unproven        1  1 with no check',
+      '    verified        1',
+      '    unverified      1  1 with no check',
       '  › failing         1',
       '    entries         0',
       '    last check  never',
@@ -154,7 +160,9 @@ describe('the evidence counts', () => {
       expect(ev.proven + ev.unproven + ev.failing + ev.entries).toBe(report.reached);
 
       const lines = renderStatus(report, PLAIN);
-      const reached = Number(lines[1].match(/(\d+) of \d+ reached/)?.[1]);
+      // The tree's capabilities, plus the person's own: together, the graph's reach.
+      const head = lines[1].match(/(\d+) of \d+ reached, and (\d+) of your own/);
+      const reached = Number(head?.[1]) + Number(head?.[2]);
       const rowSum = evidenceRows(lines)
         .filter(r => !r.includes('last check'))
         .reduce((sum, r) => sum + Number(cellsOf(r).match(/(\d+)$/)?.[1]), 0);
@@ -172,7 +180,34 @@ describe('the evidence counts', () => {
     }
   });
 
-  it('say how the unproven split, in parts that add up to it', () => {
+  // Every runtime's built-ins are seeded with or without a config, so an
+  // empty home read "4 of your own" beside a short screen saying nothing of
+  // the person's was found.
+  it('do not count what every runtime brings as your own, and say where it went', () => {
+    const report = reportOf([
+      { id: 'combo:shell', name: 'Shell', lifecycle: 'configured' },
+      { id: 'tool:bash', name: 'Shell Execution', kind: 'provider', lifecycle: 'unknown' },
+      { id: 'core:reasoning', name: 'Core Reasoning', kind: 'provider', lifecycle: 'unknown' },
+    ]);
+    expect(report.reach).toBe('1 of 1 capabilities reached');
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    1 of 1 reached · 0 verified · nothing failing');
+    expect(evidenceRows(lines)).toContain(
+      '    entries         2  built into the runtime; checks run on what they provide'
+    );
+
+    const mixed = reportOf([
+      { id: 'combo:shell', name: 'Shell', lifecycle: 'configured' },
+      { id: 'tool:bash', name: 'Shell Execution', kind: 'provider', lifecycle: 'unknown' },
+      { id: 'mcp:git', name: 'git', kind: 'provider', category: 'mcp', lifecycle: 'unknown' },
+    ]);
+    expect(mixed.reach).toBe('1 of 1 capabilities reached, and 1 of your own');
+    expect(evidenceRows(renderStatus(mixed, PLAIN))).toContain(
+      '    entries         2  from your config, and 1 built into the runtime'
+    );
+  });
+
+  it('say how the unverified split, in parts that add up to it', () => {
     const db = graphWithChecks(
       [
         { id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' },
@@ -187,12 +222,12 @@ describe('the evidence counts', () => {
       expect(report.evidence[0]).toMatchObject({ unproven: 4, recovering: 1, no_check: 1 });
       expect(report.evidence[0].provable_now).toEqual(['A', 'B']);
       expect(evidenceRows(renderStatus(report, PLAIN))).toContain(
-        '  › unproven        4  2 provable now · 1 recovering · 1 with no check'
+        '  › unverified      4  2 provable now · 1 recovering · 1 with no check'
       );
       // The last line counts the same two.
       expect(report.next).toEqual({
         command: 'ambit verify',
-        why: 'turns 2 of the unproven into evidence',
+        why: 'turns 2 of the unverified into evidence',
       });
     } finally {
       db.close();
@@ -210,20 +245,20 @@ describe('the evidence counts', () => {
       const report = statusReport(db);
       expect(report.evidence[0].provable_now).toHaveLength(11);
       const text = renderStatus(report, PLAIN).join('\n');
-      expect(text).toContain('provable now: s00, s01, s02, s03, s04, s05, s06, s07 and 3 more');
-      expect(text).toContain('turns 11 of the unproven into evidence');
+      expect(text).toContain('Provable now  s00, s01, s02, s03, s04, s05, s06, s07 and 3 more');
+      expect(text).toContain('turns 11 of the unverified into evidence');
     } finally {
       db.close();
     }
   });
 
-  it('mark a failing check before an unproven one, since a repair comes first', () => {
+  it('mark a failing check before an unverified one, since a repair comes first', () => {
     const marked = evidenceRows(renderStatus(reportOf(MIXED), PLAIN)).filter(r => r.includes('›'));
     expect(marked).toHaveLength(1);
     expect(marked[0]).toContain('failing');
   });
 
-  it('mark the unproven count when nothing fails', () => {
+  it('mark the unverified count when nothing fails', () => {
     const lines = renderStatus(
       reportOf([
         { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
@@ -233,7 +268,7 @@ describe('the evidence counts', () => {
     );
     const marked = evidenceRows(lines).filter(r => r.includes('›'));
     expect(marked).toHaveLength(1);
-    expect(marked[0]).toContain('unproven');
+    expect(marked[0]).toContain('unverified');
   });
 
   it('mark nothing when there is nothing to act on', () => {
@@ -258,7 +293,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing');
+    expect(lines[1]).toBe('    1 of 1 reached, and 1 of your own · 1 verified · 1 failing');
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual(['  › failing         1']);
     expect(report.next?.command).toBe('ambit verify skill:pdf');
   });
@@ -280,7 +315,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    1 of 1 reached · 0 proven · 1 failing');
+    expect(lines[1]).toBe('    1 of 1 reached · 0 verified · 1 failing');
     expect(report.failing).toBe(1);
     expect(report.degraded?.map((d: { id: string }) => d.id)).toEqual(['combo:shell-execution']);
     expect(evidenceRows(lines)).toContain('  › failing         1');
@@ -293,7 +328,7 @@ describe('one count of what is failing', () => {
 
 describe('a capability recovering from a failed check', () => {
   // The latest check decides: its last run passed, so it is not failing and
-  // nothing asks for a repair. Its record is mixed, so it is not proven.
+  // nothing asks for a repair. Its record is mixed, so it is not verified.
   const recovering = () => {
     const db = makeGraph({
       capabilities: [
@@ -311,14 +346,14 @@ describe('a capability recovering from a failed check', () => {
     }
   };
 
-  it('is counted with the unproven, and nothing is failing', () => {
+  it('is counted with the unverified, and nothing is failing', () => {
     const report = recovering();
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · nothing failing');
+    expect(lines[1]).toBe('    2 of 2 reached · 1 verified · nothing failing');
     expect(report.failing).toBe(0);
     expect(report.degraded).toBeUndefined();
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual([
-      expect.stringMatching(/^ {2}› unproven +1 {2}1 recovering$/),
+      expect.stringMatching(/^ {2}› unverified +1 {2}1 recovering$/),
     ]);
     // Nothing to repair, so the report does not end on re-running its check.
     expect(report.next?.command ?? '').not.toContain('verify');
@@ -330,22 +365,70 @@ describe('a capability recovering from a failed check', () => {
       { id: 'combo:b', name: 'Beta', recent: '2 of the last 5 passed' },
     ]);
     const text = renderStatus(report, PLAIN).join('\n');
-    expect(text).toContain('recovering:');
-    expect(text).toContain('2 of the last 5 passed');
+    expect(text).toMatch(/Recovering\n {6}Beta +2 of the last 5 passed/);
   });
 });
 
 describe('what the head does not say', () => {
-  it('follows beneath it as it always has been drawn', () => {
-    const text = renderStatus(reportOf(MIXED), PLAIN).join('\n');
-    expect(text).toContain('actions: 1/1 reached');
-    expect(text).toContain('domains:');
-    // The list keeps its key for scripts, and is labelled for a person.
-    expect(text).toContain('not working:');
+  it('follows beneath it a row per finding, with no record dump', () => {
+    const report = reportOf(MIXED);
+    const text = renderStatus(report, PLAIN).join('\n');
+    expect(text).toContain('By domain');
+    // The list keeps its key for scripts, and is labelled for a person, with
+    // the command that re-runs each check.
+    expect(text).toMatch(/Not working\n {6}Gamma +ambit verify c/);
     expect(text).not.toContain('degraded:');
-    expect(text).toContain('combo:c');
-    // The scalars the head replaced are not printed twice.
+    // Totals that competed with the head stay in the data, off the screen.
+    expect(report.actions).toBe('1/1 reached');
+    expect(text).not.toContain('actions:');
+    expect(text).not.toContain('frontier:');
+    expect(text).not.toContain('reach:');
+    // No field of a record printed as a label.
+    expect(text).not.toMatch(/is bottleneck:|provider id:|capability id:|unlocks count:/);
     expect(text).not.toMatch(/^ {4}(reached|total|verified|failing|summary):/m);
+  });
+
+  it('says a sole provider once, with what it unlocks, and a bottleneck once by name', () => {
+    const report = {
+      ...reportOf(MIXED),
+      spofs: [
+        {
+          capability: 'Shell Execution',
+          id: 'combo:shell-execution',
+          sole_provider: 'Shell Execution',
+          provider_id: 'tool:bash',
+        },
+      ],
+      bottlenecks: [
+        {
+          capability_id: 'combo:shell-execution',
+          name: 'Shell Execution',
+          domain: 'infra',
+          unlocks_count: 5,
+          is_bottleneck: true,
+        },
+        {
+          capability_id: 'tool:bash',
+          name: 'Shell Execution',
+          domain: 'infra',
+          unlocks_count: 1,
+          is_bottleneck: true,
+        },
+        {
+          capability_id: 'combo:tool-protocol',
+          name: 'Tool Protocol',
+          domain: 'backend',
+          unlocks_count: 10,
+          is_bottleneck: true,
+        },
+      ],
+    } as ReturnType<typeof reportOf>;
+    const text = renderStatus(report, PLAIN).join('\n');
+    expect(text).toMatch(
+      /Single points of failure\n {6}Shell Execution {2}only from tool:bash · unlocks 5\n/
+    );
+    expect(text).toMatch(/Bottlenecks\n {6}Tool Protocol {2}unlocks 10\n/);
+    expect(text.match(/Shell Execution/g)).toHaveLength(1);
   });
 });
 
@@ -439,6 +522,82 @@ describe('the glossary', () => {
     expect(bare).toContain('Where you see it');
     expect(shown(true, '1')).toBe(bare);
     expect(plain(terminal)).toBe(bare);
+  });
+
+  const asked = (word: string) => {
+    const lines: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line?: unknown) => {
+      lines.push(String(line ?? ''));
+    });
+    try {
+      asProcess(false, undefined, () => explain(word));
+    } finally {
+      log.mockRestore();
+    }
+    return lines.join('\n').trim();
+  };
+
+  // `help verified` printed every entry whose text held the word, two other
+  // concepts first, fifty lines before the one asked for.
+  it('prints the entry by that name alone', () => {
+    const verified = asked('verified');
+    expect(verified.startsWith('Verified —')).toBe(true);
+    expect(verified.match(/Where you see it/g)).toHaveLength(1);
+  });
+
+  it('finds the entry a word the CLI uses is mentioned in', () => {
+    expect(asked('bottlenecks')).toContain('Keystone —');
+  });
+});
+
+describe('renderFix', () => {
+  // `fix` on a capability not yet reached printed `state locked`, `lifecycle
+  // unknown` and a re-check of something there was nothing yet to check.
+  it('says next step or blocked, and leaves out what no check has said', () => {
+    const next = renderFix(
+      {
+        capability: 'Hosting',
+        id: 'combo:hosting',
+        state: 'locked',
+        stands: 'next step',
+        lifecycle: 'unknown',
+        options: [],
+      },
+      PLAIN
+    ).join('\n');
+    expect(next).toContain('state      next step');
+    expect(next).not.toContain('lifecycle');
+    expect(next).not.toContain('ambit verify');
+    expect(next).not.toContain('locked');
+
+    const blocked = renderFix(
+      {
+        capability: 'Backups',
+        id: 'combo:backups',
+        state: 'locked',
+        stands: 'blocked',
+        blocked_by: ['Production Database'],
+        lifecycle: 'unknown',
+        options: [],
+      },
+      PLAIN
+    ).join('\n');
+    expect(blocked).toContain('state      blocked, behind Production Database');
+
+    const reached = renderFix(
+      {
+        capability: 'Shell',
+        id: 'combo:shell',
+        state: 'active',
+        stands: 'reached',
+        lifecycle: 'broken',
+        check: 'ambit verify shell',
+        options: [],
+      },
+      PLAIN
+    ).join('\n');
+    expect(reached).toContain('lifecycle  broken');
+    expect(reached).toContain('Check  ambit verify shell');
   });
 });
 
@@ -540,10 +699,10 @@ describe('renderImpact', () => {
 });
 
 describe('the short screen bare ambit shows', () => {
-  // It said "ambit verify runs their checks" of every unproven capability,
+  // It said "ambit verify runs their checks" of every unverified capability,
   // and verify runs only the checks that are declared.
   const leanLine = (db: ReturnType<typeof makeGraph>) =>
-    renderBrief(briefReport(db), PLAIN).find(l => l.includes('not yet proven'));
+    renderBrief(briefReport(db), PLAIN).find(l => l.includes('not yet verified'));
 
   it('says how many of the unproven verify would check when some declare none', () => {
     const db = graphWithChecks(
@@ -555,7 +714,7 @@ describe('the short screen bare ambit shows', () => {
     );
     try {
       expect(leanLine(db)).toBe(
-        '    2 configured and not yet proven · ambit verify checks 1 of them'
+        '    2 configured and not yet verified · ambit verify checks 1 of them'
       );
     } finally {
       db.close();
@@ -569,7 +728,7 @@ describe('the short screen bare ambit shows', () => {
     );
     try {
       expect(leanLine(db)).toBe(
-        '    1 configured and not yet proven · ambit verify runs their checks'
+        '    1 configured and not yet verified · ambit verify runs their checks'
       );
     } finally {
       db.close();
@@ -588,7 +747,7 @@ describe('the short screen bare ambit shows', () => {
       const lines = renderBrief(briefReport(db), PLAIN, npx);
       const said = lines.join('\n');
       expect(said).toContain('npx ambit-cli verify runs their checks');
-      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|--help)/m);
+      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|help|--help)/m);
       // One line marked as the thing to do, after everything else it says.
       const close = lines.filter(l => l.trim().startsWith('› npx ambit-cli'));
       expect(close).toEqual(['  › npx ambit-cli web  the same, on the map']);

@@ -17,6 +17,11 @@ import { existsSync, readFileSync } from 'node:fs';
  */
 const NODE_FLAGS = ['--experimental-sqlite', '--disable-warning=ExperimentalWarning'];
 
+// Windows sets USERPROFILE and no HOME, and the engine, its servers and every
+// child started below read HOME. Without this a graph and a spool landed under
+// the current directory, and no config was found.
+if (!process.env.HOME && process.env.USERPROFILE) process.env.HOME = process.env.USERPROFILE;
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // cli.js sits at the package root, next to src/ — resolving ".." walked out
 // of the package entirely and every command failed to find the engine.
@@ -43,8 +48,26 @@ const mcpEntry = existsSync(resolve(ROOT, 'src', 'mcp', 'server.ts'))
   ? resolve(ROOT, 'src', 'mcp', 'server.ts')
   : resolve(ROOT, 'dist-cli', 'mcp', 'server.js');
 
-const cmd = process.argv[2];
-const args = process.argv.slice(3);
+// `--help` or `-h` after a command asks about it, and never runs it: `ambit
+// verify --help` ran every declared check, `ambit mcp --help` started a server
+// that waited on stdin, and `ambit web --help` opened the map. The engine
+// answers the same flag the same way when it is started directly.
+const HELP_FLAGS = new Set(['--help', '-h']);
+const typed = process.argv.slice(2);
+const asked = typed[0] !== 'help' && typed.some(a => HELP_FLAGS.has(a));
+const cmd = asked ? 'help' : typed[0];
+const args = asked ? typed.filter(a => !HELP_FLAGS.has(a)) : typed.slice(1);
+
+// A Node older than package.json's `engines` died on a flag or a missing module
+// with nothing saying why, and `npx` only warns about `engines`. The status line
+// and the gate stay silent and exit 0: the first must not clutter a screen, and
+// a broken gate must never block the person's work.
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 18)) {
+  if (cmd === 'statusline' || cmd === 'gate') process.exit(0);
+  console.error(`Ambit needs Node 22.18 or newer, and this is Node ${process.versions.node}.`);
+  process.exit(1);
+}
 
 /**
  * The status line, answered in this process. Claude Code runs it after every
@@ -103,26 +126,15 @@ if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
  * engine grew `share`, `credentials`, `opportunities`, `roi`, `audit`, `work`
  * and `usage`, the list here did not, and `ambit help` claimed to be the full
  * surface while hiding seven working commands. Worse, intercepting `help`
- * swallowed its arguments, so `help --all` and `help <term>` — both of which
- * the engine implements — could never run.
- *
- * The engine derives its list from the same groups the dispatcher routes on,
- * so it cannot fall behind. `web` and `mcp` are the exception: they are
- * implemented here, never reach the engine, and so cannot appear in a list the
- * engine builds. They are appended after it.
+ * swallowed its arguments, so `help --all` and `help <term>`, both of which
+ * the engine implements, could never run. `web`, `mcp` and `--version` are
+ * answered here and never reach the engine, and the engine's list names them
+ * all the same, so `ambit help web` finds it.
  */
-if (cmd === '--help' || cmd === 'help') {
-  const helpArgs = cmd === 'help' ? args : [];
-  const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...helpArgs], {
+if (cmd === 'help') {
+  const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...args], {
     stdio: 'inherit',
   });
-  console.log(`
-  ${D}ambit web [--port=N] [--no-open]   Open the map on localhost: the built
-                         page from an install, Vite from a checkout
-  ambit mcp              Run the MCP server, exposing the same questions to an
-                         agent session: claude mcp add ambit -- ambit mcp
-  ambit --version        The installed version, for a bug report${R}
-`);
   process.exit(engineHelp.status ?? 0);
 }
 
