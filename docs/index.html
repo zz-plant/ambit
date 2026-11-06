@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ambit documentation: map, audit and govern an AI agent setup</title>
+<title>Ambit docs: map and audit your MCP servers and agent configs</title>
 <meta name="description" content="Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute." />
 <link rel="canonical" href="https://zz-plant.github.io/ambit/docs/" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://zz-plant.github.io/ambit/docs/" />
-<meta property="og:title" content="Ambit documentation: map, audit and govern an AI agent setup" />
+<meta property="og:title" content="Ambit docs: map and audit your MCP servers and agent configs" />
 <meta property="og:description" content="Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute." />
 <meta property="og:image" content="https://zz-plant.github.io/ambit/og/docs.png" />
 <meta property="og:image:width" content="1280" />
@@ -16,12 +16,12 @@
 <meta property="og:image:alt" content="Every Ambit document, in one place" />
 <meta property="og:site_name" content="Ambit" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Ambit documentation: map, audit and govern an AI agent setup" />
+<meta name="twitter:title" content="Ambit docs: map and audit your MCP servers and agent configs" />
 <meta name="twitter:description" content="Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute." />
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/docs.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit documentation: map, audit and govern an AI agent setup","description":"Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute.","url":"https://zz-plant.github.io/ambit/docs/","dateModified":"2026-10-30","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit docs: map and audit your MCP servers and agent configs","description":"Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute.","url":"https://zz-plant.github.io/ambit/docs/","dateModified":"2026-11-06","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -49,7 +49,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/docs/guide/">Get started</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a><a class="cta" href="/ambit/?demo=1">Live demo</a></header>
 <main>
 <h1 id="ambit-documentation"><a class="anchor" href="#ambit-documentation" aria-hidden="true" tabindex="-1">#</a>Ambit documentation</h1>
-<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what you and your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p>Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes. Run it once to see what you have, and again after any change: a token that expired or a server that moved shows up as failing.</p>
 <ul>
 <li><strong>Try it</strong>: <a href="https://zz-plant.github.io/ambit/?demo=1">the live demo</a>, a sample setup, with nothing to install.</li>
 <li><strong>Install it, or connect it to Claude Code or OpenCode</strong>: <a href="/ambit/docs/guide/">Get started</a>.</li>
@@ -59,34 +59,34 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <li><strong>Compare it with a gateway</strong>: <a href="/ambit/docs/compare/">Ambit and MCP gateways</a>.</li>
 <li><strong>Understand why it exists</strong>: <a href="/ambit/docs/ideas/">The ideas behind Ambit</a>.</li>
 </ul>
-<p>The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with <a href="/ambit/docs/loadout/">Your loadout, from A to B</a>. For the argument, <a href="/ambit/docs/ideas/">The ideas behind Ambit</a> is the one-page version. The pages are grouped by the kind of claim each one makes, which a file listing cannot tell you.</p>
-<h2 id="description-true-of-the-code-today"><a class="anchor" href="#description-true-of-the-code-today" aria-hidden="true" tabindex="-1">#</a>Description: true of the code today</h2>
+<p>The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with <a href="/ambit/docs/loadout/">From A to B: the seven steps</a>. For the argument, <a href="/ambit/docs/ideas/">The ideas behind Ambit</a> is the one-page version. The pages are grouped by the kind of claim each one makes, which a file listing cannot tell you.</p>
+<h2 id="what-it-reads-and-answers-today"><a class="anchor" href="#what-it-reads-and-answers-today" aria-hidden="true" tabindex="-1">#</a>What it reads and answers today</h2>
 <ul>
 <li><a href="/ambit/docs/solo/">Building alone</a> — for a one-person company: the checklist between you and launch, what an agent may do to production without asking, and how you hear when it breaks.</li>
 <li><a href="/ambit/docs/faq/">FAQ</a> — the short answers, each pointing at the longer one.</li>
 <li><a href="/ambit/docs/mcp-config-locations/">Where each AI agent keeps its MCP config</a> — the files and keys, user and project, for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, and which of them Ambit reads.</li>
-<li><a href="/ambit/docs/mcp-outage/">What breaks if an MCP server goes down</a> — single points of failure in an agent setup, and how to find them before an agent does.</li>
+<li><a href="/ambit/docs/mcp-outage/">What stops when an MCP server or credential expires</a> — single points of failure in an agent setup, and how to find them before an agent does.</li>
 <li><a href="/ambit/docs/audit-mcp-servers/">Auditing which MCP servers a coding agent has</a> — what is declared, what works, what may run without asking, and what was used but never declared.</li>
 <li><a href="/ambit/docs/compare/">Ambit and MCP gateways</a> — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.</li>
 <li><a href="https://zz-plant.github.io/ambit/docs/glossary/">Glossary</a> — every word the map and the CLI use, defined once, from the same file the app reads.</li>
 <li><a href="/ambit/docs/jev/">Ambit and Jev</a> — how TypeSafe&#39;s Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.</li>
-<li><a href="/ambit/docs/deep-dive/">Deep dive</a> — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the work ledger, delegation records, every MCP tool, and the map in full.</li>
+<li><a href="/ambit/docs/deep-dive/">Deep dive</a> — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the session history, delegation records, every MCP tool, and the map in full.</li>
 <li><a href="https://github.com/zz-plant/ambit/blob/main/src/client/public/llms.txt">llms.txt</a> — the project on one page for an agent deciding whether to recommend it, served at <a href="https://zz-plant.github.io/ambit/llms.txt">zz-plant.github.io/ambit/llms.txt</a>.</li>
 </ul>
-<h2 id="argument-why-the-thing-exists"><a class="anchor" href="#argument-why-the-thing-exists" aria-hidden="true" tabindex="-1">#</a>Argument: why the thing exists</h2>
+<h2 id="why-it-exists"><a class="anchor" href="#why-it-exists" aria-hidden="true" tabindex="-1">#</a>Why it exists</h2>
 <ul>
-<li><a href="/ambit/docs/loadout/">Your loadout, from A to B</a> — one person&#39;s setup from a pile of configs to work done without them, in seven legs, with the command for each.</li>
+<li><a href="/ambit/docs/loadout/">From A to B: the seven steps</a> — one person&#39;s setup from a pile of configs to work done without them, in seven steps, with the command for each.</li>
 <li><a href="/ambit/docs/agents/">For agents</a> — the same journey from the agent&#39;s side: its sessions before and after Ambit, what it and the person each do as the ambit widens, and how to suggest it honestly.</li>
 <li><a href="/ambit/docs/ideas/">The ideas behind Ambit</a> — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.</li>
 <li><a href="/ambit/docs/why-ambit/">Why Ambit</a> — the argument for building it: what one agent stack looked like, why what it can do is composed, and why growing that reach needs governing.</li>
 <li><a href="/ambit/docs/affordance-frontier/">The affordance frontier</a> — the theory under that argument, tested against robotics and brain-computer interfaces, with candidate applications in shared work, institutional access and economic agency.</li>
 </ul>
-<h2 id="intent-ahead-of-the-code-on-purpose"><a class="anchor" href="#intent-ahead-of-the-code-on-purpose" aria-hidden="true" tabindex="-1">#</a>Intent: ahead of the code, on purpose</h2>
+<h2 id="where-it-is-going"><a class="anchor" href="#where-it-is-going" aria-hidden="true" tabindex="-1">#</a>Where it is going</h2>
 <ul>
 <li><a href="/ambit/docs/roadmap/">Roadmap</a> — design rationale, section by section: what each part decided and what it still lacks, including the proposed layer for defined outcomes and their evidence. Nothing in it has a date or an owner.</li>
 <li><a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md">Interface specs</a> — changes to the surfaces, including a proposed shorter path from a recommendation to a checked result. Each spec states its data, completion criteria and what has shipped.</li>
 </ul>
-<h2 id="record-what-was-said-at-the-time-not-edited"><a class="anchor" href="#record-what-was-said-at-the-time-not-edited" aria-hidden="true" tabindex="-1">#</a>Record: what was said at the time, not edited</h2>
+<h2 id="what-changed-and-what-was-said-at-the-time"><a class="anchor" href="#what-changed-and-what-was-said-at-the-time" aria-hidden="true" tabindex="-1">#</a>What changed, and what was said at the time</h2>
 <ul>
 <li><a href="/ambit/docs/changelog/">Changelog</a> — what changed per release, and why.</li>
 <li><a href="https://github.com/zz-plant/ambit/blob/main/docs/incidents/INCIDENT_TRACE_001.md">Incident trace</a> — one blocked execution traced end to end, with the terminal recording of it.</li>
@@ -98,7 +98,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="/ambit/?demo=1" tabindex="-1" aria-hidden="true"><img src="/ambit/docs/assets/screenshot-tree.png" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
 <p class="try-title" id="try-ambit">See what your own agents can reach</p>
-<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p>Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes.</p>
 <p class="actions"><a class="button" href="/ambit/?demo=1">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
 <p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
 <p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>
