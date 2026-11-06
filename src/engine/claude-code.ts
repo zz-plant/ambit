@@ -179,12 +179,7 @@ export function readClaudeCode(
   return fragment;
 }
 
-/**
- * The config + CONFIG_MAPPING pair `seedFromConfig` expects, built from a
- * fragment. Kept separate from `readClaudeCode` so a caller that only wants
- * the raw fragment (the standalone adapter's `--print` mode) is not forced
- * through the mapping shape too.
- */
+/** The config + CONFIG_MAPPING pair `seedFromConfig` expects, built from a fragment. */
 export function claudeCodeSeedInput(fragment: ClaudeCodeFragment): { config: any; mapping: any } {
   const authority = authorityBlock({
     execute: fragment.observed.permissionMode ?? 'default',

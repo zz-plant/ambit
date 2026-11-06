@@ -4849,7 +4849,6 @@ button.app-sample-tag:hover {
   }
 }
 
-
 /* Narrow, the bar beside the counts goes: it draws the same numbers. */
 @media (min-width: 769px) and (max-width: 860px) {
   .app-status-pill .fig-reach {
@@ -7569,7 +7568,6 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
-
 /* ─── The council ─── */
 /* Five seats on one step. The seat's name is a label, its sentence is text,
    and its stance is a chip that says the word: colour marks for and against
@@ -7674,7 +7672,6 @@ button.app-sample-tag:hover {
     gap: 8px;
   }
 }
-
 
 /* ─── The ladder, the asks, the emergent tick ─── */
 /* The second tree in the panel: five rungs a grant climbs, the one it is on
