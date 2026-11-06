@@ -1,9 +1,7 @@
 /**
  * Reads a Claude Code installation into the config shape `seedFromConfig`
  * already accepts, so `ambit seed` can fall back to it when no opencode.json
- * exists. Extracted from scripts/adapters/claude-code.ts (which remains the
- * standalone entry point for `--seed`/printing the fragment) so the two paths
- * cannot drift apart on what counts as "reading a Claude Code install."
+ * exists.
  *
  * Claude Code has no structured config export, so this reads the documented
  * paths: ~/.claude.json for MCP servers (global and per-project), ~/.claude/

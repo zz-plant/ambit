@@ -12,17 +12,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import type { LoopOpportunity } from '../../shared/api';
-import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
+import { mergeGraphs } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import type { Connection, Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import LoopDashboard from './LoopDashboard';
-
-/** `renderToStaticMarkup` reads zustand's initial state, so both halves are set. */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => {
   seed({
@@ -40,7 +35,6 @@ const node = (id: string, over: Partial<Item> = {}, meta: Record<string, unknown
   type: 'possibility',
   status: 'specified',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: { era: 1, ...meta },
   ...over,
 });

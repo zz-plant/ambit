@@ -29,6 +29,7 @@ import { extname, normalize } from 'node:path';
 import { deriveLifecycles } from '../src/engine/assurance.ts';
 import { getDb } from '../src/engine/db.ts';
 import { recordDemoRuns } from './generate-demo-data.ts';
+import { FIXTURE as SHARED_FIXTURE } from './lib/fixture.ts';
 import { CHROME, Cdp, freePort, launchChrome, sleep } from './lib/chrome.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -67,37 +68,16 @@ const MIN_LABEL_PX = 10;
 /** How many labelled nodes have to be in frame, so a beat is a map and not one node. */
 const MIN_NODES_IN_FRAME = 6;
 
-// The fixture the graph is built from. Broad enough to light every era column
-// and to give the frontier something to be one step away from; entirely
-// invented, so nothing here describes the machine that runs it.
+// The fixture the graph is built from: the shared one, with enough more to give
+// the frontier something to be one step away from.
 const FIXTURE = {
-  provider: { anthropic: { name: 'Anthropic' }, ollama: { name: 'Ollama' } },
-  agent: {
-    reviewer: { description: 'Reviews diffs before merge' },
-    researcher: { description: 'Reads docs and summarizes' },
-  },
+  ...SHARED_FIXTURE,
   mcp: {
-    git: { type: 'local', command: ['git-mcp'], enabled: true },
-    github: { type: 'remote', command: ['github-mcp'], enabled: true },
-    filesystem: { type: 'local', command: ['fs-mcp'], enabled: true },
-    playwright: { type: 'local', command: ['playwright-mcp'], enabled: true },
-    sqlite: { type: 'local', command: ['sqlite-mcp'], enabled: true },
-    fetch: { type: 'remote', command: ['fetch-mcp'], enabled: true },
-    memory: { type: 'local', command: ['memory-mcp'], enabled: true },
-    docker: { type: 'local', command: ['docker-mcp'], enabled: true },
-    postgres: { type: 'local', command: ['postgres-mcp'], enabled: true },
-    slack: { type: 'remote', command: ['slack-mcp'], enabled: true },
-    sentry: { type: 'remote', command: ['sentry-mcp'], enabled: true },
-    kubernetes: { type: 'local', command: ['k8s-mcp'], enabled: true },
+    ...SHARED_FIXTURE.mcp,
     grafana: { type: 'remote', command: ['grafana-mcp'], enabled: true },
-    jev: { type: 'remote', command: ['jev-mcp'], enabled: true },
     puppeteer: { type: 'local', command: ['puppeteer-mcp'], enabled: true },
   },
-  command: {
-    deploy: { description: 'Ship to staging' },
-    migrate: { description: 'Run database migrations' },
-    bench: { description: 'Run the benchmark suite' },
-  },
+  command: { ...SHARED_FIXTURE.command, bench: { description: 'Run the benchmark suite' } },
 };
 
 let cdpRef: Cdp | null = null;

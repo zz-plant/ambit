@@ -23,24 +23,12 @@ export {
   recentRuns,
   recovering,
 } from './assure/lifecycle.ts';
+export { verifyCheck, evidenceFor, runVerification, checkableNames } from './assure/verify.ts';
 export {
-  verifyCheck,
-  verifyCapability,
-  verifyAction,
-  declaredCheck,
-  evidenceFor,
-  runVerification,
-  checkableNames,
-} from './assure/verify.ts';
-export {
-  MODE_RANK,
   narrower,
   specificity,
   governingMode,
   scopeCovers,
-  sandboxCovering,
-  objectEvidence,
-  missingPrerequisites,
   brokenFoundations,
   canExecute,
   recordSpend,

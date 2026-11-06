@@ -42,14 +42,6 @@ export function formatCount(n: number): string {
 }
 
 /**
- * Format a timestamp as standard ISO 8601 UTC string.
- */
-export function formatIsoTimestamp(date: Date | string | number = new Date()): string {
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
-  return d.toISOString();
-}
-
-/**
  * Format a past or future date relative to now (e.g. "2 hours ago", "in 3 days").
  */
 export function formatRelativeTime(date: Date | string | number): string {

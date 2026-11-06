@@ -72,7 +72,6 @@ const item = (id: string, meta: Record<string, unknown> = {}, type = 'possibilit
     type,
     status: 'built',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta,
   }) as Item;
 

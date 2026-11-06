@@ -514,15 +514,11 @@ function economicsReport(db: Migratable) {
 
 export {
   valueCents,
-  metricByEntity,
-  modelPrice,
   spentOn,
   declareModelPrice,
   recordTokens,
   hourOf,
   UNTIMED,
-  TOKEN_PRICES,
-  type TokenPart,
   type TokenCounts,
   type HourlyTokens,
   attentionOwner,

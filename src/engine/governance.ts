@@ -12,20 +12,13 @@ import {
   type ServerSpec,
   targetFile,
 } from './connect.ts';
-import {
-  configSection,
-  entryInShape,
-  mcpEntries,
-  parseJsonc,
-  sectionPath,
-} from '../shared/opencode.ts';
+import { configSection, entryInShape, parseJsonc, sectionPath } from '../shared/opencode.ts';
 import { keepBackup } from '../shared/backup.ts';
 import { removeIn, setIn } from '../shared/jsonEdit.ts';
 import { REJECTION_KINDS, type RejectionKind } from '../shared/api.ts';
-import { getDb, type Db } from './db.ts';
-import { runVerification } from './assurance.ts';
-import { canExecute } from './assurance.ts';
-import { seedEverySource, seedFromConfig } from './discovery.ts';
+import type { Db } from './db.ts';
+import { canExecute, runVerification } from './assurance.ts';
+import { seedEverySource } from './discovery.ts';
 import { mintApproval, proposalHash, verifyApproval } from './approval.ts';
 import { pendingDrafts } from './attention.ts';
 import type { ProposalRow } from './rows.ts';
@@ -1010,62 +1003,6 @@ function rollbackProposal(db: Db, proposalId?: string) {
   };
 }
 
-// ─── Execution Layer ──────────────────────────────────────────────────────────
-
-function applyRemoval(db: Db, capId: string) {
-  const configPath = configDefault();
-  if (!existsSync(configPath)) return { error: 'Config not found' };
-  // Read with its comments, and the entry taken out of the text in place, so
-  // the comments a person wrote are still there after a removal of one entry.
-  let text: string;
-  let config: any;
-  try {
-    text = readFileSync(configPath, 'utf8');
-    config = parseJsonc(text);
-  } catch {
-    return { error: `Cannot read ${configPath}; remove ${capId} by hand` };
-  }
-  const prefix = capId.split(':')[0];
-  const key = capId.replace(/^[^:]+:/, '');
-  // Each section under its V1 and its OpenCode 2 name. The entry is removed
-  // from wherever the file holds it, V2's name first, as OpenCode reads it.
-  const sectionMap: Record<string, string[]> = {
-    mcp: ['mcp.servers', 'mcp'],
-    agent: ['agents', 'agent'],
-    cmd: ['commands', 'command'],
-    provider: ['providers', 'provider'],
-  };
-  const candidates = sectionMap[prefix];
-  if (!candidates) return { error: 'Unknown prefix: ' + prefix };
-  const bagAt = (path: string) =>
-    path === 'mcp.servers' ? mcpEntries(config).v2 && config.mcp.servers : config[path];
-  const section = candidates.find(path => {
-    const bag = bagAt(path);
-    return !!bag && typeof bag === 'object' && Object.hasOwn(bag, key);
-  });
-  if (!section) return { error: 'Not found: ' + capId };
-  let backup: string | undefined;
-  try {
-    backup = keepBackup(configPath);
-  } catch (e) {
-    return {
-      error: `Refused. ${configPath} could not be backed up (${(e as Error).message}), and nothing is changed without one.`,
-    };
-  }
-  writeFileSync(configPath, removeIn(text, [...section.split('.'), key]));
-  const db2 = getDb();
-  try {
-    db2
-      .prepare(
-        "INSERT INTO session_learning (session_id, capability_id, action, notes) VALUES ('exec', ?, 'removed', 'Applied removal')"
-      )
-      .run(capId);
-  } catch {}
-  db2.close();
-  seedFromConfig(db);
-  return { removed: capId, section, key, backup };
-}
-
 export {
   inverseOf,
   ensureActor,
@@ -1082,5 +1019,4 @@ export {
   showProposal,
   applyProposal,
   rollbackProposal,
-  applyRemoval,
 };

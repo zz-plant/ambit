@@ -39,7 +39,7 @@ A checkout keeps its graph in the checkout (`toolchain-viz.db`), so the graph yo
 Opening the graph, the shape a row has, and how a database made last year reaches the shape this checkout expects.
 
 ```
-src/engine/engine.ts       Entry point and public surface; re-exports the modules below
+src/engine/engine.ts       The executable the CLI runs
 src/engine/paths.ts        Where the authored data lives, and which config to read
 src/engine/db.ts           The handle, the schema, additive column migrations, backfills
 src/engine/rows.ts         What a row of each table looks like — a query names its row type from here
@@ -342,6 +342,8 @@ src/client/                React frontend
                            spaces: an id broken at its hyphen read as two ids
     Term.tsx               A house word with its definition attached — one glossary, two renderings
                            (a popover in HTML, a <title> in the SVG map)
+    Icon.tsx               A line icon: the text's colour on a square grid, hidden from a screen
+                           reader, since the control around it carries the name
     Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            The map on the page: zoom, selection, one-hop highlighting of what a node
                            needs and enables, focus, the lenses, the two simulations, and the tools
@@ -415,6 +417,8 @@ src/client/                React frontend
   vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym
   testing/elements.ts      `findAll`, how a component test with no DOM finds the element in a
                            hook-free view's drawing and calls the handler it carries
+  testing/page.ts          `seed`, the store as a server render reads it, and `stubBrowser`, a
+                           window and localStorage for one test file
   dev/                     Pages Vite serves in a checkout and the build never reads.
                            specimen.html: every node state, drawn by MapScene (`specimens.ts` is
                            the list). render.html: what `npm run render:images` drives
@@ -500,9 +504,9 @@ scripts/render-images.ts   The saved images, from the page's own code in a headl
                            DevTools client it shares with record-hero-gif.ts
 scripts/build-docs.ts      The docs as static pages under /ambit/docs/, and the sitemap written
                            from the same list; `npm run build` runs it after Vite
-scripts/adapters/          Deeper runtime readers than mcp-clients.ts: claude-code.ts · hermes.ts ·
-                           surface.ts (a published capability surface) · telemetry.ts (work events
-                           piped to /api/telemetry)
+scripts/adapters/          Deeper runtime readers than mcp-clients.ts: hermes.ts · surface.ts (a
+                           published capability surface) · telemetry.ts (work events piped to
+                           /api/telemetry)
 plugins/ambit-telemetry.js Tool executions and permission prompts, into the work ledger
 plugins/ambit-tracker.js   Configuration changes, appended to a spool that src/engine/tracker-spool.ts
                            reads into whichever graph the engine opens next

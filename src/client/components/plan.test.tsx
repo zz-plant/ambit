@@ -11,15 +11,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import type { ProposalDecision, ProposalRow } from '../../shared/api';
-import { useAmbitStore } from '../store/ambitStore';
 import { demoProposals } from '../store/demo';
 import ApprovalModal from './ApprovalModal';
-
-/** Both halves of the store, since a server render reads the initial state. */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => seed({ proposals: [] }));
 

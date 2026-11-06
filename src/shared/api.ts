@@ -51,11 +51,6 @@ export interface ConfigApplyResponse {
   ok: true;
 }
 
-export interface McpSnippetRequest {
-  name: string;
-  config?: Record<string, unknown>;
-}
-
 export interface McpSnippetResponse {
   configPath: string;
   snippet: string;
@@ -267,7 +262,6 @@ export interface TreeItem {
   type: NodeType;
   status: 'built' | 'specified';
   description: string;
-  position: { x: number; y: number; z: number };
   meta: TreeItemMeta;
 }
 
@@ -398,15 +392,6 @@ export interface ApprovalArtifact {
   expires_at: string;
   timestamp: string;
   sig: string;
-}
-
-/**
- * A decision on one proposal names the hash its card was drawn from and no
- * actor. The person is the one at the loopback page whatever the body says, so
- * there is no field to claim to be someone else.
- */
-export interface ApproveRequest {
-  proposalHash: string;
 }
 
 export interface ApproveResponse {

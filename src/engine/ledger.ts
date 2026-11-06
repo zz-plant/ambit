@@ -518,5 +518,4 @@ export {
   ledgerSince,
   ledgerHistory,
   typedTimestamps,
-  type Observation,
 };

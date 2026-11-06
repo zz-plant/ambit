@@ -36,27 +36,6 @@ export type CapabilityRow = {
   tags: string | null;
 };
 
-export type DependencyRow = {
-  id: number;
-  from_capability: string;
-  to_capability: string;
-  cost_setup_seconds: number;
-  cost_tokens: number;
-  is_hard_requisite: number;
-  description: string | null;
-  kind: string;
-};
-
-export type SynergyRow = {
-  id: number;
-  name: string;
-  requirement_ids: string;
-  unlocked_capability: string;
-  discount_percent: number;
-  description: string | null;
-  created_at: string;
-};
-
 export type SessionLearningRow = {
   id: number;
   session_id: string;
@@ -65,17 +44,6 @@ export type SessionLearningRow = {
   outcome_score: number | null;
   notes: string | null;
   timestamp: string;
-};
-
-export type FrontierSnapshotRow = {
-  id: number;
-  taken_at: string;
-  reached: number;
-  total: number;
-  verified: number;
-  states: string;
-  kinds: string | null;
-  lifecycles: string | null;
 };
 
 export type ProposalRow = {
@@ -116,19 +84,6 @@ export type AuthorityRow = {
   note: string | null;
   expires_at?: string | null;
   condition?: string | null;
-};
-
-export type PreferenceRow = {
-  id: number;
-  actor_id: string;
-  preference: string;
-  created_at: string;
-};
-
-export type SchemaMetaRow = {
-  key: string;
-  value: string;
-  applied_at: string;
 };
 
 export type WorkRunRow = {

@@ -36,18 +36,7 @@ import {
 import { findAll } from '../testing/elements';
 import Finder, { FinderView } from './Finder';
 import NodeDetailPanel from './NodeDetailPanel';
-
-/**
- * Put the store in a state, for a server render.
- *
- * `renderToStaticMarkup` reads the *server* snapshot, zustand's initial state
- * object, so a plain `setState` is invisible to it. Both halves are set here,
- * the way reachable.test.tsx already does it.
- */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 const demo = mergeGraphs(demoTreeGraph(), demoConfigGraph());
 

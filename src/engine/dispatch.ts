@@ -315,12 +315,4 @@ async function dispatchPending(db: Migratable, options: DispatchOptions = {}): P
   };
 }
 
-export {
-  webhookTarget,
-  detectKind,
-  proposalMessage,
-  webhookRequest,
-  dispatchProposal,
-  dispatchPending,
-  redact,
-};
+export { detectKind, proposalMessage, webhookRequest, dispatchProposal, dispatchPending };

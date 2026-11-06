@@ -11,11 +11,5 @@
  * Re-exported here so no importer changed.
  */
 export { conflictForChosen, planFor, preferencesReport } from './plan/route.ts';
-export {
-  BLOCK_CLASSES,
-  BLOCK_PREFIX,
-  blockedAction,
-  recordFailure,
-  deficits,
-} from './plan/deficits.ts';
+export { recordFailure, deficits } from './plan/deficits.ts';
 export { simulateFrontier, propose } from './plan/propose.ts';

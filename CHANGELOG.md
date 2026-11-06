@@ -12,6 +12,10 @@ Ambit found no config on Windows and wrote its graph under the current directory
 
 `./bootstrap.sh` does not run there, and `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, since doing so needs a shell and it starts servers with none.
 
+### What went away
+
+`ambit graph export` no longer writes a `position` on each node. It held zeros left over from the 3D map, and nothing read it. `scripts/adapters/claude-code.ts` is gone too: `ambit seed` reads Claude Code itself, so the script's `--seed` repeated it, and printing what an install provides without writing it has no command now.
+
 ## [0.7.0](https://github.com/zz-plant/ambit/releases/tag/v0.7.0) — 2026-11-04
 
 The release that gives a newcomer one answer wherever they start, and measures more of what an agent setup costs. In short:

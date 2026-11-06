@@ -327,12 +327,4 @@ function recordRefusal(
   return recorded.recorded ? recorded.class : false;
 }
 
-export {
-  classifySignal,
-  attribute,
-  captureFailure,
-  recordRefusal,
-  signalReport,
-  SIGNALS,
-  type RawFailure,
-};
+export { classifySignal, attribute, captureFailure, recordRefusal, signalReport, type RawFailure };

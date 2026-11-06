@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import { formatDollars, formatIsoTimestamp, formatRelativeTime, readerLocale } from './format';
+import { formatDollars, formatRelativeTime, readerLocale } from './format';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -26,11 +26,6 @@ test('the reader locale is the first English the browser asks for, else en-US', 
   expect(readerLocale()).toBe('en-IE');
   vi.stubGlobal('navigator', { language: 'de-DE', languages: ['de-DE'] });
   expect(readerLocale()).toBe('en-US');
-});
-
-test('formatIsoTimestamp returns valid ISO string', () => {
-  const ts = formatIsoTimestamp('2026-08-16T12:00:00Z');
-  expect(ts).toBe('2026-08-16T12:00:00.000Z');
 });
 
 test('formatRelativeTime returns human-readable relative time', () => {

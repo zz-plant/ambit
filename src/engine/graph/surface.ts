@@ -23,7 +23,6 @@ function exportGraph(db: Db) {
       type: type,
       status: status,
       description: c.description,
-      position: { x: 0, y: 0, z: 0 },
       meta: { domain: c.domain, maturity: c.maturity_score },
     };
   });

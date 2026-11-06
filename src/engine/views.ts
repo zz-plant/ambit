@@ -260,7 +260,6 @@ export function techTreeView(db: Db): TechTreeResponse {
     // is how the visualiser already draws something not yet built.
     status: c.state === 'locked' ? 'specified' : 'built',
     description: c.description,
-    position: { x: 0, y: 0, z: 0 },
     meta: {
       domain: c.domain,
       state: c.state,

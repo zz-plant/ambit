@@ -339,6 +339,5 @@ export {
   parseAmount,
   periodElapsed,
   periodLength,
-  rollPeriods,
   PERIOD_DAYS,
 };

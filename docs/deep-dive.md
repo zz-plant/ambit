@@ -183,12 +183,11 @@ The models on this machine come from the folders their servers keep them in, not
 
 `ambit impact runtime:<name>` then answers what would be lost if that runtime went away. Where another runtime configures the same servers, the answer is smaller than the runtime's capability count, because what they share survives.
 
-**From a checkout.** The readers in `scripts/adapters/` print what a runtime provides before anything is written, and add it with `--seed`. One of them reads Hermes, which `ambit seed` does not:
+**From a checkout.** `scripts/adapters/hermes.ts` reads Hermes, which `ambit seed` does not. It prints what the runtime provides before anything is written, and adds it with `--seed`:
 
 ```bash
-node --experimental-strip-types scripts/adapters/claude-code.ts          # what Claude Code provides
-node --experimental-strip-types scripts/adapters/claude-code.ts --seed   # add it to the graph
-node --experimental-strip-types scripts/adapters/hermes.ts               # the same for Hermes
+node --experimental-strip-types scripts/adapters/hermes.ts          # what Hermes provides
+node --experimental-strip-types scripts/adapters/hermes.ts --seed   # add it to the graph
 ```
 
 On one machine running both, that yields:

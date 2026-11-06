@@ -8,6 +8,7 @@
  */
 import type { Item } from '../../utils/configImporter';
 import { simulationSentence } from './layout';
+import { Icon } from '../Icon';
 
 interface SimulationBannerProps {
   simulationMode: string;
@@ -68,53 +69,23 @@ export function SimulationBanner({
         className={`civ-sim-banner civ-sim-banner--${simulationMode}`}
       >
         {simulationMode === 'outage' ? (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="civ-sim-icon"
-            aria-hidden="true"
-          >
+          <Icon size={14} className="civ-sim-icon">
             <path d="M8 2 L14 13 H2 Z" />
             <line x1="8" y1="6" x2="8" y2="9" />
             <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-          </svg>
+          </Icon>
         ) : simulationMode === 'gap' ? (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="civ-sim-icon"
-            aria-hidden="true"
-          >
+          <Icon size={14} className="civ-sim-icon">
             <circle cx="4" cy="8" r="2.5" />
             <circle cx="12" cy="8" r="2.5" />
             <line x1="6.5" y1="8" x2="9.5" y2="8" strokeDasharray="2 1.5" />
-          </svg>
+          </Icon>
         ) : (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="civ-sim-icon"
-            aria-hidden="true"
-          >
+          <Icon size={14} className="civ-sim-icon">
             <path d="M4 8 V5 C4 3 5.5 1.5 8 1.5 C10.5 1.5 12 3 12 5 V8" />
             <rect x="3" y="7" width="10" height="7.5" rx="2" />
             <circle cx="8" cy="10.5" r="1" fill="currentColor" />
-          </svg>
+          </Icon>
         )}
         <span>
           {text}

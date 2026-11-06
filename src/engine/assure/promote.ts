@@ -667,8 +667,6 @@ export {
   declareSandbox,
   removeSandbox,
   evidenceCount,
-  describeEvidence,
-  windowDays,
   parseDuration,
   grantAuthority,
 };

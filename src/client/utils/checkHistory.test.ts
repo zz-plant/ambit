@@ -26,7 +26,6 @@ function node(
     type: 'possibility',
     status: 'built',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { era: 1, lifecycle, history, ...extra },
   };
 }
@@ -37,7 +36,6 @@ const entry = (meta: Record<string, unknown> = {}): Item => ({
   type: 'mcp-server',
   status: 'built',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'devops', ...meta },
 });
 

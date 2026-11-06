@@ -16,7 +16,6 @@ export { nearMissCombos, computeDecay, discoverCombos, sessionDiff } from './gra
 export { domainHealth, findBottlenecks } from './graph/health.ts';
 export {
   providersOf,
-  credentialsOf,
   sharedCredentials,
   analyzeImpact,
   singlePointsOfFailure,

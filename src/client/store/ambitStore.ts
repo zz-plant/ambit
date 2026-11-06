@@ -137,6 +137,24 @@ async function getJson<K extends keyof ApiRoutes>(path: K): Promise<ApiRoutes[K]
   return isApiError(body) ? null : body;
 }
 
+/**
+ * Read a route and use what it answers. With no engine behind the page, or a
+ * failed read, the view keeps whatever it had, which on a first read is its
+ * empty state.
+ */
+async function readInto<K extends keyof ApiRoutes>(
+  path: K,
+  use: (data: ApiRoutes[K]) => void
+): Promise<void> {
+  if (!(await backendAvailable())) return;
+  try {
+    const data = await getJson(path);
+    if (data) use(data);
+  } catch {
+    /* the view keeps whatever it had */
+  }
+}
+
 let backendProbe: Promise<boolean> | null = null;
 /**
  * What a failed request says to the person. The API is on loopback, so a
@@ -696,25 +714,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     }
   },
 
-  loadBriefing: async () => {
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/briefing');
-      if (data) set({ briefing: data });
-    } catch {
-      /* the tab keeps its empty state */
-    }
-  },
+  loadBriefing: () => readInto('/api/briefing', briefing => set({ briefing })),
 
-  loadUnmapped: async () => {
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/unmapped');
-      if (data) set({ unmapped: data });
-    } catch {
-      /* the tab keeps its empty state */
-    }
-  },
+  loadUnmapped: () => readInto('/api/unmapped', unmapped => set({ unmapped })),
 
   /**
    * The trail. The demo's is the demo's whether or not an engine answers, as
@@ -725,13 +727,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       set({ audit: demoAudit() });
       return;
     }
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/audit');
-      if (data) set({ audit: data });
-    } catch {
-      /* the view keeps whatever it had */
-    }
+    await readInto('/api/audit', audit => set({ audit }));
   },
 
   /**
@@ -744,14 +740,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       set({ history: demoHistory(), historyAt: knownAt(demoHistory(), get().historyAt) });
       return;
     }
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/frontier');
+    await readInto('/api/frontier', history => {
       // "Open the demo" may have been pressed while this was in flight.
-      if (data && !get().demo) set({ history: data, historyAt: knownAt(data, get().historyAt) });
-    } catch {
-      /* the map keeps whatever it had */
-    }
+      if (!get().demo) set({ history, historyAt: knownAt(history, get().historyAt) });
+    });
   },
 
   snippetFor: async (name: string) => {
@@ -783,17 +775,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * failure, because "no interventions recorded" and "your time costs nothing"
    * are different claims.
    */
-  loadLoop: async () => {
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/loop');
-      if (!data) return;
-      const { source, empty, ...snapshot } = data;
-      set({ loop: snapshot, loopSource: source, loopEmpty: empty });
-    } catch {
-      /* the page keeps whatever it had rather than blanking */
-    }
-  },
+  loadLoop: () =>
+    readInto('/api/loop', ({ source, empty, ...snapshot }) =>
+      set({ loop: snapshot, loopSource: source, loopEmpty: empty })
+    ),
 
   /**
    * One run laid out in time. The demo has runs written by hand; a live engine
@@ -828,39 +813,18 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     }
   },
 
-  loadRepos: async () => {
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/repos/scan');
-      if (data) set({ repos: data });
-    } catch {
-      /* a scan that cannot run leaves the tab on its empty state */
-    }
-  },
+  loadRepos: () => readInto('/api/repos/scan', repos => set({ repos })),
 
-  loadInfrastructure: async () => {
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/infrastructure/scan');
-      if (data) set({ infrastructure: data });
-    } catch {
-      /* as above: no manifest is the common case, not an error */
-    }
-  },
+  // No manifest is the common case, not an error.
+  loadInfrastructure: () =>
+    readInto('/api/infrastructure/scan', infrastructure => set({ infrastructure })),
 
-  loadAttentionData: async () => {
-    if (!(await backendAvailable())) return;
-    try {
-      const data = await getJson('/api/attention');
-      if (data) {
-        const map: Record<string, number> = {};
-        for (const row of data.interventions) map[row.capability_id] = row.count;
-        set({ attentionInterventions: map });
-      }
-    } catch {
-      /* ignore */
-    }
-  },
+  loadAttentionData: () =>
+    readInto('/api/attention', data => {
+      const map: Record<string, number> = {};
+      for (const row of data.interventions) map[row.capability_id] = row.count;
+      set({ attentionInterventions: map });
+    }),
   /**
    * Draw a graph from JSON the browser was handed, with nothing installed.
    *
@@ -888,7 +852,6 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const items: Item[] = (data.items as Item[]).map(i => ({
         ...i,
         status: i.status || 'built',
-        position: i.position || { x: 0, y: 0, z: 0 },
         meta: i.meta || {},
       }));
       const connections: Connection[] = ((data.connections as Connection[] | undefined) || []).map(

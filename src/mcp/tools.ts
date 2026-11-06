@@ -720,14 +720,4 @@ const PROFILES: Record<Profile, typeof TOOLS> = {
   agent: AGENT_TOOLS.map(n => TOOLS.find(t => t.name === `ambit_${n}`) as (typeof TOOLS)[number]),
 };
 
-export {
-  AGENT_TOOLS,
-  BASE_TOOLS,
-  CAPABILITY_KEYS,
-  PROFILES,
-  TOOLS,
-  type Annotations,
-  type Profile,
-  type Prop,
-  type ToolDef,
-};
+export { BASE_TOOLS, CAPABILITY_KEYS, PROFILES, TOOLS, type Profile, type Prop, type ToolDef };

@@ -11,6 +11,7 @@ import { Fragment, useId } from 'react';
 import type { ActiveLens } from '../../linkState';
 import { termTitle } from '../Term';
 import { ZOOM_MIN } from './viewport';
+import { Icon } from '../Icon';
 
 export const LENSES: readonly [ActiveLens, string, string][] = [
   ['default', 'Standard', '1'],
@@ -104,18 +105,9 @@ export function ZoomHud({
               title="Zoom out (−)"
               aria-label="Zoom out"
             >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
+              <Icon size={11} grid={12} strokeWidth="1.8">
                 <line x1="2" y1="6" x2="10" y2="6" />
-              </svg>
+              </Icon>
             </button>
             {/* The reading is the reset: one control where a badge and a 1:1
             button stood, since the number is what you press to get it back. */}
@@ -142,19 +134,10 @@ export function ZoomHud({
               title="Zoom in (+)"
               aria-label="Zoom in"
             >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
+              <Icon size={11} grid={12} strokeWidth="1.8">
                 <line x1="2" y1="6" x2="10" y2="6" />
                 <line x1="6" y1="2" x2="6" y2="10" />
-              </svg>
+              </Icon>
             </button>
             <button
               type="button"
@@ -163,19 +146,9 @@ export function ZoomHud({
               title="Fit the whole map"
               aria-label="Fit the whole map"
             >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
+              <Icon size={11} grid={12} strokeWidth="1.5" strokeLinejoin="round">
                 <path d="M1.5 4.5 V1.5 H4.5 M7.5 1.5 H10.5 V4.5 M10.5 7.5 V10.5 H7.5 M4.5 10.5 H1.5 V7.5" />
-              </svg>
+              </Icon>
               <span className="civ-zoom-btn-label">Fit</span>
             </button>
           </div>
@@ -221,7 +194,7 @@ export function ZoomHud({
               {/* Beside the button, not in it: inside, it would be read as
                 part of the name. */}
               {why && (
-                <span id={`${whyId}-${lens}`} className="sr-only">
+                <span id={`${whyId}-${lens}`} className="visually-hidden">
                   {why}
                 </span>
               )}

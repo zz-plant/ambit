@@ -18,16 +18,16 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, beforeAll, expect, test } from 'vitest';
+import { afterEach, expect, test } from 'vitest';
 import type { FrontierTick, LoopSnapshot } from '../../shared/api';
 import type { Item } from '../utils/configImporter';
-import { useAmbitStore } from '../store/ambitStore';
 import CivTree from './CivTree';
 import { itemsAsOf } from './civ/history';
 import { Timeline } from './civ/Timeline';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
+import { seed, stubBrowser } from '../testing/page';
 
 /** What a value looks like once a renderer has stringified something absent. */
 const PLACEHOLDERS = ['undefined', 'NaN', 'Invalid Date', '[object Object]', 'null', '1970'];
@@ -48,18 +48,6 @@ function expectNothingUnstated(html: string, surface: string) {
 }
 
 /**
- * Put the store in a state, for a server render.
- *
- * `renderToStaticMarkup` reads the *server* snapshot — zustand's initial state
- * object — so a plain `setState` is invisible to it. Both halves are set here,
- * the way reachable.test.tsx already does it.
- */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
-
-/**
  * A capability on a real machine that has answered none of the optional
  * questions — which is every capability, on the day the graph is first built.
  * The absent keys are spelled out rather than omitted because that is how the
@@ -72,7 +60,6 @@ const unstatedNode: Item = {
   type: 'mcp-server',
   status: 'built',
   description: 'a server with nothing else recorded about it',
-  position: { x: 0, y: 0, z: 0 },
   meta: {
     domain: 'devops',
     state: 'active',
@@ -102,7 +89,6 @@ const neighbour: Item = {
   type: 'runtime',
   status: 'built',
   description: 'the runtime',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'meta', lifecycle: 'reliable' },
 };
 
@@ -170,19 +156,7 @@ const unstatedLoop: LoopSnapshot = {
   council: { motion: null, advisors: [], split: false },
 };
 
-beforeAll(() => {
-  const mediaQuery = { matches: false, addEventListener() {}, removeEventListener() {} };
-  Object.assign(globalThis, {
-    localStorage: { getItem: () => '1', setItem() {} },
-    window: {
-      location: { search: '?guide=off' },
-      matchMedia: () => mediaQuery,
-      addEventListener() {},
-      removeEventListener() {},
-      innerWidth: 1440,
-    },
-  });
-});
+stubBrowser('?guide=off');
 
 afterEach(() => {
   seed({
