@@ -105,5 +105,8 @@
   "homepage": "https://github.com/zz-plant/ambit#readme",
   "bugs": {
     "url": "https://github.com/zz-plant/ambit/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
   }
 }

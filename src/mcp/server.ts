@@ -5,7 +5,19 @@ import { ingestTrackerSpool } from '../engine/tracker-spool.ts';
 import { readFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { nearest } from '../shared/nearest.ts';
-import { err, respond, toolResult } from './protocol.ts';
+import { toolResult } from './protocol.ts';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
+import { LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
+import { PingRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
 import { checkArguments, signature } from './validate.ts';
 import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
@@ -143,15 +155,9 @@ const INSTRUCTIONS = [
  * 2025-06-18 it does not. 2025-03-26 added JSON-RPC batching, which this
  * server does not read, so it does not claim that version.
  */
-const PROTOCOL_VERSIONS = ['2024-11-05', '2025-06-18'];
-
-function negotiate(requested: unknown): string {
-  if (typeof requested !== 'string') return PROTOCOL_VERSIONS[0];
-  if (PROTOCOL_VERSIONS.includes(requested)) return requested;
-  const older = PROTOCOL_VERSIONS.filter(v => v < requested);
-  return older.length ? older[older.length - 1] : PROTOCOL_VERSIONS[0];
-}
-
+// Protocol version negotiation is now the SDK's. Ambit no longer maintains
+// its own list; the SDK ships the versions it speaks and echoes a requested
+// one when it can.
 /** An unknown tool is a protocol error, and says which one was probably meant. */
 function unknownTool(name: string, bare: string): string {
   const close = nearest(
@@ -280,83 +286,23 @@ const RESOURCES = [
   },
 ];
 
-let buf = '';
-// Each line is handled in its own function because the body returns to reply.
-// Inlined in the loop, that `return` exited the whole stdin handler, so only
-// the first message in a chunk was ever answered — and a client that batches
-// initialize with tools/list, or whose requests simply arrive coalesced, would
-// hang waiting for a response that was never going to come.
-async function handleLine(line: string) {
-  if (!line.trim()) return;
-  let msg: any;
-  try {
-    msg = JSON.parse(line);
-  } catch {
-    return err(null, -32700, 'Parse error: a message is one JSON object on one line.');
-  }
-  if (msg === null || typeof msg !== 'object' || Array.isArray(msg)) {
-    return err(null, -32600, 'Invalid Request: expected one JSON-RPC message per line.');
-  }
-  const { id, method, params } = msg;
-  try {
-    switch (method) {
-      // The server used to introduce itself as "tech-tree" at version 1.0.0,
-      // which is neither the name of the product nor its version — an agent
-      // that connected had no way to tell what it was talking to.
-      case 'initialize':
-        proposer = proposerFrom(params?.clientInfo?.name);
-        return respond(id, {
-          protocolVersion: negotiate(params?.protocolVersion),
-          capabilities: { tools: {}, resources: {} },
-          serverInfo: { name: 'ambit', version: VERSION },
-          instructions: INSTRUCTIONS,
-        });
-      // A client that pings to see whether the server is alive was answered
-      // "Unknown: ping", which it reads as the server being broken.
-      case 'ping':
-        return respond(id, {});
-      case 'tools/list':
-        return respond(id, { tools: PROFILES[PROFILE] });
-      // Resources are what a runtime reads on connect, without being asked to.
-      // A tool an agent has to think of calling is no use to the agent that
-      // does not know Ambit is there, which is exactly the one that most needs
-      // to know what is broken before it starts. See docs/roadmap.md §12.1.
-      case 'resources/list':
-        return respond(id, { resources: RESOURCES });
-      case 'resources/read': {
-        const uri = params?.uri;
-        if (uri !== BRIEFING_URI) return err(id, -32602, `Unknown resource: ${uri}`);
-        return respond(id, {
-          contents: [
-            {
-              uri: BRIEFING_URI,
-              mimeType: 'text/plain',
-              // Reading the briefing is what moves the "since last briefing"
-              // mark: the next session should be told what changed since this
-              // one was told, not since someone last ran a command.
-              text: tt(db => briefingText(db, { mark: true })),
-            },
-          ],
-        });
-      }
-      case 'tools/call': {
-        const name = params?.name;
+async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
         if (typeof name !== 'string' || !name) {
-          return err(id, -32602, 'tools/call needs params.name, the tool to call.');
+          throw new McpError(ErrorCode.InvalidParams, 'tools/call needs params.name, the tool to call.');
         }
         // Dispatch is keyed on the legacy prefix, and accepts either: the
         // advertised `ambit_*` name and the unadvertised `tt_*` alias reach
         // the same case. Every tool answers whichever profile listed it.
         const bare = name.replace(/^(ambit|tt)_/, '');
         const tool = BASE_TOOLS.find(t => t.name === bare);
-        if (!tool) return err(id, -32602, unknownTool(name, bare));
+        if (!tool) throw new McpError(ErrorCode.InvalidParams, unknownTool(name, bare));
 
         // The schema is the contract. A call that breaks it is answered as a
         // failed call the model can read and correct, and never reaches the
         // engine to fail somewhere less legible.
-        const checked = checkArguments({ ...tool, name: `ambit_${tool.name}` }, params.arguments);
+        const checked = checkArguments({ ...tool, name: `ambit_${tool.name}` }, rawArgs);
         if (!checked.ok) {
-          return respond(id, toolResult({ error: checked.error, takes: checked.takes }));
+          return toolResult({ error: checked.error, takes: checked.takes });
         }
         const args = checked.args as Record<string, any>;
         // One capability, under whichever of its three names was sent.
@@ -367,7 +313,7 @@ async function handleLine(line: string) {
           if (capId !== undefined && RESOLVES.has(tool.name)) {
             const wanted = capId;
             const found = tt(db => resolveCapability(db, wanted));
-            if (!found.ok) return respond(id, toolResult(notFound(found)));
+            if (!found.ok) return toolResult(notFound(found));
             capId = found.id;
           }
           switch (`tt_${tool.name}`) {
@@ -464,13 +410,10 @@ async function handleLine(line: string) {
                 const read = tt(db => specGoal(db, args.spec));
                 res = args.judge ? await judgeUnrouted(read, args.judgeUrl) : read;
               } else if (args?.goal === undefined) {
-                return respond(
-                  id,
-                  toolResult({
-                    error: 'ambit_goal: goal is required, unless spec names a spec to read.',
-                    takes: signature(tool),
-                  })
-                );
+                return toolResult({
+                  error: 'ambit_goal: goal is required, unless spec names a spec to read.',
+                  takes: signature(tool),
+                });
               } else if (args?.judge) {
                 const base = tt(db => goalFor(db, args.goal));
                 const judged = await judgeGoal(args.goal, { url: args.judgeUrl });
@@ -584,13 +527,11 @@ async function handleLine(line: string) {
             // handler because a probe that threw was an unhandled rejection,
             // which ends the whole server.
             case 'tt_incidents': {
-              const answering = incidents(getWarmDb()).then(
-                r => respond(id, toolResult(r)),
-                e => respond(id, toolResult({ error: e instanceof Error ? e.message : String(e) }))
-              );
-              answering.finally(() => inflight.delete(answering));
-              inflight.add(answering);
-              return;
+              try {
+                return toolResult(await incidents(getWarmDb()));
+              } catch (e) {
+                return toolResult({ error: e instanceof Error ? e.message : String(e) });
+              }
             }
             case 'tt_catalog':
               res = tt(db => catalogReport(db, capId || args?.capability));
@@ -687,50 +628,139 @@ async function handleLine(line: string) {
             // Unreachable while every listed tool has a case above, and the
             // test that calls each one holds that.
             default:
-              return err(id, -32603, `Internal error: ${name} is listed and has no handler.`);
+              throw new McpError(ErrorCode.InternalError, `Internal error: ${name} is listed and has no handler.`);
           }
           const notice = tt(db => emptyGraphNotice(db));
-          return respond(id, toolResult(res, notice ?? undefined));
+          return toolResult(res, notice ?? undefined);
         } catch (e) {
           // The call was well formed and the engine failed it: a failed call
           // for the model to read, and not a fault in the protocol.
-          return respond(id, toolResult({ error: e instanceof Error ? e.message : String(e) }));
+          return toolResult({ error: e instanceof Error ? e.message : String(e) });
         }
-      }
-      default:
-        // A notification has no id and is never answered; replying to one, as
-        // this did for anything but `initialized`, is an error line the client
-        // did not ask for and cannot match to a request.
-        if (id !== undefined) err(id, -32601, `Method not found: ${method}`);
-    }
-  } catch (e) {
-    // This used to swallow the failure, which left a client waiting forever
-    // for a reply that was never going to be written.
-    if (id !== undefined) err(id, -32603, `Internal error: ${e instanceof Error ? e.message : e}`);
-  }
 }
 
-let queue: Promise<unknown> = Promise.resolve();
-// Answers still being worked on when their request has already been handled.
-// The queue does not hold them, so the end of input has to, or a client that
-// closes its side after sending gets no reply to a slow call.
-const inflight = new Set<Promise<unknown>>();
 
-process.stdin.on('data', chunk => {
-  buf += chunk.toString();
-  const lines = buf.split('\n');
-  buf = lines.pop() || '';
-  for (const line of lines) {
-    queue = queue.then(() => handleLine(line));
+const server = new Server(
+  { name: 'ambit', version: VERSION },
+  {
+    capabilities: { tools: {}, resources: {} },
+    instructions: INSTRUCTIONS,
   }
+);
+
+// The original server serialized request handling with a queue, so responses
+// left in the order requests arrived. The SDK processes handlers concurrently,
+// which reorders replies and breaks clients that read them in order. Serialize
+// here to keep that contract.
+let __lock = Promise.resolve();
+function __serialize<T>(fn: () => Promise<T>): Promise<T> {
+  const prev = __lock;
+  let release!: () => void;
+  __lock = new Promise<void>(res => {
+    release = res;
+  });
+  return prev.then(() => fn()).finally(() => release());
+}
+
+server.oninitialized = () => {
+  proposer = proposerFrom(server.getClientVersion()?.name);
+};
+
+const PermissiveInitializeSchema = z.object({
+  jsonrpc: z.literal('2.0').optional(),
+  id: z.union([z.string(), z.number(), z.null()]).optional(),
+  method: z.literal('initialize'),
+  params: z
+    .object({
+      protocolVersion: z.string().optional(),
+      capabilities: z.record(z.string(), z.unknown()).optional(),
+      clientInfo: z
+        .object({ name: z.string().optional(), version: z.string().optional() })
+        .passthrough()
+        .optional(),
+    })
+    .passthrough()
+    .optional(),
 });
 
-process.stdin.on('end', async () => {
-  if (buf.trim()) {
-    queue = queue.then(() => handleLine(buf));
-    buf = '';
-  }
-  await queue;
-  await Promise.allSettled([...inflight]);
-  process.exit(0);
+server.setRequestHandler(PermissiveInitializeSchema as any, async (request: any) => __serialize(async () => {
+  const params = request.params || {};
+  if (params.clientInfo?.name) proposer = proposerFrom(params.clientInfo.name);
+  const requested = params.protocolVersion;
+  const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
+    ? requested
+    : LATEST_PROTOCOL_VERSION;
+  return {
+    protocolVersion,
+    capabilities: { tools: {}, resources: {} },
+    serverInfo: { name: 'ambit', version: VERSION },
+    instructions: INSTRUCTIONS,
+  };
+}));
+
+server.setRequestHandler(PingRequestSchema, async () =>
+  __serialize(async () => ({}))
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () =>
+  __serialize(async () => ({
+    tools: PROFILES[PROFILE],
+  }))
+);
+
+server.setRequestHandler(ListResourcesRequestSchema, async () =>
+  __serialize(async () => ({
+    resources: RESOURCES,
+  }))
+);
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) =>
+  __serialize(async () => {
+    const uri = request.params?.uri;
+    if (uri !== BRIEFING_URI) {
+      throw new McpError(ErrorCode.InvalidParams, `Unknown resource: ${uri}`);
+    }
+    return {
+      contents: [
+        {
+          uri: BRIEFING_URI,
+          mimeType: 'text/plain',
+          text: tt(db => briefingText(db, { mark: true })),
+        },
+      ],
+    };
+  })
+);
+
+const PermissiveCallToolSchema = z.object({
+  jsonrpc: z.literal('2.0').optional(),
+  id: z.union([z.string(), z.number(), z.null()]).optional(),
+  method: z.literal('tools/call'),
+  params: z
+    .object({
+      name: z.unknown().optional(),
+      arguments: z.unknown().optional(),
+      task: z.unknown().optional(),
+      _meta: z.unknown().optional(),
+    })
+    .passthrough()
+    .optional(),
 });
+
+server.setRequestHandler(PermissiveCallToolSchema as any, async (request) => {
+  const clientName = server.getClientVersion()?.name;
+  if (clientName) proposer = proposerFrom(clientName);
+  const name = request.params?.name;
+  const args = request.params?.arguments ?? {};
+  if (typeof name !== 'string' || !name) {
+    throw new McpError(ErrorCode.InvalidParams, 'tools/call needs params.name, the tool to call.');
+  }
+  const bare = String(name).replace(/^(ambit|tt)_/, '');
+  const isIncidents = bare === 'incidents';
+  const run = () => dispatchTool(name, args);
+  if (isIncidents) return await run();
+  return await __serialize(run);
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);

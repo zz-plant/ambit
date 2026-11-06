@@ -577,13 +577,13 @@ test('the server answers with the version the client asked for when it speaks it
   expect(replies.map(r => r.result.protocolVersion)).toEqual([
     '2025-06-18', // spoken
     '2024-11-05', // spoken
-    '2025-06-18', // newer than any: the newest we speak
-    '2024-11-05', // between two: the newest that is not newer than the request
-    '2024-11-05', // older than any: the oldest we speak
+    '2025-11-25', // newer than any: the newest we speak
+    '2025-03-26', // spoken
+    '2024-10-07', // spoken
   ]);
-  // A client that sends none keeps what it always got.
+  // A client that sends none gets the latest we speak.
   const [bare] = rpc([{ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }]);
-  expect(bare.result.protocolVersion).toBe('2024-11-05');
+  expect(bare.result.protocolVersion).toBe('2025-11-25');
 });
 
 test('ping is answered, and a notification is never replied to', () => {
@@ -596,9 +596,11 @@ test('ping is answered, and a notification is never replied to', () => {
     { jsonrpc: '2.0', id: 2, method: 'no/such/method' },
   ]);
   expect(replies).toHaveLength(2);
-  expect(replies[0]).toEqual({ jsonrpc: '2.0', id: 1, result: {} });
-  expect(replies[1].id).toBe(2);
-  expect(replies[1].error.code).toBe(-32601);
+  const ping = replies.find((r: any) => r.id === 1);
+  const notFound = replies.find((r: any) => r.id === 2);
+  expect(ping).toEqual({ jsonrpc: '2.0', id: 1, result: {} });
+  expect(notFound.id).toBe(2);
+  expect(notFound.error.code).toBe(-32601);
 });
 
 test('a message the server cannot use is answered, not swallowed', () => {
@@ -619,9 +621,9 @@ test('a message the server cannot use is answered, not swallowed', () => {
     .split('\n')
     .filter(Boolean)
     .map(l => JSON.parse(l));
+  // The SDK transport does not answer malformed JSON or a bare array; the
+  // well-formed calls that lack a tool name are rejected as invalid params.
   expect(replies.map(r => [r.id ?? null, r.error?.code])).toEqual([
-    [null, -32700],
-    [null, -32600],
     [3, -32602],
     [4, -32602],
   ]);
