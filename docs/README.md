@@ -1,6 +1,6 @@
 # Ambit documentation
 
-Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what you and your agents can do now, what one more step would open, and which pieces fail their checks.
+Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes. Run it once to see what you have, and again after any change: a token that expired or a server that moved shows up as failing.
 
 - **Try it**: [the live demo](https://zz-plant.github.io/ambit/?demo=1), a sample setup, with nothing to install.
 - **Install it, or connect it to Claude Code or OpenCode**: [Get started](../README.md).
@@ -10,35 +10,35 @@ Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent
 - **Compare it with a gateway**: [Ambit and MCP gateways](./compare.md).
 - **Understand why it exists**: [The ideas behind Ambit](./ideas.md).
 
-The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with [Your loadout, from A to B](./loadout.md). For the argument, [The ideas behind Ambit](./ideas.md) is the one-page version. The pages are grouped by the kind of claim each one makes, which a file listing cannot tell you.
+The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with [From A to B: the seven steps](./loadout.md). For the argument, [The ideas behind Ambit](./ideas.md) is the one-page version. The pages are grouped by the kind of claim each one makes, which a file listing cannot tell you.
 
-## Description: true of the code today
+## What it reads and answers today
 
 - [Building alone](./solo.md) — for a one-person company: the checklist between you and launch, what an agent may do to production without asking, and how you hear when it breaks.
 - [FAQ](./faq.md) — the short answers, each pointing at the longer one.
 - [Where each AI agent keeps its MCP config](./mcp-config-locations.md) — the files and keys, user and project, for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, and which of them Ambit reads.
-- [What breaks if an MCP server goes down](./mcp-outage.md) — single points of failure in an agent setup, and how to find them before an agent does.
+- [What stops when an MCP server or credential expires](./mcp-outage.md) — single points of failure in an agent setup, and how to find them before an agent does.
 - [Auditing which MCP servers a coding agent has](./audit-mcp-servers.md) — what is declared, what works, what may run without asking, and what was used but never declared.
 - [Ambit and MCP gateways](./compare.md) — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.
 - [Glossary](https://zz-plant.github.io/ambit/docs/glossary/) — every word the map and the CLI use, defined once, from the same file the app reads.
 - [Ambit and Jev](./jev.md) — how TypeSafe's Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.
-- [Deep dive](./deep-dive.md) — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the work ledger, delegation records, every MCP tool, and the map in full.
+- [Deep dive](./deep-dive.md) — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the session history, delegation records, every MCP tool, and the map in full.
 - [llms.txt](../src/client/public/llms.txt) — the project on one page for an agent deciding whether to recommend it, served at [zz-plant.github.io/ambit/llms.txt](https://zz-plant.github.io/ambit/llms.txt).
 
-## Argument: why the thing exists
+## Why it exists
 
-- [Your loadout, from A to B](./loadout.md) — one person's setup from a pile of configs to work done without them, in seven legs, with the command for each.
+- [From A to B: the seven steps](./loadout.md) — one person's setup from a pile of configs to work done without them, in seven steps, with the command for each.
 - [For agents](./agents.md) — the same journey from the agent's side: its sessions before and after Ambit, what it and the person each do as the ambit widens, and how to suggest it honestly.
 - [The ideas behind Ambit](./ideas.md) — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.
 - [Why Ambit](./why-ambit.md) — the argument for building it: what one agent stack looked like, why what it can do is composed, and why growing that reach needs governing.
 - [The affordance frontier](./affordance-frontier.md) — the theory under that argument, tested against robotics and brain-computer interfaces, with candidate applications in shared work, institutional access and economic agency.
 
-## Intent: ahead of the code, on purpose
+## Where it is going
 
 - [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided and what it still lacks, including the proposed layer for defined outcomes and their evidence. Nothing in it has a date or an owner.
 - [Interface specs](./interface-specs.md) — changes to the surfaces, including a proposed shorter path from a recommendation to a checked result. Each spec states its data, completion criteria and what has shipped.
 
-## Record: what was said at the time, not edited
+## What changed, and what was said at the time
 
 - [Changelog](../CHANGELOG.md) — what changed per release, and why.
 - [Incident trace](./incidents/INCIDENT_TRACE_001.md) — one blocked execution traced end to end, with the terminal recording of it.

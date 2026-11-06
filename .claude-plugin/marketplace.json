@@ -5,7 +5,7 @@
     "url": "https://github.com/zz-plant"
   },
   "metadata": {
-    "description": "Ambit for Claude Code: what your AI agents can do, what is failing, and what to set up next, from every agent config on the machine."
+    "description": "Ambit for Claude Code: what your AI agents can do, what is failing, and what to set up next, from every MCP and agent config on the machine."
   },
   "plugins": [
     {

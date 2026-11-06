@@ -141,10 +141,12 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           What can you and your agents do, and what would one more step open up?
         </h1>
         <p className="app-welcome-lede">
-          Ambit reads the configs of {RUNTIMES_READ} agent runtimes, including {RUNTIMES[0]},{' '}
-          {RUNTIMES[1]}, {RUNTIMES[2]} and {RUNTIMES[3]}, and draws what they add up to as one map:
-          what works, which next step would open the most, and what stops if a piece goes away. That
-          reach is your <em>ambit</em>.
+          Start with what you have. Ambit reads the MCP configs of {RUNTIMES_READ} AI coding agents
+          and MCP clients, including {RUNTIMES[0]}, {RUNTIMES[1]}, {RUNTIMES[2]} and {RUNTIMES[3]},
+          and reports three facts about every piece: configured, working, and whether it runs
+          without asking. Then it draws what they add up to as one map: which next step would open
+          the most, and what stops if a piece goes away. Run it again after any change. That reach
+          is your <em>ambit</em>.
         </p>
 
         {owner && (
@@ -187,7 +189,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
 
         {!owner && (
           <div className="app-welcome-yours">
-            <h2>Or map your own config</h2>
+            <h2>Or map your own MCP config</h2>
             <ConfigIntake onMapped={onMapped} />
             {dropError && (
               <p className="intake-error" role="alert">
@@ -215,16 +217,22 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
               machine. To keep the command, install with Homebrew or{' '}
               <code>npm install -g ambit-cli</code>.
             </p>
+            <p className="app-welcome-local">
+              Have a goal in mind? <code>ambit goal &quot;launch my saas&quot;</code> prints the
+              steps in order. Run <code>ambit status</code> again after any change: a token that
+              expired or a server that moved shows up as failing.
+            </p>
           </>
         )}
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>
-            Time &amp; cost
+            What your agents cost
           </button>
           <a href={`${DOCS}guide/`}>Get started</a>
           <a href={`${DOCS}faq/`}>What stays on your machine</a>
-          <a href={`${DOCS}loadout/`}>From configs to work done</a>
-          <a href={`${DOCS}mcp-outage/`}>What breaks if a server goes</a>
+          <a href={`${DOCS}loadout/`}>What to set up, in order</a>
+          <a href={`${DOCS}audit-mcp-servers/`}>Every MCP server you have</a>
+          <a href={`${DOCS}mcp-outage/`}>What stops when a server expires</a>
           <a href={`${DOCS}compare/`}>Ambit and MCP gateways</a>
           <a href="https://github.com/zz-plant/ambit" rel="noopener">
             Source on GitHub

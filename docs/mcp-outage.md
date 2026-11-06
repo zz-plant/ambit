@@ -1,8 +1,8 @@
-# What breaks if an MCP server goes down
+# What stops when an MCP server or credential expires
 
 An agent setup is a stack of dependencies nobody wrote down. A GitHub MCP server provides version control; version control is half of a review loop; the review loop is what lets an agent open a pull request on its own. When that server's token expires, the agent does not report a missing server. It reports that it cannot open a pull request, or it quietly does something else.
 
-The question to answer before that happens is what would stop if this one server, model or credential went away.
+The question to answer before that happens is what would stop if this one server, model or credential expired or was removed. Security teams call the same question blast radius, and the answer below is the same one.
 
 ## Three answers, not one
 

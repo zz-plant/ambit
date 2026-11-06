@@ -52,7 +52,7 @@ ambit graph unmapped --days=30   # what the agents used that no node accounts fo
 ambit audit 30                   # who approved what, what ran, and what came of it
 ```
 
-Both read the work ledger, Ambit's local record of what agents ran and who was asked. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
+Both read the session history, Ambit's local record of what agents ran and who was asked. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
 
 `ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the ledger recorded, and every grant that narrowed itself because a check failed.
 

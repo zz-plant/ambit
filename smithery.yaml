@@ -9,7 +9,7 @@ startCommand:
       profile:
         type: string
         default: "agent"
-        description: "Tool profile to advertise: 'agent' (curated 10 tools) or 'full' (all 61 tools)"
+        description: "Which tools the MCP server advertises: 'agent' (10 tools for an agent that asks before it acts) or 'full' (every tool)"
         enum:
           - "agent"
           - "full"

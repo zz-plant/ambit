@@ -19,7 +19,7 @@ import { CouncilFigure } from './Council';
 import { Term } from './Term';
 
 /**
- * The work ledger's view of a month: where human attention went, what it cost,
+ * The session history's view of a month: where human attention went, what it cost,
  * and what would pay back fastest.
  *
  * Everything here is quantity, so everything here is drawn rather than
@@ -1238,8 +1238,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             {sample && <p className="loop-sample">Sample data</p>}
             {saved ? (
               <h2 className="loop-lead">
-                <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in,
-                worth <strong>{money(roi.dollars_per_year)}</strong>.
+                <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in. At
+                the rate you set, that is <strong>{money(roi.dollars_per_year)}</strong>.
               </h2>
             ) : (
               <h2 className="loop-title">Where the time goes</h2>
@@ -1263,7 +1263,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               </summary>
               <p>
                 Each time someone had to step in for an agent is logged against the capability it
-                was waiting on and priced at what an hour of your time is worth.
+                was waiting on. The hours are counted from the session history; the dollar figure is
+                those hours at the rate you set.
               </p>
             </details>
             <SinceStrip since={since} />
@@ -1300,7 +1301,9 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
                 {!saved && (
                   <div className="fig-kpi-value" style={NUM}>
                     {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
-                    <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
+                    <span className="fig-kpi-second">
+                      {money(roi.dollars_per_year)} a year at your rate
+                    </span>
                   </div>
                 )}
                 {roi.monthly_hours.length > 1 ? (

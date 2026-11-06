@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.zz-plant/ambit",
-  "description": "Capability graph of your agent stack: what it can do, what to set up next, what breaks.",
+  "description": "Reads your Claude Code, Cursor and Codex MCP configs into one local map: which servers work, what to add next, and what breaks if one goes.",
   "repository": {
     "url": "https://github.com/zz-plant/ambit",
     "source": "github"

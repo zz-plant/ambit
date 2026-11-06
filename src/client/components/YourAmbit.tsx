@@ -125,6 +125,8 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
   // On the machine, what is reached and not yet proven, and what fails its check.
   const failing = reading ? [] : reached.filter(isFailing);
   const unproven = reading ? 0 : reached.filter(i => !isProven(i) && !isFailing(i)).length;
+  const working = reading ? 0 : reached.filter(isProven).length;
+  const allowed = reading ? null : (loop?.authority?.autonomous ?? null);
   const typed = (command: string) =>
     loop?.command ? command.replace(/^ambit(?=\s|$)/, loop.command) : command;
   const plan = shown ? typed(`ambit goal ${shellQuote(shown.id.replace(/^combo:/, ''))}`) : '';
@@ -143,8 +145,14 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
         </button>
       </div>
       <h2 className="app-tour-title">
-        You reach {reached.length} of {tree.length}
+        {reached.length} of {tree.length} configured{reading ? '' : `, ${working} working`}
       </h2>
+      {!reading && (
+        <p className="app-tour-body ambit-triad">
+          {failing.length ? `${failing.length} failing. ` : 'Nothing failing. '}
+          {allowed !== null ? `${allowed} actions run without asking.` : ''}
+        </p>
+      )}
       {(source || given) && (
         <p className="app-tour-body">
           {source}

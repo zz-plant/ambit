@@ -311,7 +311,7 @@ Classification compares against the ids recorded in the snapshot and never again
 
 `ambit history` also distinguishes a fourth thing, which is **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system, not the system having changed: the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then` and upgrading Ambit never reads as capabilities gained.
 
-Use is written to the work ledger. The OpenCode telemetry plugin and the stdin bridge (`scripts/adapters/telemetry.ts`) post to `/api/telemetry`, the Claude Code plugin's hooks spool tool runs, failures and asks, the control plane opens a run for each call routed through it, an agent records its own work over MCP, and `ambit incidents` opens a run for each declared service that does not answer. Other runtimes have no bridge yet. Each capability a run exercised is recorded, and a successful use counts as evidence (§13.2), but a use carries no object, so *which repository* was committed to is not a question the ledger can answer yet (§13.9). It also records demonstrated reliability beside reach: each snapshot carries a `verified` count and an id→lifecycle map, so `ambit history` reports a capability that stopped working as `diminished` (with `reason: verification failing`) while `frontier_now` stays flat — the check started failing, nothing was removed.
+Use is written to the session history. The OpenCode telemetry plugin and the stdin bridge (`scripts/adapters/telemetry.ts`) post to `/api/telemetry`, the Claude Code plugin's hooks spool tool runs, failures and asks, the control plane opens a run for each call routed through it, an agent records its own work over MCP, and `ambit incidents` opens a run for each declared service that does not answer. Other runtimes have no bridge yet. Each capability a run exercised is recorded, and a successful use counts as evidence (§13.2), but a use carries no object, so *which repository* was committed to is not a question the ledger can answer yet (§13.9). It also records demonstrated reliability beside reach: each snapshot carries a `verified` count and an id→lifecycle map, so `ambit history` reports a capability that stopped working as `diminished` (with `reason: verification failing`) while `frontier_now` stays flat — the check started failing, nothing was removed.
 
 ## 7b. Affordance domains — built, derived
 
@@ -518,14 +518,14 @@ Built, with acceptance tests in `src/engine/expansion.test.ts`, `src/engine/ttl-
 The loop in [the argument](#the-argument) is the graph half, and it is built. The first turn of the loop that pays for it is built too:
 
 ```
-real work happens → the work ledger observes (runs, events, interventions,
+real work happens → the session history observes (runs, events, interventions,
 consumption) → attention prices the human burden → opportunities ranks the
 durable fixes → propose carries the observed case → the approval broker mints
 a signed, expiring artifact → apply enforces canExecute and verifies → roi
 measures before/after and writes the observation back
 ```
 
-What exists: the work ledger and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the capital allocator (`opportunities --budget N`), the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.
+What exists: the session history and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the capital allocator (`opportunities --budget N`), the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.
 
 The loop page draws each standing budget's ceiling with a tick for where the period lands at its pace so far ([L2](./interface-specs.md#l2-a-ceiling-with-a-forecast-tick)), and says what each opportunity's capability needs and what is already here ([S4](./interface-specs.md#s4-what-it-needs-and-is-it-met-here)).
 
@@ -546,7 +546,7 @@ Ambit starts on one developer's workstation. In an engineering organization, cap
 The loop in §14 extends to fleets:
 
 ```
-local work ledger → signed summary export → team portfolio sync →
+local session history → signed summary export → team portfolio sync →
 cross-machine capability routing → GitOps policy review → organizational frontier
 ```
 

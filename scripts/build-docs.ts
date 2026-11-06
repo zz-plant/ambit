@@ -67,7 +67,7 @@ export const PAGES: Page[] = [
   {
     src: 'docs/README.md',
     slug: '',
-    title: 'Ambit documentation: map, audit and govern an AI agent setup',
+    title: 'Ambit docs: map and audit your MCP servers and agent configs',
     description:
       'Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute.',
     card: 'Every Ambit document, in one place',
@@ -85,13 +85,13 @@ export const PAGES: Page[] = [
     slug: 'faq',
     title: 'Ambit FAQ: MCP servers, agent permissions, and what stays local',
     description:
-      'Short answers about Ambit: which agent runtimes it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty.',
+      'Short answers about Ambit: which MCP clients it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty.',
     card: 'What it reads, and what never leaves your machine',
   },
   {
     src: 'docs/loadout.md',
     slug: 'loadout',
-    title: 'Your loadout, from A to B: what Ambit makes possible, leg by leg',
+    title: 'From config files to work done: the seven steps',
     description:
       'One person, their agents and their machines, from a pile of configs to work done without them: seven legs, the command for each, and what the demo shows.',
     card: 'Step into your loadout',
@@ -136,10 +136,10 @@ export const PAGES: Page[] = [
   {
     src: 'docs/mcp-outage.md',
     slug: 'mcp-outage',
-    title: 'What breaks if an MCP server goes down: blast radius for AI agents',
+    title: 'What stops when an MCP server or credential expires',
     description:
-      'Find the single points of failure in an AI agent setup: what stops, what only weakens, and what was already broken if one MCP server, model or token goes.',
-    card: 'One server goes down. What else stops?',
+      'What stops when an MCP server or credential expires: single points of failure in an agent setup, what only weakens, and what was already broken.',
+    card: 'One credential expires. What else stops?',
     pitch: {
       text: 'answers this for your own setup. It maps every agent config on your machine and, for any server or model, splits what would stop from what would keep another provider.',
       href: tourAt('outage'),
@@ -170,9 +170,9 @@ export const PAGES: Page[] = [
   {
     src: 'src/shared/concepts.json',
     slug: 'glossary',
-    title: 'Ambit glossary: capability graph, frontier, keystone and more',
+    title: 'Agent and MCP terms: capability, lifecycle, authority and grant',
     description:
-      'Every word Ambit uses, defined once: capabilities, reached and next steps, keystones, evidence, authority modes, the frontier and the work ledger.',
+      'Every word Ambit uses, defined once: MCP servers, capabilities, checks and lifecycle, authority and grants, the frontier and the work ledger.',
     card: 'Every word on the map, defined once',
     render: 'glossary',
   },
@@ -361,7 +361,7 @@ export function tryCard(page: Page): string {
   return `<section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="${DEMO}" tabindex="-1" aria-hidden="true"><img src="${BASE}${SHOT}" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
 <p class="try-title" id="try-ambit">See what your own agents can reach</p>
-<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p>Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes.</p>
 <p class="actions"><a class="button" href="${DEMO}">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
 <p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
 <p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>

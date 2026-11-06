@@ -6,7 +6,7 @@ Terms are defined in [the README](../README.md#the-words-ambit-uses), and `ambit
 
 ### How is this different from listing my MCP servers?
 
-A list shows what is configured, one server at a time. Ambit records what each capability *needs*, so it can answer the questions a list cannot: what breaks downstream if this credential is revoked, which capability you are one prerequisite away from, and which tools interrupt you most. The [comparison table](../README.md#where-ambit-sits-in-the-stack) in the README places it next to tool-RAG, workflow graphs, and package managers, and [the ideas behind Ambit](./ideas.md) says what in it is new.
+A list shows what is configured; Ambit shows what the list adds up to. It records what each capability *needs*, so it can answer the questions a list cannot: what breaks downstream if this credential is revoked, which capability you are one prerequisite away from, and which tools interrupt you most. The [comparison table](../README.md#where-ambit-sits-in-the-stack) in the README places it next to tool-RAG, workflow graphs, and package managers, and [the ideas behind Ambit](./ideas.md) says what in it is new.
 
 ### Do I need Claude Code for this?
 
@@ -18,6 +18,28 @@ Ambit maps TypeSafe's Jev as **Typed Judgment**, in the Model Access era (a colu
 
 Use Jev to decide what to try, and `ambit_can` to decide whether it may run. Jev returns a probability, and text inside the state it reads can move that probability. In one published test, injected text dropped Jev's probability of blocking `rm -rf ~/.ssh` from 0.76 to 0.48. Ambit's answer to whether an action may run comes from a grant a person set, so nothing an agent reads can widen it.
 
+## MCP servers
+
+### How do I list every MCP server I have?
+
+Run `ambit status`: it reads every runtime's config at once and names each server, whether it passes its check, and the next step. Without Ambit, read each file by hand; [Where each AI agent keeps its MCP config](./mcp-config-locations.md) has the path and key for all sixteen.
+
+### Why isn't my MCP server working, or not showing up?
+
+Three faults look the same from the agent's side: the server is not declared, it is declared and fails to start, or it works and the agent is not permitted to call it. `ambit status` separates them. My Setup lists what was declared, a failing check marks a server that starts and fails, and `ambit authority` shows what may run without asking. `ambit verify <id>` runs the check again, and `ambit impact <id>` shows what stops with it.
+
+### How much of my context window do my MCP tools use?
+
+Each MCP server's tool list is sent to the model every session, whether or not a tool is called. `ambit weigh` starts each local server your user-level configs declare, asks for its tools, and reports what the list costs in context, per runtime, plus which servers the ledger never saw called. It starts the servers once, so run it when you are willing to.
+
+### Does Ambit send my code or config anywhere?
+
+No. It reads the config files and writes one local SQLite file, whose path `ambit where` prints, and there is no telemetry. The commands that can open a socket are listed under [Does anything leave my machine?](#does-anything-leave-my-machine), each with what it sends and where.
+
+### How do I get from here to a goal?
+
+State the goal in a sentence. `ambit goal "launch my saas"` routes it to a capability on the map and prints the steps in order, each with setup time and the usual ways to do it. A step you have half done says so. If no phrase in the curated tree matches, `--judge` asks a judgment model on this machine and returns a suggestion that writes nothing.
+
 ## Installing and running
 
 ### What do I need installed?
@@ -26,7 +48,7 @@ Node 22.18 or newer, and nothing else. The engine, the CLI, the API server, and 
 
 ### Can I `npx` it?
 
-Yes. `npx ambit-cli` reads the agent configs on this machine, builds the graph, and shows what one more step would open, with nothing installed. To keep the `ambit` command:
+Yes. `npx ambit-cli` reads the MCP and agent configs on this machine, builds the graph, and shows what one more step would open, with nothing installed. To keep the `ambit` command:
 
 ```bash
 npm install -g ambit-cli          # or: brew install zz-plant/tap/ambit
@@ -64,7 +86,7 @@ Names and structure. A credential is a node you declared in a `credentials` bloc
 
 ### Can an agent change my configuration through Ambit?
 
-Not on its own. An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Approving and applying are not MCP tools. They run from the terminal or the map, outside the MCP tool surface, and `ambit apply` writes a `.bak` beside any file it edits. The visualizer also has a direct editor for entries that already exist, such as the switch that turns an MCP server on or off, in the detail panel and in the My Setup list. It writes to the config on a person's click without a proposal, after copying the file it replaces to a `.bak`, and offers the switch only for a server your config names; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
+Not on its own. An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Read the proposal the way you read a pull request: what the file will say, what it undoes, and who signed it. Approving is the review; `ambit apply` is the merge, and `ambit rollback` is the revert. Approving and applying are not MCP tools. They run from the terminal or the map, outside the MCP tool surface, and `ambit apply` writes a `.bak` beside any file it edits. The visualizer also has a direct editor for entries that already exist, such as the switch that turns an MCP server on or off, in the detail panel and in the My Setup list. It writes to the config on a person's click without a proposal, after copying the file it replaces to a `.bak`, and offers the switch only for a server your config names; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
 
 ### Where do I report a security problem?
 
@@ -74,13 +96,13 @@ Privately, through [GitHub security advisories](https://github.com/zz-plant/ambi
 
 ### I ran `ambit attention` and it says nothing is recorded. Is it broken?
 
-No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the human cost of running your stack, and they read from the work ledger, Ambit's local record of agent runs, which starts empty. They become useful after a few weeks of recorded runs.
+No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the human cost of running your stack, and they read from the session history, Ambit's local record of agent runs, which starts empty. They become useful after a few weeks of recorded runs.
 
-In Claude Code, the `ambit` plugin records each session's tool runs, failures and approval prompts ([Connect it to your agent](../README.md#claude-code) has the install). In OpenCode, copying `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` records every tool execution and permission prompt. In Cursor, `ambit connect cursor --ledger` adds a hook that records each conversation's shell commands, MCP calls and failures ([Cursor](../README.md#cursor) says exactly what it writes). Claude Code, Codex, OpenCode and Amp sessions also give their token counts with no plugin, read from the session logs those agents keep, so Time & cost has a token figure, and the current five-hour window beside it, from the first `ambit` command after you use one; tool runs and approvals still need a bridge, and other runtimes do not feed the ledger yet. [The deep dive](./deep-dive.md#the-work-ledger) covers the ledger.
+In Claude Code, the `ambit` plugin records each session's tool runs, failures and approval prompts ([Connect it to your agent](../README.md#claude-code) has the install). In OpenCode, copying `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` records every tool execution and permission prompt. In Cursor, `ambit connect cursor --ledger` adds a hook that records each conversation's shell commands, MCP calls and failures ([Cursor](../README.md#cursor) says exactly what it writes). Claude Code, Codex, OpenCode and Amp sessions also give their token counts with no plugin, read from the session logs those agents keep, so Time & cost has a token figure, and the current five-hour window beside it, from the first `ambit` command after you use one; tool runs and approvals still need a bridge, and other runtimes do not feed the session history yet. [The deep dive](./deep-dive.md#the-session-history) covers it.
 
 ### What is the difference between "reached" and "verified"?
 
-Reached is structural: something in your config provides the capability, and its prerequisites are met. Verified is evidence: its declared check ran and passed. The database calls these `state` and `lifecycle`. A capability no check has run on is reached and unverified, and still counts. One whose last check failed is `broken` while still reached, and every availability decision leaves it out until the check passes again. One pass brings it back as `degraded`, which reads as recovering. It is usable, and unverified until its last five runs pass. `ambit verify` runs the checks, and `ambit incidents` is the check of each device and service your infrastructure manifest names; `ambit status` reports verified, unverified, and failing counts. The README section [Configured is not working](../README.md#configured-is-not-working) is the longer argument.
+Reached is structural: something in your config provides the capability, and its prerequisites are met. Verified is evidence: its declared check ran and passed. Allowed is a third fact: a capability can be reached and verified and still ask before it runs. The database calls the first two `state` and `lifecycle`, and authority answers the third. A capability no check has run on is reached and unverified, and still counts. One whose last check failed is `broken` while still reached, and every availability decision leaves it out until the check passes again. One pass brings it back as `degraded`, which reads as recovering. It is usable, and unverified until its last five runs pass. `ambit verify` runs the checks, and `ambit incidents` is the check of each device and service your infrastructure manifest names; `ambit status` reports verified, unverified, and failing counts, and `ambit authority` says what may run without asking. The README section [Configured is not working](../README.md#configured-is-not-working) is the longer argument.
 
 ## Something else?
 
