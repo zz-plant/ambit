@@ -5,15 +5,10 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
-import { useAmbitStore } from '../store/ambitStore';
 import { demoTreeGraph } from '../store/demo';
 import CivTree from './CivTree';
 import { IMAGE_CHOICES, ImageMenu } from './civ/ImageMenu';
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => seed({ items: [], connections: [] }));
 

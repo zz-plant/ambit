@@ -1694,7 +1694,6 @@ function renderToggle(result: any, c: Palette = C): string[] {
 }
 
 export {
-  ago,
   briefReport,
   renderBrief,
   renderConnect,
@@ -1709,17 +1708,10 @@ export {
   renderWindows,
   renderPlan,
   renderSpec,
-  evidenceReport,
   statusReport,
   renderStatus,
   renderFix,
   worries,
   explain,
   help,
-  type BriefReport,
-  type ImpactReport,
-  type NextReport,
-  type NextMove,
-  type SpecReport,
-  type StatusReport,
 };

@@ -262,6 +262,27 @@ function appData(home: string, ...parts: string[]): string[] {
   return [join(process.env.APPDATA || join(home, 'AppData', 'Roaming'), ...parts)];
 }
 
+/** A file in a desktop app's folder, wherever Windows, macOS and Linux each keep that folder. */
+function appFolder(home: string, ...parts: string[]): string[] {
+  return [
+    ...appData(home, ...parts),
+    join(home, 'Library', 'Application Support', ...parts),
+    join(home, '.config', ...parts),
+  ];
+}
+
+/** Where a VS Code extension built on Cline keeps its MCP settings. */
+const clineSettings = (home: string, extension: string) =>
+  appFolder(
+    home,
+    'Code',
+    'User',
+    'globalStorage',
+    extension,
+    'settings',
+    'cline_mcp_settings.json'
+  );
+
 const CLIENTS = [
   {
     runtime: 'cursor' as const,
@@ -288,11 +309,7 @@ const CLIENTS = [
     runtime: 'claude-desktop' as const,
     label: 'Claude Desktop',
     env: 'CLAUDE_DESKTOP_CONFIG',
-    paths: (home: string) => [
-      ...appData(home, 'Claude', 'claude_desktop_config.json'),
-      join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
-      join(home, '.config', 'Claude', 'claude_desktop_config.json'),
-    ],
+    paths: (home: string) => appFolder(home, 'Claude', 'claude_desktop_config.json'),
     read: readMcpServersJson,
   },
   {
@@ -306,76 +323,14 @@ const CLIENTS = [
     runtime: 'cline' as const,
     label: 'Cline',
     env: 'CLINE_MCP_CONFIG',
-    paths: (home: string) => [
-      ...appData(
-        home,
-        'Code',
-        'User',
-        'globalStorage',
-        'saoudrizwan.claude-dev',
-        'settings',
-        'cline_mcp_settings.json'
-      ),
-      join(
-        home,
-        'Library',
-        'Application Support',
-        'Code',
-        'User',
-        'globalStorage',
-        'saoudrizwan.claude-dev',
-        'settings',
-        'cline_mcp_settings.json'
-      ),
-      join(
-        home,
-        '.config',
-        'Code',
-        'User',
-        'globalStorage',
-        'saoudrizwan.claude-dev',
-        'settings',
-        'cline_mcp_settings.json'
-      ),
-    ],
+    paths: (home: string) => clineSettings(home, 'saoudrizwan.claude-dev'),
     read: readMcpServersJson,
   },
   {
     runtime: 'roo-code' as const,
     label: 'Roo Code',
     env: 'ROO_CODE_MCP_CONFIG',
-    paths: (home: string) => [
-      ...appData(
-        home,
-        'Code',
-        'User',
-        'globalStorage',
-        'rooveterinaryinc.roo-cline',
-        'settings',
-        'cline_mcp_settings.json'
-      ),
-      join(
-        home,
-        'Library',
-        'Application Support',
-        'Code',
-        'User',
-        'globalStorage',
-        'rooveterinaryinc.roo-cline',
-        'settings',
-        'cline_mcp_settings.json'
-      ),
-      join(
-        home,
-        '.config',
-        'Code',
-        'User',
-        'globalStorage',
-        'rooveterinaryinc.roo-cline',
-        'settings',
-        'cline_mcp_settings.json'
-      ),
-    ],
+    paths: (home: string) => clineSettings(home, 'rooveterinaryinc.roo-cline'),
     read: readMcpServersJson,
   },
   {
@@ -400,11 +355,7 @@ const CLIENTS = [
     runtime: 'vscode' as const,
     label: 'VS Code',
     env: 'VSCODE_MCP_CONFIG',
-    paths: (home: string) => [
-      ...appData(home, 'Code', 'User', 'mcp.json'),
-      join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json'),
-      join(home, '.config', 'Code', 'User', 'mcp.json'),
-    ],
+    paths: (home: string) => appFolder(home, 'Code', 'User', 'mcp.json'),
     read: serversUnder('servers'),
   },
   // https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
@@ -481,6 +432,20 @@ export function clientPaths(runtime: string, home = process.env.HOME || '/'): st
   return CLIENTS.find(c => c.runtime === runtime)?.paths(home) ?? [];
 }
 
+/** A client's config file, when it has one, and what its reader finds there: null if it does not parse. */
+function readClient(
+  client: (typeof CLIENTS)[number],
+  home: string
+): { path: string; servers: Record<string, unknown> | null } | null {
+  const path = process.env[client.env] || client.paths(home).find(p => existsSync(p));
+  if (!path || !existsSync(path)) return null;
+  try {
+    return { path, servers: client.read(readFileSync(path, 'utf8')) };
+  } catch {
+    return { path, servers: null };
+  }
+}
+
 /**
  * Each client whose config file exists, with the servers its own reader finds
  * there, or null when the file does not parse. `ambit doctor` reads this, so
@@ -489,36 +454,19 @@ export function clientPaths(runtime: string, home = process.env.HOME || '/'): st
 export function clientConfigs(
   home = process.env.HOME || '/'
 ): { runtime: string; label: string; path: string; servers: Record<string, unknown> | null }[] {
-  const out = [];
-  for (const client of CLIENTS) {
-    const override = process.env[client.env];
-    const path = override || client.paths(home).find(p => existsSync(p));
-    if (!path || !existsSync(path)) continue;
-    let servers: Record<string, unknown> | null = null;
-    try {
-      servers = client.read(readFileSync(path, 'utf8'));
-    } catch {
-      servers = null;
-    }
-    out.push({ runtime: client.runtime, label: client.label, path, servers });
-  }
-  return out;
+  return CLIENTS.flatMap(client => {
+    const read = readClient(client, home);
+    return read ? [{ runtime: client.runtime, label: client.label, ...read }] : [];
+  });
 }
 
 /** Read MCP-only clients into the same config shape used by the engine seeder. */
 export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSeed[] {
   const found: McpClientSeed[] = [];
   for (const client of CLIENTS) {
-    const override = process.env[client.env];
-    const path = override || client.paths(home).find(p => existsSync(p));
-    if (!path || !existsSync(path)) continue;
-    let servers: Record<string, unknown> | null = null;
-    try {
-      servers = client.read(readFileSync(path, 'utf8'));
-    } catch {
-      continue;
-    }
-    if (!servers) continue;
+    const read = readClient(client, home);
+    if (!read?.servers) continue;
+    const { path, servers } = read;
 
     const mcp: Record<string, unknown> = {};
     for (const [name, server] of Object.entries<any>(servers)) {

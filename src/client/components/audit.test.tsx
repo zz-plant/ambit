@@ -10,17 +10,11 @@ import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import type { AuditEvent, AuditResponse } from '../../shared/api';
-import { useAmbitStore } from '../store/ambitStore';
 import { demoAudit } from '../store/demo';
 import { findAll, type Props } from '../testing/elements';
 import AppDeck from './AppDeck';
 import AuditView, { AuditTrail } from './AuditView';
-
-/** Both halves of the store, since a server render reads the initial state. */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => seed({ audit: null, demo: false, backend: 'unknown' }));
 

@@ -10,7 +10,7 @@
  */
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import App from '../App';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
@@ -18,6 +18,7 @@ import { findAll, type Props } from '../testing/elements';
 import { eraLadder } from './civ/layout';
 import { ColumnHead } from './civ/MapScene';
 import { EraLadderView } from './EraLadder';
+import { seed, stubBrowser } from '../testing/page';
 
 /** The props the shell last handed the deck, so a test can press a view tab's own handler. */
 const deck: { props?: Props } = {};
@@ -104,22 +105,7 @@ test('a rung opens its node, and the ladder closes from its own button', () => {
 
 // ── The shell ────────────────────────────────────────────────────────────────
 
-const originalWindow = globalThis.window;
-const originalLocalStorage = globalThis.localStorage;
-
-beforeAll(() => {
-  const mediaQuery = { matches: false, addEventListener() {}, removeEventListener() {} };
-  Object.assign(globalThis, {
-    localStorage: { getItem: () => '1', setItem() {} },
-    window: {
-      location: { search: '?guide=off' },
-      matchMedia: () => mediaQuery,
-      addEventListener() {},
-      removeEventListener() {},
-      innerWidth: 1440,
-    },
-  });
-});
+stubBrowser('?guide=off');
 
 afterEach(() => {
   const clear = {
@@ -132,15 +118,6 @@ afterEach(() => {
   Object.assign(useAmbitStore.getInitialState(), clear);
   useAmbitStore.setState(clear);
 });
-
-afterAll(() => {
-  Object.assign(globalThis, { window: originalWindow, localStorage: originalLocalStorage });
-});
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
 
 test('an open era is a reason for the detail panel to be open, with nothing else selected', () => {
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());

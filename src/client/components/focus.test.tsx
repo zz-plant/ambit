@@ -11,7 +11,7 @@
  */
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import App from '../App';
 import { linkFocus, readLinkState, writeLinkState } from '../linkState';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
@@ -22,6 +22,7 @@ import { SimulationBanner } from './civ/SimulationBanner';
 import CivTree from './CivTree';
 import { FocusControls } from './FocusControls';
 import NodeDetailPanel from './NodeDetailPanel';
+import { seed, stubBrowser } from '../testing/page';
 
 // The writer the shell hands the view to, watched: see the address bar below.
 vi.mock('../linkState', async importOriginal => {
@@ -29,31 +30,7 @@ vi.mock('../linkState', async importOriginal => {
   return { ...actual, writeLinkState: vi.fn(actual.writeLinkState) };
 });
 
-const originalWindow = globalThis.window;
-const originalLocalStorage = globalThis.localStorage;
-
-beforeAll(() => {
-  const mediaQuery = { matches: false, addEventListener() {}, removeEventListener() {} };
-  Object.assign(globalThis, {
-    localStorage: { getItem: () => '1', setItem() {} },
-    window: {
-      location: { search: '?view=tree&guide=off' },
-      matchMedia: () => mediaQuery,
-      addEventListener() {},
-      removeEventListener() {},
-      innerWidth: 1440,
-    },
-  });
-});
-
-afterAll(() => {
-  Object.assign(globalThis, { window: originalWindow, localStorage: originalLocalStorage });
-});
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+stubBrowser('?view=tree&guide=off');
 
 afterEach(() => {
   seed({

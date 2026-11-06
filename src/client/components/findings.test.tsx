@@ -10,7 +10,6 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
-import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, coldOpen, demoConfigGraph, demoTreeGraph } from '../store/demo';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -26,11 +25,7 @@ import {
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => {
   seed({

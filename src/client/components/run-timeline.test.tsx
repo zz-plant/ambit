@@ -16,12 +16,7 @@ import { demoRun } from '../utils/demoRun';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import LoopDashboard from './LoopDashboard';
 import RunSection from './RunTimeline';
-
-/** `renderToStaticMarkup` reads zustand's initial state, so both halves are set. */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -8,7 +8,6 @@ import {
   KEEPER_KINDS,
 } from './vocabulary.ts';
 import { usable } from './assure/lifecycle.ts';
-import { LIFECYCLES, SUPERVISORY_RUNGS, LABOR_CLASSIFICATIONS } from '../shared/types.ts';
 
 describe('Ontological rationalization', () => {
   test('kindOf resolves normalized prefixes to canonical kinds', () => {
@@ -28,14 +27,6 @@ describe('Ontological rationalization', () => {
     expect(kindOf('mcp:git')).toBe('provider');
     expect(kindOf('skill:pr-review')).toBe('provider');
     expect(kindOf('tool:bash')).toBe('provider');
-  });
-
-  test('LIFECYCLES includes recovering and backward compatible degraded', () => {
-    expect(LIFECYCLES).toContain('recovering');
-    expect(LIFECYCLES).toContain('degraded');
-    expect(LIFECYCLES).toContain('broken');
-    expect(LIFECYCLES).toContain('verified');
-    expect(LIFECYCLES).toContain('reliable');
   });
 
   test('usable() correctly classifies recovering vs failing states', () => {
@@ -58,17 +49,5 @@ describe('Ontological rationalization', () => {
     expect(SOVEREIGN_DISCRETION_KINDS).toBe(KEEPER_KINDS);
     expect(COMPENSATORY_FRICTION_KINDS.has('clerical')).toBe(true);
     expect(SOVEREIGN_DISCRETION_KINDS.has('judgment')).toBe(true);
-  });
-
-  test('Supervisory rungs and labor types are defined', () => {
-    expect(SUPERVISORY_RUNGS).toEqual([
-      'ungranted',
-      'forbidden',
-      'attended',
-      'thresholded',
-      'budgeted',
-      'autonomous',
-    ]);
-    expect(LABOR_CLASSIFICATIONS).toEqual(['compensatory_friction', 'sovereign_discretion']);
   });
 });

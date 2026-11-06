@@ -333,7 +333,6 @@ function writeAndReturn(path: string, data: unknown): string {
   return path;
 }
 
-export type { Db };
 export {
   APPLIABLE,
   ENGINE,
@@ -358,7 +357,6 @@ export {
   join,
   migrate,
   mkdirSync,
-  mkdtempSync,
   readConfig,
   readFileSync,
   recordHumanAct,
@@ -371,7 +369,6 @@ export {
   rows,
   seed,
   symlinkSync,
-  tmpdir,
   usageReport,
   workReport,
   writeAndReturn,

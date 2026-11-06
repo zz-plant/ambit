@@ -6,14 +6,9 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
-import { useAmbitStore } from '../store/ambitStore';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import LoopDashboard from './LoopDashboard';
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
+import { seed } from '../testing/page';
 
 afterEach(() => seed({ loop: null, loopSource: null, loopEmpty: false }));
 

@@ -245,6 +245,52 @@ const isLedgerHook = (entry: any) =>
   typeof entry?.command === 'string' && entry.command.includes('ambit-ledger.mjs');
 
 /**
+ * A config as plain JSON, refused when writing it back would lose something: a
+ * comment, which only a JSONC parse accepts, or anything else that does not parse.
+ */
+function readStrictJson(filePath: string, addByHand: string): any {
+  const text = readFileSync(filePath, 'utf8');
+  try {
+    return JSON.parse(text);
+  } catch {
+    let commented = false;
+    try {
+      parseJsonc(text);
+      commented = true;
+    } catch {}
+    throw new Error(
+      commented
+        ? `${filePath} has comments, and writing it would delete them; add ${addByHand} by hand`
+        : `${filePath} is not valid JSON; left unchanged`
+    );
+  }
+}
+
+/** Claude Code's settings.json: the text to splice into, and the object it holds. */
+function readSettings(filePath: string): { text: string; parsed: any } {
+  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '{}\n';
+  let parsed: unknown;
+  try {
+    parsed = parseJsonc(text);
+  } catch {
+    throw new Error(`${filePath} is not valid JSON; left unchanged`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${filePath} is not a settings object; left unchanged`);
+  }
+  return { text, parsed };
+}
+
+/** Keep the file in `<file>.bak`, then write it. A dry run does neither. */
+function writeKept(filePath: string, contents: string, dryRun: boolean): string | undefined {
+  if (dryRun) return undefined;
+  const backup = keepBackup(filePath);
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, contents);
+  return backup;
+}
+
+/**
  * Add the ledger hook to Cursor's hooks.json under each event it records,
  * keeping every hook already there. An entry for the hook from another path,
  * such as a copy installed elsewhere before, is replaced and not doubled, since
@@ -263,21 +309,7 @@ function configureCursorHooks(
   let parsed: any = { version: 1, hooks: {} };
   const existed = existsSync(filePath);
   if (existed) {
-    const text = readFileSync(filePath, 'utf8');
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      let commented = false;
-      try {
-        parseJsonc(text);
-        commented = true;
-      } catch {}
-      throw new Error(
-        commented
-          ? `${filePath} has comments, and writing it would delete them; add the hooks by hand`
-          : `${filePath} is not valid JSON; left unchanged`
-      );
-    }
+    parsed = readStrictJson(filePath, 'the hooks');
   }
   const isObject = (v: unknown) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
   if (!isObject(parsed) || (parsed.hooks !== undefined && !isObject(parsed.hooks))) {
@@ -305,12 +337,7 @@ function configureCursorHooks(
   }
   if (!changed) return { action: 'already_configured' };
 
-  let backup: string | undefined;
-  if (!dryRun) {
-    backup = keepBackup(filePath);
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, JSON.stringify(parsed, null, 2) + '\n');
-  }
+  const backup = writeKept(filePath, JSON.stringify(parsed, null, 2) + '\n', dryRun);
   return { action: existed && replaced ? 'updated' : 'added', backup };
 }
 
@@ -350,16 +377,8 @@ export function configureCodexServer(
       .join(', ');
     table += `env = { ${envEntries} }\n`;
   }
-  let backup: string | undefined;
-  if (!dryRun) {
-    backup = keepBackup(filePath);
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(
-      filePath,
-      `${text}${text && !text.endsWith('\n') ? '\n' : ''}${text ? '\n' : ''}${table}`
-    );
-  }
-  return { action: 'added', backup };
+  const separator = `${text && !text.endsWith('\n') ? '\n' : ''}${text ? '\n' : ''}`;
+  return { action: 'added', backup: writeKept(filePath, text + separator + table, dryRun) };
 }
 
 /** Add or update any server entry in a client configuration. */
@@ -370,24 +389,9 @@ export function configureServerEntry(
   dryRun = false
 ): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
   if (kind === 'codex') return configureCodexServer(filePath, server, dryRun);
-  let parsed: any = {};
-  if (existsSync(filePath)) {
-    const text = readFileSync(filePath, 'utf8');
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      let commented = false;
-      try {
-        parseJsonc(text);
-        commented = true;
-      } catch {}
-      throw new Error(
-        commented
-          ? `${filePath} has comments, and writing it would delete them; add the ${server.name} server by hand`
-          : `${filePath} is not valid JSON; left unchanged`
-      );
-    }
-  }
+  const parsed: any = existsSync(filePath)
+    ? readStrictJson(filePath, `the ${server.name} server`)
+    : {};
 
   let action: 'added' | 'updated' | 'already_configured' = 'added';
 
@@ -442,14 +446,8 @@ export function configureServerEntry(
     }
   }
 
-  let backup: string | undefined;
-  if (action !== 'already_configured' && !dryRun) {
-    backup = keepBackup(filePath);
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, JSON.stringify(parsed, null, 2) + '\n');
-  }
-
-  return { action, backup };
+  if (action === 'already_configured') return { action };
+  return { action, backup: writeKept(filePath, JSON.stringify(parsed, null, 2) + '\n', dryRun) };
 }
 
 /** Add or update the ambit entry in a client configuration. */
@@ -537,9 +535,10 @@ export function runConnect(
     }
   }
 
-  if (options.ledger) connectCursorLedger(runtimeName, home, options, configured, skipped);
-  if (options.statusline) connectStatusLine(runtimeName, home, options, configured, skipped);
-  if (options.gate) connectGate(runtimeName, home, options, configured, skipped);
+  const run: ConnectRun = { runtimeName, home, options, configured, skipped };
+  if (options.ledger) connectCursorLedger(run);
+  if (options.statusline) connectStatusLine(run);
+  if (options.gate) connectGate(run);
 
   return {
     ok: configured.length > 0 || skipped.length === 0,
@@ -552,6 +551,65 @@ export function runConnect(
   };
 }
 
+type ConnectRun = {
+  runtimeName: string | undefined;
+  home: string;
+  options: { dryRun?: boolean; force?: boolean };
+  configured: ConnectResult['configured'];
+  skipped: ConnectResult['skipped'];
+};
+
+/**
+ * One setting one runtime holds, written where that runtime is. Naming another
+ * runtime says so and writes nothing, and run bare it applies where the runtime
+ * is installed, as the MCP entry does. `npx` is why a copy run through npx is
+ * not written in, for a setting that names the command to run.
+ */
+function connectSetting(
+  { runtimeName, home, options, configured, skipped }: ConnectRun,
+  setting: {
+    runtime: string;
+    product: string;
+    label: string;
+    file: string[];
+    otherRuntime: string;
+    npx?: string;
+    write: (
+      path: string,
+      dryRun: boolean
+    ) => { action: 'added' | 'updated' | 'already_configured'; backup?: string };
+    recorded: () => { hook: string; events?: string[] };
+  }
+) {
+  const { runtime, label } = setting;
+  if (runtimeName && runtimeName.toLowerCase() !== runtime) {
+    skipped.push({ runtime: runtimeName, label, reason: setting.otherRuntime });
+    return;
+  }
+  const path = join(home, ...setting.file);
+  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
+    skipped.push({ runtime, label, reason: `${setting.product} not found on host` });
+    return;
+  }
+  if (setting.npx && ambitCommand()[0] === 'npx') {
+    skipped.push({ runtime, label, reason: setting.npx });
+    return;
+  }
+  try {
+    const { action, backup } = setting.write(path, options.dryRun ?? false);
+    configured.push({
+      runtime,
+      label,
+      path,
+      action,
+      ...(backup ? { backup } : {}),
+      ...setting.recorded(),
+    });
+  } catch (err: any) {
+    skipped.push({ runtime, label, reason: err?.message || `Failed to update ${label}` });
+  }
+}
+
 /**
  * `--ledger`: Cursor's hooks, which record what each conversation ran into the
  * work ledger. Only Cursor takes them here. Claude Code's ledger is the `ambit`
@@ -559,42 +617,17 @@ export function runConnect(
  * with `--ledger` says where theirs is and writes nothing. Run bare, it adds the
  * hooks where Cursor is installed, as the MCP entry is added where its file is.
  */
-function connectCursorLedger(
-  runtimeName: string | undefined,
-  home: string,
-  options: { dryRun?: boolean; force?: boolean },
-  configured: ConnectResult['configured'],
-  skipped: ConnectResult['skipped']
-) {
-  const label = 'Cursor ledger hooks';
-  if (runtimeName && runtimeName.toLowerCase() !== 'cursor') {
-    skipped.push({
-      runtime: runtimeName,
-      label,
-      reason:
-        '--ledger adds the Cursor hooks. Claude Code records through the ambit plugin, OpenCode through plugins/ambit-telemetry.js',
-    });
-    return;
-  }
-  const path = join(home, '.cursor', 'hooks.json');
-  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
-    skipped.push({ runtime: 'cursor', label, reason: 'Cursor not found on host' });
-    return;
-  }
-  try {
-    const { action, backup } = configureCursorHooks(path, options.dryRun ?? false);
-    configured.push({
-      runtime: 'cursor',
-      label,
-      path,
-      action,
-      ...(backup ? { backup } : {}),
-      hook: cursorLedgerHook().command,
-      events: [...CURSOR_LEDGER_EVENTS],
-    });
-  } catch (err: any) {
-    skipped.push({ runtime: 'cursor', label, reason: err?.message || 'Failed to update hooks' });
-  }
+function connectCursorLedger(run: ConnectRun) {
+  connectSetting(run, {
+    runtime: 'cursor',
+    product: 'Cursor',
+    label: 'Cursor ledger hooks',
+    file: ['.cursor', 'hooks.json'],
+    otherRuntime:
+      '--ledger adds the Cursor hooks. Claude Code records through the ambit plugin, OpenCode through plugins/ambit-telemetry.js',
+    write: configureCursorHooks,
+    recorded: () => ({ hook: cursorLedgerHook().command, events: [...CURSOR_LEDGER_EVENTS] }),
+  });
 }
 
 /** The status line `--statusline` sets: this copy's command, as Claude Code runs it. */
@@ -616,18 +649,9 @@ function configureStatusLine(
   dryRun: boolean
 ): { action: 'added' | 'already_configured'; backup?: string } {
   const entry = statusLineEntry();
-  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '{}\n';
-  let parsed: unknown;
-  try {
-    parsed = parseJsonc(text);
-  } catch {
-    throw new Error(`${filePath} is not valid JSON; left unchanged`);
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(`${filePath} is not a settings object; left unchanged`);
-  }
+  const { text, parsed } = readSettings(filePath);
   if (Object.hasOwn(parsed, 'statusLine')) {
-    const theirs = (parsed as { statusLine?: { command?: unknown } }).statusLine?.command;
+    const theirs = parsed.statusLine?.command;
     if (typeof theirs === 'string' && theirs.includes(entry.command)) {
       return { action: 'already_configured' };
     }
@@ -635,13 +659,10 @@ function configureStatusLine(
       `${filePath} already sets a statusLine, and Ambit never replaces one. To show both, run \`${entry.command}\` from that command and print its line beside yours`
     );
   }
-  let backup: string | undefined;
-  if (!dryRun) {
-    backup = keepBackup(filePath);
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, setIn(text, ['statusLine'], entry));
-  }
-  return { action: 'added', backup };
+  return {
+    action: 'added',
+    backup: writeKept(filePath, setIn(text, ['statusLine'], entry), dryRun),
+  };
 }
 
 /**
@@ -650,53 +671,17 @@ function configureStatusLine(
  * after every message, and npx would resolve the package again on each run,
  * where an installed `ambit` answers in about a twentieth of a second.
  */
-function connectStatusLine(
-  runtimeName: string | undefined,
-  home: string,
-  options: { dryRun?: boolean; force?: boolean },
-  configured: ConnectResult['configured'],
-  skipped: ConnectResult['skipped']
-) {
-  const label = 'Claude Code status line';
-  if (runtimeName && runtimeName.toLowerCase() !== 'claude-code') {
-    skipped.push({
-      runtime: runtimeName,
-      label,
-      reason: '--statusline sets the status line of Claude Code, the one runtime that runs one',
-    });
-    return;
-  }
-  const path = join(home, '.claude', 'settings.json');
-  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
-    skipped.push({ runtime: 'claude-code', label, reason: 'Claude Code not found on host' });
-    return;
-  }
-  if (ambitCommand()[0] === 'npx') {
-    skipped.push({
-      runtime: 'claude-code',
-      label,
-      reason:
-        'A status line runs after every message, and npx would resolve the package again on each run: install with `npm install -g ambit-cli` and run this again',
-    });
-    return;
-  }
-  try {
-    const { action, backup } = configureStatusLine(path, options.dryRun ?? false);
-    configured.push({
-      runtime: 'claude-code',
-      label,
-      path,
-      action,
-      ...(backup ? { backup } : {}),
-      hook: statusLineEntry().command,
-    });
-  } catch (err: any) {
-    skipped.push({
-      runtime: 'claude-code',
-      label,
-      reason: err?.message || 'Failed to update settings',
-    });
-  }
+function connectStatusLine(run: ConnectRun) {
+  connectSetting(run, {
+    runtime: 'claude-code',
+    product: 'Claude Code',
+    label: 'Claude Code status line',
+    file: ['.claude', 'settings.json'],
+    otherRuntime: '--statusline sets the status line of Claude Code, the one runtime that runs one',
+    npx: 'A status line runs after every message, and npx would resolve the package again on each run: install with `npm install -g ambit-cli` and run this again',
+    write: configureStatusLine,
+    recorded: () => ({ hook: statusLineEntry().command }),
+  });
 }
 
 /**
@@ -711,16 +696,7 @@ function configureGate(
   dryRun: boolean
 ): { action: 'added' | 'already_configured'; backup?: string } {
   if (gateInstalled(home)) return { action: 'already_configured' };
-  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '{}\n';
-  let parsed: { hooks?: unknown } | undefined;
-  try {
-    parsed = parseJsonc(text);
-  } catch {
-    throw new Error(`${filePath} is not valid JSON; left unchanged`);
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(`${filePath} is not a settings object; left unchanged`);
-  }
+  const { text, parsed } = readSettings(filePath);
   const hooks = parsed.hooks;
   if (hooks !== undefined && (!hooks || typeof hooks !== 'object' || Array.isArray(hooks))) {
     throw new Error(`${filePath} has a hooks value that is not an object; left unchanged`);
@@ -730,13 +706,8 @@ function configureGate(
     throw new Error(`${filePath} has a PreToolUse value that is not a list; left unchanged`);
   }
   const entry = gateHookEntry([...ambitCommand(), 'gate'].join(' '));
-  let backup: string | undefined;
-  if (!dryRun) {
-    backup = keepBackup(filePath);
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, setIn(text, ['hooks', 'PreToolUse'], [...(theirs ?? []), entry]));
-  }
-  return { action: 'added', backup };
+  const next = setIn(text, ['hooks', 'PreToolUse'], [...(theirs ?? []), entry]);
+  return { action: 'added', backup: writeKept(filePath, next, dryRun) };
 }
 
 /**
@@ -745,53 +716,17 @@ function configureGate(
  * call with a ten-second limit, and npx would resolve the package again each
  * time, so a slow resolve would pass the call through with no answer.
  */
-function connectGate(
-  runtimeName: string | undefined,
-  home: string,
-  options: { dryRun?: boolean; force?: boolean },
-  configured: ConnectResult['configured'],
-  skipped: ConnectResult['skipped']
-) {
-  const label = 'Claude Code gate';
-  if (runtimeName && runtimeName.toLowerCase() !== 'claude-code') {
-    skipped.push({
-      runtime: runtimeName,
-      label,
-      reason: '--gate puts the gate on Claude Code, the one runtime with the hook it needs',
-    });
-    return;
-  }
-  const path = join(home, '.claude', 'settings.json');
-  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
-    skipped.push({ runtime: 'claude-code', label, reason: 'Claude Code not found on host' });
-    return;
-  }
-  if (ambitCommand()[0] === 'npx') {
-    skipped.push({
-      runtime: 'claude-code',
-      label,
-      reason:
-        'The gate runs before every tool call, and npx would resolve the package again each time: install with `npm install -g ambit-cli` and run this again',
-    });
-    return;
-  }
-  try {
-    const { action, backup } = configureGate(path, home, options.dryRun ?? false);
-    configured.push({
-      runtime: 'claude-code',
-      label,
-      path,
-      action,
-      ...(backup ? { backup } : {}),
-      hook: [...ambitCommand(), 'gate'].join(' '),
-    });
-  } catch (err: any) {
-    skipped.push({
-      runtime: 'claude-code',
-      label,
-      reason: err?.message || 'Failed to update settings',
-    });
-  }
+function connectGate(run: ConnectRun) {
+  connectSetting(run, {
+    runtime: 'claude-code',
+    product: 'Claude Code',
+    label: 'Claude Code gate',
+    file: ['.claude', 'settings.json'],
+    otherRuntime: '--gate puts the gate on Claude Code, the one runtime with the hook it needs',
+    npx: 'The gate runs before every tool call, and npx would resolve the package again each time: install with `npm install -g ambit-cli` and run this again',
+    write: (path, dryRun) => configureGate(path, run.home, dryRun),
+    recorded: () => ({ hook: [...ambitCommand(), 'gate'].join(' ') }),
+  });
 }
 
 /**

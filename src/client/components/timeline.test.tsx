@@ -8,7 +8,7 @@
  */
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import type { FrontierHistoryResponse, FrontierTick } from '../../shared/api';
 import App from '../App';
 import { useAmbitStore } from '../store/ambitStore';
@@ -19,6 +19,7 @@ import CivTree from './CivTree';
 import { itemsAsOf, PLAY_STEP_MS, tickSecond } from './civ/history';
 import { Timeline } from './civ/Timeline';
 import NodeDetailPanel from './NodeDetailPanel';
+import { seed, stubBrowser } from '../testing/page';
 
 const text = (html: string) => html.replace(/<[^>]+>/g, '');
 
@@ -29,7 +30,6 @@ const vc: Item = {
   type: 'possibility',
   status: 'built',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: {
     domain: 'devops',
     era: 1,
@@ -70,28 +70,7 @@ const HISTORY: FrontierHistoryResponse = { ticks: [MONDAY, FRIDAY], movedSinceLa
 /** The strip as most tests draw it: not playing, and nothing to tell when asked to. */
 const PAUSED = { playing: false, onPlay: () => {} };
 
-/** Both halves of the store, since a server render reads the initial state. */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
-
-const originalWindow = globalThis.window;
-const originalLocalStorage = globalThis.localStorage;
-
-beforeAll(() => {
-  const mediaQuery = { matches: false, addEventListener() {}, removeEventListener() {} };
-  Object.assign(globalThis, {
-    localStorage: { getItem: () => '1', setItem() {} },
-    window: {
-      location: { search: '?view=tree&guide=off' },
-      matchMedia: () => mediaQuery,
-      addEventListener() {},
-      removeEventListener() {},
-      innerWidth: 1440,
-    },
-  });
-});
+stubBrowser('?view=tree&guide=off');
 
 afterEach(() => {
   seed({
@@ -110,10 +89,6 @@ afterEach(() => {
   // Clears Play's timer too, so a test that left it running cannot step the next one.
   useAmbitStore.getState().setHistoryPlaying(false);
   vi.useRealTimers();
-});
-
-afterAll(() => {
-  Object.assign(globalThis, { window: originalWindow, localStorage: originalLocalStorage });
 });
 
 test('with two observations the timeline is offered, its playhead on now', () => {

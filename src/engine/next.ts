@@ -238,11 +238,4 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
   };
 }
 
-/** The same three, as the two lines a briefing can carry. */
-function nextLines(db: Db): string[] {
-  const r = nextSteps(db) as any;
-  if (!r.next?.length) return [];
-  return r.next.map((n: any) => `${n.capability} · ${n.cost} · ${n.why}`);
-}
-
-export { nextSteps, nextLines, candidates, readableCost, andList };
+export { nextSteps, candidates, readableCost, andList };

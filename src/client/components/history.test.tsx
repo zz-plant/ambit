@@ -11,10 +11,10 @@ import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import { CHECK_HISTORY_RUNS, type CheckRun } from '../../shared/api';
-import { useAmbitStore } from '../store/ambitStore';
 import type { Item } from '../utils/configImporter';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
+import { seed } from '../testing/page';
 
 const run = (id: number, passed: boolean): CheckRun => ({ id, passed });
 
@@ -25,7 +25,6 @@ const node = (id: string, lifecycle: string, history?: CheckRun[]): Item => ({
   type: 'possibility',
   status: 'built',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: { era: 1, state: 'unlocked', next: false, lifecycle, history },
 });
 
@@ -36,17 +35,11 @@ const entry = (name: string): Item => ({
   type: 'mcp-server',
   status: 'built',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'devops', lifecycle: 'unknown' },
 });
 
 const provides = (server: Item, ...nodes: Item[]) =>
   nodes.map(n => ({ from: server.id, to: n.id, type: 'hard-dep', kind: 'provides' }));
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
 
 afterEach(() => {
   seed({ items: [], connections: [], selectedItem: null, searchQuery: '', backend: 'unknown' });

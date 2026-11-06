@@ -575,7 +575,6 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
   };
 }
 export {
-  MODE_RANK,
   narrower,
   specificity,
   standing,
@@ -583,8 +582,6 @@ export {
   scopeCovers,
   conditionHolds,
   sandboxCovering,
-  objectEvidence,
-  missingPrerequisites,
   brokenFoundations,
   canExecute,
   recordSpend,

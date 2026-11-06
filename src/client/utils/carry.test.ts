@@ -25,7 +25,6 @@ const server = (id: string, c?: ToolCarry): Item => ({
   type: 'mcp-server',
   status: 'built',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: c ? { carry: c } : {},
 });
 

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
+import { afterAll, beforeEach, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Item } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
@@ -6,6 +6,7 @@ import { metaKeyLabel } from '../utils/labels';
 import App from '../App';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
+import { stubBrowser } from '../testing/page';
 
 const capability: Item = {
   id: 'core',
@@ -13,7 +14,6 @@ const capability: Item = {
   type: 'framework',
   status: 'built',
   description: 'Core runtime',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'meta' },
 };
 
@@ -23,33 +23,10 @@ const dependency: Item = {
   type: 'mcp-server',
   status: 'built',
   description: 'Connected tool',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'backend' },
 };
 
-const originalWindow = globalThis.window;
-const originalLocalStorage = globalThis.localStorage;
-
-beforeAll(() => {
-  const mediaQuery = {
-    matches: false,
-    addEventListener() {},
-    removeEventListener() {},
-  };
-  Object.assign(globalThis, {
-    localStorage: {
-      getItem: () => '1',
-      setItem() {},
-    },
-    window: {
-      location: { search: '?guide=off' },
-      matchMedia: () => mediaQuery,
-      addEventListener() {},
-      removeEventListener() {},
-      innerWidth: 1440,
-    },
-  });
-});
+stubBrowser('?guide=off');
 
 beforeEach(() => {
   const serverState = useAmbitStore.getInitialState();
@@ -85,10 +62,6 @@ afterAll(() => {
     selectedItem: null,
     showDetailPanel: false,
     searchQuery: '',
-  });
-  Object.assign(globalThis, {
-    window: originalWindow,
-    localStorage: originalLocalStorage,
   });
 });
 

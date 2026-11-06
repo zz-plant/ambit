@@ -24,25 +24,13 @@ interface Graph {
   connections: Connection[];
 }
 
-/** Lays a positionless fixture out on a grid, six across. */
-function placed(items: Omit<Item, 'position'>[]): Item[] {
-  return items.map((i, idx) => ({
-    ...i,
-    position: { x: 100 + (idx % 6) * 80, y: 50 + Math.floor(idx / 6) * 70, z: 0 },
-  }));
-}
-
 /**
  * The capability tree that ships in the bundle. Used by the published demo and
  * by `?demo=1` locally, so the two show the same thing; it is what the README's
  * hero image is a picture of.
  */
 export function demoTreeGraph(): Graph {
-  const snapshot = demoData.tree as unknown as {
-    items: Omit<Item, 'position'>[];
-    connections: Connection[];
-  };
-  return { items: placed(snapshot.items), connections: snapshot.connections };
+  return demoData.tree as unknown as Graph;
 }
 
 /**
@@ -87,11 +75,7 @@ export function demoHistory(): FrontierHistoryResponse {
 
 /** The config view's fixture: a flat list of discovered entries. */
 export function demoConfigGraph(): Graph {
-  const snapshot = demoData.config as unknown as {
-    items: Omit<Item, 'position'>[];
-    connections: Connection[];
-  };
-  return { items: placed(snapshot.items), connections: snapshot.connections };
+  return demoData.config as unknown as Graph;
 }
 
 /** What the attention lens warms before a real ledger has anything to say. */

@@ -8,6 +8,7 @@ import type {
 import { formatRelativeTime } from '../../shared/format';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
+import { Icon } from './Icon';
 
 /**
  * The two scans the server has always computed and nothing has ever drawn.
@@ -30,17 +31,18 @@ function PanelNote({ icon, children }: { icon?: ReactNode; children: ReactNode }
   );
 }
 
+/** Larger than an icon, and each stroke in these sets its own width and caps. */
+const EMPTY_GRAPHIC = {
+  size: 44,
+  grid: 48,
+  strokeWidth: undefined,
+  strokeLinecap: undefined,
+  className: 'tp-empty-graphic',
+};
+
 function RepoEmptyIllustration() {
   return (
-    <svg
-      width="44"
-      height="44"
-      viewBox="0 0 48 48"
-      fill="none"
-      stroke="currentColor"
-      className="tp-empty-graphic"
-      aria-hidden="true"
-    >
+    <Icon {...EMPTY_GRAPHIC}>
       <rect x="8" y="10" width="32" height="28" rx="4" strokeWidth="1.6" strokeDasharray="3 2" />
       <circle cx="18" cy="18" r="2.5" strokeWidth="1.6" />
       <circle cx="18" cy="30" r="2.5" strokeWidth="1.6" />
@@ -50,21 +52,13 @@ function RepoEmptyIllustration() {
         strokeWidth="1.6"
         strokeLinecap="round"
       />
-    </svg>
+    </Icon>
   );
 }
 
 function InfraEmptyIllustration() {
   return (
-    <svg
-      width="44"
-      height="44"
-      viewBox="0 0 48 48"
-      fill="none"
-      stroke="currentColor"
-      className="tp-empty-graphic"
-      aria-hidden="true"
-    >
+    <Icon {...EMPTY_GRAPHIC}>
       <rect x="8" y="9" width="32" height="12" rx="3" strokeWidth="1.6" />
       <rect x="8" y="27" width="32" height="12" rx="3" strokeWidth="1.6" />
       <circle cx="14" cy="15" r="1.5" fill="currentColor" />
@@ -72,7 +66,7 @@ function InfraEmptyIllustration() {
       <line x1="20" y1="15" x2="34" y2="15" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
       <line x1="20" y1="33" x2="34" y2="33" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
       <path d="M24 21 V27" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="2 2" />
-    </svg>
+    </Icon>
   );
 }
 
@@ -257,7 +251,7 @@ export function InfrastructurePanel({
       ))}
       <div className="infra-table-wrap">
         <table className="infra-table">
-          <caption className="sr-only">
+          <caption className="visually-hidden">
             Devices and services, when each was probed and last seen, and what an agent may do on
             each machine
           </caption>

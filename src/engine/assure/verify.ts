@@ -443,12 +443,4 @@ function checkableNames(db: Db): string[] {
   return [];
 }
 
-export {
-  verifyCheck,
-  verifyCapability,
-  verifyAction,
-  declaredCheck,
-  evidenceFor,
-  runVerification,
-  checkableNames,
-};
+export { verifyCheck, evidenceFor, runVerification, checkableNames };

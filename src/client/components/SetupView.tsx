@@ -14,6 +14,7 @@ import { eraOf, isEntry, isFailing, isProven, isRecovering, recentRuns } from '.
 import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
+import { Icon } from './Icon';
 
 /**
  * My Setup: what this machine has, as the list it is.
@@ -297,63 +298,30 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                   [
                     'entries',
                     'Entries',
-                    <svg
-                      key="e"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      className="setup-tab-icon"
-                      aria-hidden="true"
-                    >
+                    <Icon key="e" size={12} className="setup-tab-icon">
                       <rect x="2" y="3" width="12" height="3" rx="1" />
                       <rect x="2" y="10" width="12" height="3" rx="1" />
                       <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
                       <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
-                    </svg>,
+                    </Icon>,
                   ],
                   [
                     'environment',
                     'Environment',
-                    <svg
-                      key="n"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      className="setup-tab-icon"
-                      aria-hidden="true"
-                    >
+                    <Icon key="n" size={12} className="setup-tab-icon">
                       <circle cx="4" cy="4" r="2" />
                       <circle cx="4" cy="12" r="2" />
                       <circle cx="12" cy="7" r="2" />
                       <path d="M4 6 V10 M4 6 C4 9 12 5 12 7" />
-                    </svg>,
+                    </Icon>,
                   ],
                   [
                     'briefing',
                     'Briefing',
-                    <svg
-                      key="b"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      className="setup-tab-icon"
-                      aria-hidden="true"
-                    >
+                    <Icon key="b" size={12} className="setup-tab-icon">
                       <path d="M3 2.5 H13 V13.5 H3 Z" />
                       <path d="M5 5.5 H11 M5 8 H10 M5 10.5 H8" />
-                    </svg>,
+                    </Icon>,
                   ],
                 ] as [Tab, string, React.ReactNode][]
               ).map(([key, label, icon]) => (

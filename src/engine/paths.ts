@@ -139,11 +139,6 @@ export function overlayTechTreePath(): string | null {
   return null;
 }
 
-/** Clears the tree cache. */
-export function clearTreeCache(): void {
-  treeCache.clear();
-}
-
 /**
  * How far a mode lets an agent go without a person, narrowest last. An overlay
  * is a file in whatever directory `ambit` runs from, so a cloned repository

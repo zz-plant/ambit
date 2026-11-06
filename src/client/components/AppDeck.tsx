@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { View } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { BrandMark } from './BrandMark';
 import { isFailing, isNext, isProven } from './civ/layout';
 import { ReachBar } from './figures';
 import { termTitle } from './Term';
+import { Icon } from './Icon';
 
 /** The view's landmark, where the skip link and a finished tour send the keyboard. */
 export const VIEW_ID = 'view';
@@ -132,13 +133,81 @@ function breakdown(c: MapCounts): string {
   return [...parts, `${c.next} ${noun('Next step', c.next)}`, `${c.blocked} blocked`].join(', ');
 }
 
-/** The top bar: search, brand, the count for this view, the view tabs, share, docs. */
+/** Each view's tab. A long label has a `short` word for 1024px to 1270px, where it would not fit. */
+const VIEW_TABS: { view: View; label: string; short?: string; title: string; icon: ReactNode }[] = [
+  {
+    view: 'map',
+    label: 'Map',
+    title: 'The curated capability tree, with your position on it',
+    icon: (
+      <>
+        <circle cx="4" cy="12" r="2" />
+        <circle cx="12" cy="4" r="2" />
+        <circle cx="12" cy="12" r="2" />
+        <path d="M5.5 10.5 L10.5 5.5 M6 12 H10" />
+      </>
+    ),
+  },
+  {
+    view: 'setup',
+    label: 'My Setup',
+    short: 'Setup',
+    title: 'The servers, agents and models found on this machine, and what each one provides',
+    icon: (
+      <>
+        <rect x="2" y="3" width="12" height="3" rx="1" />
+        <rect x="2" y="10" width="12" height="3" rx="1" />
+        <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
+        <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
+      </>
+    ),
+  },
+  {
+    view: 'cost',
+    label: 'Time & cost',
+    short: 'Cost',
+    title:
+      "Where your time and your agents' spend go, what may run without asking, and what would pay back fastest",
+    icon: (
+      <>
+        <path d="M2 12 L6 8 L9 11 L14 4" />
+        <circle cx="14" cy="4" r="1.5" fill="currentColor" />
+      </>
+    ),
+  },
+  {
+    view: 'audit',
+    label: 'Audit',
+    title: 'Who approved what, and what ran',
+    icon: (
+      <>
+        <path d="M6 4 H14 M6 8 H14 M6 12 H14" />
+        <circle cx="2.5" cy="4" r="0.75" fill="currentColor" />
+        <circle cx="2.5" cy="8" r="0.75" fill="currentColor" />
+        <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
+      </>
+    ),
+  },
+  {
+    view: 'proposals',
+    label: 'Proposals',
+    title: 'What an agent wants to change, waiting on your decision (g)',
+    icon: (
+      <>
+        <path d="M3 2 H10 L13 5 V14 H3 Z" />
+        <path d="M9 2 V5 H13" />
+      </>
+    ),
+  },
+];
+
 /** Whether a row of chips has wrapped: its last item sits lower than its first. */
 function wraps(row: HTMLElement): boolean {
   const kids = [...row.children].filter(k => (k as HTMLElement).offsetHeight > 0) as HTMLElement[];
   return kids.length > 1 && kids[kids.length - 1].offsetTop > kids[0].offsetTop + 2;
 }
 
+/** The top bar: search, brand, the count for this view, the view tabs, share, docs. */
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
   // How much of the pill gives way so it stays on one line: nothing, then the
@@ -212,20 +281,10 @@ export default function AppDeck(p: AppDeckProps) {
           title="Find a capability on the map or in your setup (/)"
           aria-label="Search capabilities and actions (/)"
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            className="app-deck-icon"
-            aria-hidden="true"
-          >
+          <Icon strokeWidth="1.8" className="app-deck-icon">
             <circle cx="7" cy="7" r="5" />
             <path d="M11 11 L14.5 14.5" />
-          </svg>
+          </Icon>
           <span className="app-deck-btn-label">Search</span>
           <kbd className="app-deck-key">/</kbd>
         </button>
@@ -291,165 +350,49 @@ export default function AppDeck(p: AppDeckProps) {
 
       <div className="app-deck-center">
         <nav className="app-deck-nav" aria-label="View">
-          <button
-            type="button"
-            className={tab(p.view === 'map')}
-            aria-current={p.view === 'map' ? 'page' : undefined}
-            onClick={() => p.onShowView('map')}
-            // The full name, for a phone, where the tab shows only its icon,
-            // and for the short word it shows from 1024px to 1270px.
-            aria-label="Map"
-            title="The curated capability tree, with your position on it"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="app-tab-icon"
-              aria-hidden="true"
+          {VIEW_TABS.map(t => (
+            <button
+              key={t.view}
+              type="button"
+              className={tab(p.view === t.view)}
+              aria-current={p.view === t.view ? 'page' : undefined}
+              onClick={() => p.onShowView(t.view)}
+              // The full name, for a phone, where the tab shows only its icon,
+              // and for the short word it shows from 1024px to 1270px. Proposals
+              // stays the word on screen, so a voice command finds it; the label
+              // also hid the count, so the count is the description.
+              aria-label={t.label}
+              aria-describedby={
+                t.view === 'proposals' && p.draftCount > 0 ? 'app-deck-drafts' : undefined
+              }
+              title={t.title}
             >
-              <circle cx="4" cy="12" r="2" />
-              <circle cx="12" cy="4" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <path d="M5.5 10.5 L10.5 5.5 M6 12 H10" />
-            </svg>
-            <span className="app-deck-tab-label">Map</span>
-          </button>
-          <button
-            type="button"
-            className={tab(p.view === 'setup')}
-            aria-current={p.view === 'setup' ? 'page' : undefined}
-            onClick={() => p.onShowView('setup')}
-            // The full name, for a phone, where the tab shows only its icon,
-            // and for the short word it shows from 1024px to 1270px.
-            aria-label="My Setup"
-            title="The servers, agents and models found on this machine, and what each one provides"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="app-tab-icon"
-              aria-hidden="true"
-            >
-              <rect x="2" y="3" width="12" height="3" rx="1" />
-              <rect x="2" y="10" width="12" height="3" rx="1" />
-              <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
-              <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
-            </svg>
-            <span className="app-deck-tab-label app-deck-tab-label--long">My Setup</span>
-            <span className="app-deck-tab-label app-deck-tab-short">Setup</span>
-          </button>
-          <button
-            type="button"
-            className={tab(p.view === 'cost')}
-            aria-current={p.view === 'cost' ? 'page' : undefined}
-            onClick={() => p.onShowView('cost')}
-            // The full name, for a phone, where the tab shows only its icon,
-            // and for the short word it shows from 1024px to 1270px.
-            aria-label="Time & cost"
-            title="Where your time and your agents' spend go, what may run without asking, and what would pay back fastest"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="app-tab-icon"
-              aria-hidden="true"
-            >
-              <path d="M2 12 L6 8 L9 11 L14 4" />
-              <circle cx="14" cy="4" r="1.5" fill="currentColor" />
-            </svg>
-            <span className="app-deck-tab-label app-deck-tab-label--long">Time &amp; cost</span>
-            <span className="app-deck-tab-label app-deck-tab-short">Cost</span>
-          </button>
-          <button
-            type="button"
-            className={tab(p.view === 'audit')}
-            aria-current={p.view === 'audit' ? 'page' : undefined}
-            onClick={() => p.onShowView('audit')}
-            // The full name, for a phone, where the tab shows only its icon,
-            // and for the short word it shows from 1024px to 1270px.
-            aria-label="Audit"
-            title="Who approved what, and what ran"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="app-tab-icon"
-              aria-hidden="true"
-            >
-              <path d="M6 4 H14 M6 8 H14 M6 12 H14" />
-              <circle cx="2.5" cy="4" r="0.75" fill="currentColor" />
-              <circle cx="2.5" cy="8" r="0.75" fill="currentColor" />
-              <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
-            </svg>
-            <span className="app-deck-tab-label">Audit</span>
-          </button>
-          <button
-            type="button"
-            className={tab(p.view === 'proposals')}
-            aria-current={p.view === 'proposals' ? 'page' : undefined}
-            onClick={() => p.onShowView('proposals')}
-            // The full name, for a phone, where the tab shows only its icon,
-            // and for the short word it shows from 1024px to 1270px. It stays the
-            // word on screen, so a voice command finds it; the label also hid
-            // the count, so the count is the description.
-            aria-label="Proposals"
-            aria-describedby={p.draftCount > 0 ? 'app-deck-drafts' : undefined}
-            title="What an agent wants to change, waiting on your decision (g)"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="app-tab-icon"
-              aria-hidden="true"
-            >
-              <path d="M3 2 H10 L13 5 V14 H3 Z" />
-              <path d="M9 2 V5 H13" />
-            </svg>
-            <span className="app-deck-tab-label">Proposals</span>
-            {/* The count carries the alert, as the header button it replaced
-                did: the tab is where the decision is made, so the waiting
-                number belongs there. */}
-            {p.draftCount > 0 && (
-              <>
-                <span className="app-deck-count app-deck-count--tab" aria-hidden="true">
-                  {p.draftCount}
-                </span>
-                <span id="app-deck-drafts" hidden>
-                  {p.draftCount} waiting for your decision
-                </span>
-              </>
-            )}
-          </button>
+              <Icon strokeLinejoin="round" className="app-tab-icon">
+                {t.icon}
+              </Icon>
+              {t.short ? (
+                <>
+                  <span className="app-deck-tab-label app-deck-tab-label--long">{t.label}</span>
+                  <span className="app-deck-tab-label app-deck-tab-short">{t.short}</span>
+                </>
+              ) : (
+                <span className="app-deck-tab-label">{t.label}</span>
+              )}
+              {/* The count carries the alert, as the header button it replaced
+                  did: the tab is where the decision is made, so the waiting
+                  number belongs there. */}
+              {t.view === 'proposals' && p.draftCount > 0 && (
+                <>
+                  <span className="app-deck-count app-deck-count--tab" aria-hidden="true">
+                    {p.draftCount}
+                  </span>
+                  <span id="app-deck-drafts" hidden>
+                    {p.draftCount} waiting for your decision
+                  </span>
+                </>
+              )}
+            </button>
+          ))}
         </nav>
       </div>
 
@@ -464,20 +407,9 @@ export default function AppDeck(p: AppDeckProps) {
             onClick={p.sample.onMapYours}
             title="Paste a config, or install the CLI, and see your own setup on the map"
           >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="app-deck-icon"
-              aria-hidden="true"
-            >
+            <Icon strokeWidth="1.8" strokeLinejoin="round" className="app-deck-icon">
               <path d="M8 2 V10 M4.5 6.5 L8 10 L11.5 6.5 M2.5 13.5 H13.5" />
-            </svg>
+            </Icon>
             Map yours
           </button>
         )}
@@ -488,23 +420,12 @@ export default function AppDeck(p: AppDeckProps) {
           title="Copy a link that opens exactly this view, with its graph, node and lens"
           aria-label="Share view link"
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="app-deck-icon"
-            aria-hidden="true"
-          >
+          <Icon strokeLinejoin="round" className="app-deck-icon">
             <circle cx="4" cy="8" r="2" />
             <circle cx="12" cy="4" r="2" />
             <circle cx="12" cy="12" r="2" />
             <path d="M5.8 7.1 L10.2 4.9 M5.8 8.9 L10.2 11.1" />
-          </svg>
+          </Icon>
           <span className="app-deck-btn-label">Share</span>
         </button>
         <button
@@ -514,20 +435,9 @@ export default function AppDeck(p: AppDeckProps) {
           title="Every term on the map, defined, and what each view does (?)"
           aria-label="Help: every term, and what the map shows (?)"
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="app-deck-icon"
-            aria-hidden="true"
-          >
+          <Icon strokeLinejoin="round" className="app-deck-icon">
             <path d="M2 3.5 C2 2.7 2.7 2 3.5 2 H7.5 V14 H3.5 C2.7 14 2 13.3 2 12.5 Z M14 3.5 C14 2.7 13.3 2 12.5 2 H8.5 V14 H12.5 C13.3 14 14 13.3 14 12.5 Z" />
-          </svg>
+          </Icon>
           <span className="app-deck-btn-label">Help</span>
         </button>
       </div>

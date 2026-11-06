@@ -9,10 +9,8 @@ import { err, respond, toolResult } from './protocol.ts';
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
 import { checkArguments, signature } from './validate.ts';
 import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
-import type { Db } from '../engine/db.ts';
+import { getDb, migrate, type Db } from '../engine/db.ts';
 import {
-  getDb,
-  migrate,
   computeDecay,
   discoverCombos,
   sessionDiff,
@@ -20,27 +18,28 @@ import {
   findBottlenecks,
   analyzeImpact,
   nearMissCombos,
+  singlePointsOfFailure,
+  credentialReport,
+  affordanceDomains,
+} from '../engine/inference.ts';
+import {
   runVerification,
   evidenceFor,
   authorityReport,
   actionsReport,
+  scopeReport,
+  canExecute,
+  promotionReport,
+} from '../engine/assurance.ts';
+import {
   planFor,
-  ledgerSince,
-  ledgerHistory,
   recordFailure,
   deficits,
-  singlePointsOfFailure,
-  credentialReport,
   simulateFrontier,
   propose,
-  listProposals,
-  showProposal,
-  goalFor,
-  pathsFor,
   preferencesReport,
-  scopeReport,
-  affordanceDomains,
-  humanDigest,
+} from '../engine/planning.ts';
+import {
   beginRun,
   endRun,
   addEvent,
@@ -52,33 +51,26 @@ import {
   usageReport,
   unmappedUse,
   usageWindows,
-  economicsReport,
-  goalValue,
-  opportunitiesFor,
-  opportunityFor,
-  canExecute,
-  roiFor,
-  roiSummary,
-  catalogReport,
-  auditFor,
-  incidents,
-  resolveIncident,
-  portfolio,
-  briefing,
-  briefingText,
-  nextSteps,
-  captureFailure,
-  recordRefusal,
-  signalReport,
-  registerSkill,
-  registeredSkills,
-  promotionReport,
-  objectReport,
-  budgetReport,
-  reversibilityReport,
-  observedReport,
-  pendingProposals,
-} from '../engine/engine.ts';
+} from '../engine/telemetry.ts';
+import { budgetReport } from '../engine/budgets.ts';
+import { reversibilityReport } from '../engine/reversibility.ts';
+import { observedReport } from '../engine/observed.ts';
+import { objectReport } from '../engine/objects.ts';
+import { briefing, briefingText } from '../engine/briefing.ts';
+import { nextSteps } from '../engine/next.ts';
+import { captureFailure, recordRefusal, signalReport } from '../engine/failures.ts';
+import { registerSkill, registeredSkills } from '../engine/skills.ts';
+import { ledgerSince, ledgerHistory } from '../engine/ledger.ts';
+import { goalFor, pathsFor } from '../engine/goals.ts';
+import { humanDigest } from '../engine/attention.ts';
+import { economicsReport, goalValue } from '../engine/economics.ts';
+import { opportunitiesFor, opportunityFor } from '../engine/opportunities.ts';
+import { roiFor, roiSummary } from '../engine/roi.ts';
+import { portfolio } from '../engine/portfolio.ts';
+import { incidents, resolveIncident } from '../engine/incident.ts';
+import { catalogReport } from '../engine/catalog.ts';
+import { auditFor } from '../engine/audit.ts';
+import { listProposals, showProposal, pendingProposals } from '../engine/governance.ts';
 import { judgeGoal } from '../engine/judge.ts';
 import { council } from '../engine/council.ts';
 import { judgeUnrouted, specGoal } from '../engine/spec.ts';

@@ -22,7 +22,6 @@ const item = (id: string, over: Partial<Item> = {}, meta: Record<string, unknown
   type: 'possibility',
   status: 'specified',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: { era: 1, ...meta },
   ...over,
 });

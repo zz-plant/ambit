@@ -380,13 +380,4 @@ async function notifyPending(db: Migratable, topic?: string): Promise<any> {
   }
 }
 
-export {
-  humanDigest,
-  digestMessage,
-  notify,
-  draftSummary,
-  pendingApprovals,
-  pendingDrafts,
-  pendingMessage,
-  notifyPending,
-};
+export { humanDigest, notify, draftSummary, pendingDrafts, pendingMessage, notifyPending };

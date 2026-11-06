@@ -314,7 +314,7 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   // says it once more where the money is, and no louder than that.
   return (
     <figure className={`fig fig--line ${alarm ? 'fig--alert' : ''}`}>
-      <figcaption className="sr-only">What could break</figcaption>
+      <figcaption className="visually-hidden">What could break</figcaption>
       <ul className="fig-key fig-key--inline">
         {rows.map(r => (
           <li key={r.key} className="fig-key-item" title={r.names.join(', ')}>
@@ -1043,7 +1043,7 @@ function OpportunityRows({
               </span>
             </th>
             <th scope="col">
-              <span className="sr-only">Show on the map</span>
+              <span className="visually-hidden">Show on the map</span>
             </th>
           </tr>
         </thead>

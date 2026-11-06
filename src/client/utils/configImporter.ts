@@ -7,13 +7,9 @@ export interface Item {
   type: NodeType;
   status: 'built' | 'specified' | 'deprecated';
   description: string;
-  position: { x: number; y: number; z: number };
   meta: Record<string, unknown>;
   group?: string;
 }
-
-/** The single layout mode: era columns. Position is computed by CivTree. */
-export type LayoutMode = 'civ';
 
 export interface Connection {
   from: string;
@@ -170,7 +166,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
     type: 'runtime',
     status: 'built',
     description: 'Main agent framework',
-    position: { x: 0, y: 0, z: 0 },
     meta: {
       version: 'latest',
       defaultAgent: config.default_agent,
@@ -193,7 +188,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       type: 'mcp-server',
       status: m.enabled !== false ? 'built' : 'specified',
       description: `${m.type || 'local'} MCP server` + (m.url ? ` — ${m.url}` : ''),
-      position: { x: 0, y: 0, z: 0 },
       meta: {
         url: m.url,
         command: m.command,
@@ -218,7 +212,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       type: 'agent',
       status: 'built',
       description: a.description || '',
-      position: { x: 0, y: 0, z: 0 },
       meta: {
         mode: a.mode,
         color: a.color,
@@ -240,7 +233,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       type: 'provider',
       status: 'built',
       description: `LLM provider`,
-      position: { x: 0, y: 0, z: 0 },
       meta: { key: name, domain: 'ai-ml', maturity: 0.85 },
       group: 'Providers',
     });
@@ -254,7 +246,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
         type: 'model',
         status: 'built',
         description: `${model.limit?.context || '?'}K context`,
-        position: { x: 0, y: 0, z: 0 },
         meta: { provider: name, context: model.limit?.context, domain: 'ai-ml', maturity: 0.8 },
         group: 'Models',
       });
@@ -277,7 +268,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       type: 'tool',
       status: 'built',
       description: c.description || '',
-      position: { x: 0, y: 0, z: 0 },
       meta: { domain: inferDomain(name, 'command', c.description || ''), maturity: 0.6 },
       group: 'Commands',
     });
@@ -294,7 +284,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       type: 'skill',
       status: 'built',
       description: `Skill path: ${path}`,
-      position: { x: 0, y: 0, z: 0 },
       meta: { path, domain: inferDomain(skillName, 'skill', path), maturity: 0.7 },
       group: 'Skills',
     });
@@ -341,7 +330,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       ...si,
       type: 'config',
       status: 'built',
-      position: { x: 0, y: 0, z: 0 },
       meta: { ...si.meta, domain: 'meta', maturity: 0.5 },
       group: 'Config',
     });

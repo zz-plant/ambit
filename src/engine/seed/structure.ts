@@ -319,6 +319,5 @@ export {
   attributeToRuntime,
   seedCombos,
   seedInfrastructure,
-  tagsOf,
   storedTags,
 };

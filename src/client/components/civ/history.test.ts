@@ -26,7 +26,6 @@ const node = (id: string, era: number, meta: Record<string, unknown>): Item => (
   type: 'possibility',
   status: meta.state === 'locked' ? 'specified' : 'built',
   description: '',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'devops', era, eraName: `Era ${era}`, setupSeconds: 600, ...meta },
 });
 

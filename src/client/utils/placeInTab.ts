@@ -64,7 +64,6 @@ export function placeOnMap(
   const tree = techtree as unknown as TreeFile;
   const runtimeId = runtime.id ? `runtime:${runtime.id}` : RUNTIME_ID;
   const rename = (id: string) => (id === RUNTIME_ID ? runtimeId : id);
-  const at = { x: 0, y: 0, z: 0 };
 
   const entries: Item[] = graph.items.map(i => ({
     ...i,
@@ -83,7 +82,6 @@ export function placeOnMap(
       type: b.kind,
       status: 'built',
       description: b.description,
-      position: at,
       meta: { domain: b.domain, state: 'active', lifecycle: 'unknown' },
     });
   }
@@ -103,7 +101,6 @@ export function placeOnMap(
       type: 'provider',
       status: 'built',
       description: `The hosted model ${runtime.name} runs on`,
-      position: at,
       meta: { domain: 'ai-ml', state: 'unlocked', lifecycle: 'unknown' },
     });
   }
@@ -125,7 +122,6 @@ export function placeOnMap(
       type: 'possibility',
       status: reached ? 'built' : 'specified',
       description,
-      position: at,
       meta: {
         domain: node.domain || 'meta',
         state: reached ? 'unlocked' : 'locked',

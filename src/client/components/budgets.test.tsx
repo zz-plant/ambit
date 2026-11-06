@@ -12,17 +12,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { LoopAuthority } from '../../shared/api';
-import { useAmbitStore } from '../store/ambitStore';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import LoopDashboard from './LoopDashboard';
+import { seed } from '../testing/page';
 
 type Budget = LoopAuthority['budgets'][number];
-
-/** `renderToStaticMarkup` reads zustand's initial state, so both halves are set. */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
 
 // The budgets below are dated 2026, and a day in another year carries its
 // year, so the clock is held inside the period they describe.

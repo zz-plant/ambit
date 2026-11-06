@@ -9,22 +9,17 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
-import { useAmbitStore } from '../../store/ambitStore';
 import { demoTreeGraph } from '../../store/demo';
 import CivTree from '../CivTree';
 import { outageSplit, recentFailures } from './layout';
 import { MapStill, stillLayout } from './MapScene';
 import { MapFilters, seedOf, waverOf } from './marks';
 import { MapRelief } from './Relief';
+import { seed } from '../../testing/page';
 
 /** The demo, whose Observability is recovering: two of its last four runs failed. */
 const { items, connections } = demoTreeGraph();
 const RECOVERING = 'combo:observability';
-
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
 
 afterEach(() =>
   seed({

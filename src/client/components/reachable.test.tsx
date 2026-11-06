@@ -14,7 +14,7 @@ import { afterEach, expect, test } from 'vitest';
 import concepts from '../../shared/concepts.json';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
-import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
+import { mergeGraphs } from '../store/ambitStore';
 import { demoConfigGraph, demoProposals, demoTreeGraph } from '../store/demo';
 import {
   authorityMark,
@@ -31,6 +31,7 @@ import { RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
+import { seed } from '../testing/page';
 
 const server: Item = {
   id: 'mcp:git',
@@ -38,21 +39,8 @@ const server: Item = {
   type: 'mcp-server',
   status: 'built',
   description: 'local MCP server',
-  position: { x: 0, y: 0, z: 0 },
   meta: { domain: 'devops' },
 };
-
-/**
- * Put the store in a state, for a server render.
- *
- * `renderToStaticMarkup` reads the *server* snapshot — zustand's initial state
- * object — so a plain `setState` is invisible to it. Both halves are set here,
- * the way ui-density.test.tsx already does it.
- */
-function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
-  Object.assign(useAmbitStore.getInitialState(), state);
-  useAmbitStore.setState(state);
-}
 
 afterEach(() => {
   seed({
@@ -277,7 +265,6 @@ test('a priced opportunity offers the map only when the node is on the graph in 
     type: 'possibility' as const,
     status: 'specified' as const,
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { domain: 'meta' },
   }));
   seed({ items: tree, loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
@@ -505,7 +492,6 @@ test('a recovering node is reached and unproven, and the panel says it is recove
     type: 'possibility',
     status: 'built',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { era: 3, state: 'unlocked', lifecycle, history: runs },
   });
   const mending = node('combo:mending', 'degraded');
@@ -571,7 +557,6 @@ test('a blocked node says what it is blocked by, and prices the gap', () => {
     type: 'possibility',
     status: 'specified',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { era: 4, state: 'locked', next: true, setupSeconds: 600 },
   };
   const vectorStore: Item = {
@@ -654,7 +639,6 @@ test('a rung with no estimate shows none, never a zero', () => {
     type: 'possibility',
     status: 'specified',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { era: 4, state: 'locked', next: true, setupSeconds: 0 },
   };
   seed({ items: [unpriced], connections: [], selectedEra: 4, showDetailPanel: true });
@@ -675,7 +659,6 @@ test('an outage tells what stops from what only loses a provider', () => {
     type: 'mcp-server',
     status: 'built',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { domain: 'devops' },
   };
   const github: Item = { ...git, id: 'mcp:github', name: 'github' };
@@ -777,7 +760,6 @@ test('the panel lists what a capability may do, per action', () => {
     type: 'possibility',
     status: 'built',
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: {
       era: 1,
       state: 'unlocked',

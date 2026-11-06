@@ -44,7 +44,6 @@ function node(
     type: 'possibility',
     status,
     description: '',
-    position: { x: 0, y: 0, z: 0 },
     meta: { era: 1, lifecycle: status === 'built' ? 'configured' : 'unknown', ...meta },
   };
 }

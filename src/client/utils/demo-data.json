@@ -110,11 +110,6 @@
         "type": "agent",
         "status": "built",
         "description": "Reads docs and summarizes",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "maturity": 0.75
@@ -127,11 +122,6 @@
         "type": "agent",
         "status": "built",
         "description": "Reviews diffs before merge",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "maturity": 0.75
@@ -144,11 +134,6 @@
         "type": "agent",
         "status": "built",
         "description": "Keeps repositories consistent",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "maturity": 0.75
@@ -161,11 +146,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -180,11 +160,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -199,11 +174,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "remote",
@@ -218,11 +188,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -237,11 +202,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -256,11 +216,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "remote",
@@ -275,11 +230,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "remote",
@@ -294,11 +244,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "remote",
@@ -313,11 +258,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -332,11 +272,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -351,11 +286,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -370,11 +300,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -389,11 +314,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "remote",
@@ -408,11 +328,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "remote",
@@ -427,11 +342,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local MCP server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "envKeys": [],
           "type": "local",
@@ -446,11 +356,6 @@
         "type": "provider",
         "status": "built",
         "description": "LLM provider",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "key": "anthropic",
           "domain": "ai-ml",
@@ -464,11 +369,6 @@
         "type": "provider",
         "status": "built",
         "description": "LLM provider",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "key": "ollama",
           "domain": "ai-ml",
@@ -482,11 +382,6 @@
         "type": "runtime",
         "status": "built",
         "description": "Main agent framework",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "version": "latest",
           "domain": "meta",
@@ -499,11 +394,6 @@
         "type": "tool",
         "status": "built",
         "description": "Run the benchmark suite",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "frontend",
           "maturity": 0.6
@@ -516,11 +406,6 @@
         "type": "tool",
         "status": "built",
         "description": "Ship to staging",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "maturity": 0.6
@@ -533,11 +418,6 @@
         "type": "tool",
         "status": "built",
         "description": "Run database migrations",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "maturity": 0.6
@@ -671,11 +551,6 @@
         "type": "agent",
         "status": "built",
         "description": "Reads docs and summarizes",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -694,11 +569,6 @@
         "type": "agent",
         "status": "built",
         "description": "Reviews diffs before merge",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -717,11 +587,6 @@
         "type": "agent",
         "status": "built",
         "description": "Keeps repositories consistent",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -740,11 +605,6 @@
         "type": "possibility",
         "status": "built",
         "description": "A suite the agent can run to check its own work",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "unlocked",
@@ -787,11 +647,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The production data has a scheduled copy a restore could come from; a restore should be tried once to prove it works. Turn on point-in-time restore, or schedule a copy off the database host, then restore it once to prove it",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "locked",
@@ -837,11 +692,6 @@
         "type": "possibility",
         "status": "built",
         "description": "The agent can drive a real browser — see rendered pages, click, and verify its own UI work",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "frontend",
           "state": "unlocked",
@@ -901,11 +751,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Language-server diagnostics, so the agent sees errors as an IDE would",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "unlocked",
@@ -937,11 +782,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Long sessions summarize instead of falling over at the context limit. Enable session compaction so long-running work survives the window",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "locked",
@@ -958,11 +798,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Agent changes ship through the same gate as human ones",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "unlocked",
@@ -1013,11 +848,6 @@
         "type": "possibility",
         "status": "built",
         "description": "The agent can query real data rather than reasoning about schemas it cannot see",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -1078,11 +908,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Text can be turned into vectors — the prerequisite for any retrieval. Configure an embedding model; a small local one such as EmbeddingGemma 2 is usually enough",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1106,11 +931,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Errors your users hit are collected where the agent can read them and fix them before anyone writes in — configured, but Hosting is not in place yet",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "locked",
@@ -1149,11 +969,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Agent output measured against known-good cases rather than judged by vibes. Collect cases where the agent failed and turn them into a suite you can re-run",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "locked",
@@ -1170,11 +985,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "A model configured well past the default window, so long files and sessions survive. Set an explicit context limit per model — most runtimes silently default to 4K and truncate",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1191,11 +1001,6 @@
         "type": "possibility",
         "status": "built",
         "description": "The agent can read and modify files directly",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -1257,11 +1062,6 @@
         "type": "possibility",
         "status": "built",
         "description": "At least one hosted model provider configured",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "unlocked",
@@ -1305,11 +1105,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The agent can deploy the app it builds and read the logs where it runs. Connect your host's MCP server, so a deploy and its logs are one step for the agent",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "locked",
@@ -1360,11 +1155,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The agent can read the work queued for it and file what it finds, instead of leaving it in a chat. Connect your issue tracker's MCP server, read-only at first",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "locked",
@@ -1415,11 +1205,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person: the launch infrastructure checklist, each item as strong as what detected or verified it. Reached when all six are in place, with nothing of its own to install",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "locked",
@@ -1436,11 +1221,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Retrieval that never sends your text to a third party. Run the embedding model locally: EmbeddingGemma 2 (270M for text and code), nomic-embed or bge-small are small enough",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1457,11 +1237,6 @@
         "type": "possibility",
         "status": "built",
         "description": "A model server running on your own hardware — Ollama, llama.cpp, MLX, or LiteRT",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "unlocked",
@@ -1504,11 +1279,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work. Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1525,11 +1295,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine. Serve an open clone such as Kev or LitJev, or the open Clef weights behind the same API, on a local GPU and point TYPESAFE_BASE_URL at it",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1546,11 +1311,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "More than one model available, with agents pinned to the right tier for their work. Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1570,11 +1330,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Long-running work can reach you when it finishes or needs a decision — configured, but Scheduled Work is not in place yet",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "locked",
@@ -1605,11 +1360,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Traces of what agents did, so failures are diagnosable after the fact",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "unlocked",
@@ -1667,11 +1417,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The full loop — inference, tools, retrieval — runs with the network off. Verify the agent still completes a real task with the network disabled",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1688,11 +1433,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Several agents working at once on independent pieces. Split a broad task across subagents that do not touch the same files",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "locked",
@@ -1713,11 +1453,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The agent can read and set up how customers pay, while moving money stays with a person. Connect your payment provider's MCP server in test mode first",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "locked",
@@ -1768,11 +1503,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Facts survive between sessions, so the agent stops relearning your setup every time",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -1815,11 +1545,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Sensitive material is processed only by models you control. Route work touching sensitive data to local models by policy, not by habit",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "security",
           "state": "locked",
@@ -1840,11 +1565,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "What users actually do in the app, readable by the agent when it decides what to build next. Add product analytics and connect it, so a feature decision starts from what people did",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "frontend",
           "state": "locked",
@@ -1880,11 +1600,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The data your users create lives in a managed database the agent can inspect, and changing it waits for a person. Use a managed database with branching or point-in-time restore, and give the agent a read-only role first",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "locked",
@@ -1940,11 +1655,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The agent pulls relevant context on demand instead of being handed everything up front. Wire retrieval into a skill or agent so context is fetched rather than pasted",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "locked",
@@ -1985,11 +1695,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "A second agent checks the first one's output before you see it — configured, but Subagents is not in place yet",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "locked",
@@ -2009,11 +1714,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Agents that run on a schedule or a trigger, without you starting them. Move a recurring check onto a schedule instead of remembering to run it",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "locked",
@@ -2054,11 +1754,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Credentials resolved from a vault or env references instead of literals in config",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "security",
           "state": "unlocked",
@@ -2115,11 +1810,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Your own hardware serving models and tools to your agents. Move inference onto a machine you own and reach it over a private network",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "locked",
@@ -2140,11 +1830,6 @@
         "type": "possibility",
         "status": "built",
         "description": "The agent can run commands and read their output",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2204,11 +1889,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session. Write a SKILL.md for a workflow you explain more than twice",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "locked",
@@ -2225,11 +1905,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Named agents with their own prompts and models, delegated to for specific work — configured, but Model Routing is not in place yet",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "locked",
@@ -2251,11 +1926,6 @@
         "type": "possibility",
         "status": "built",
         "description": "At least one MCP server, giving the agent capabilities beyond its own context",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2312,11 +1982,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "The app can send the emails a product needs, and the agent can test them without mailing every user. Connect an email API and verify your sending domain",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "locked",
@@ -2357,11 +2022,6 @@
         "type": "possibility",
         "status": "built",
         "description": "A decision model that answers a typed question with a calibrated probability, not text",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "unlocked",
@@ -2393,11 +2053,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Something outside your machine checks the product is up and tells a person when it is not. Point an uptime checker at your production URL and send its alerts to your phone",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "locked",
@@ -2433,11 +2088,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Sign-up and sign-in run on a provider the agent can configure, and the people in it are not the agent's to read freely. Use a hosted auth provider; writing your own sign-in is the code most worth not writing",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "security",
           "state": "locked",
@@ -2483,11 +2133,6 @@
         "type": "possibility",
         "status": "specified",
         "description": "Somewhere to keep and search those vectors. Add a vector store — pgvector or a local LanceDB is enough to start",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "locked",
@@ -2507,11 +2152,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Git operations, so agent work is reviewable and revertible",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "unlocked",
@@ -2577,11 +2217,6 @@
         "type": "possibility",
         "status": "built",
         "description": "Live search and fetch, so the agent is not limited to its training cutoff",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -2637,11 +2272,6 @@
         "type": "meta",
         "status": "built",
         "description": "Base LLM reasoning",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "active",
@@ -2657,11 +2287,6 @@
         "type": "config",
         "status": "built",
         "description": "Person in the system",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "social",
           "state": "active",
@@ -2677,11 +2302,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2700,11 +2320,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2723,11 +2338,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2746,11 +2356,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2769,11 +2374,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2792,11 +2392,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2815,11 +2410,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2838,11 +2428,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2861,11 +2446,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2884,11 +2464,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2907,11 +2482,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2930,11 +2500,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -2953,11 +2518,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2976,11 +2536,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "remote server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "backend",
           "state": "unlocked",
@@ -2999,11 +2554,6 @@
         "type": "mcp-server",
         "status": "built",
         "description": "local server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "unlocked",
@@ -3022,11 +2572,6 @@
         "type": "provider",
         "status": "built",
         "description": "",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "unlocked",
@@ -3045,11 +2590,6 @@
         "type": "provider",
         "status": "built",
         "description": "",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "ai-ml",
           "state": "unlocked",
@@ -3068,11 +2608,6 @@
         "type": "runtime",
         "status": "built",
         "description": "Agent runtime — contributes 23 capabilities",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "unlocked",
@@ -3088,11 +2623,6 @@
         "type": "tool",
         "status": "built",
         "description": "Run commands",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "infra",
           "state": "active",
@@ -3108,11 +2638,6 @@
         "type": "tool",
         "status": "built",
         "description": "Run the benchmark suite",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "unlocked",
@@ -3131,11 +2656,6 @@
         "type": "tool",
         "status": "built",
         "description": "Ship to staging",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "unlocked",
@@ -3154,11 +2674,6 @@
         "type": "tool",
         "status": "built",
         "description": "Edit files",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "meta",
           "state": "active",
@@ -3174,11 +2689,6 @@
         "type": "tool",
         "status": "built",
         "description": "Language server",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "quality",
           "state": "active",
@@ -3194,11 +2704,6 @@
         "type": "tool",
         "status": "built",
         "description": "Run database migrations",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
         "meta": {
           "domain": "devops",
           "state": "unlocked",
