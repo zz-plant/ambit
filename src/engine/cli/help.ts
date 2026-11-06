@@ -168,9 +168,10 @@ check — what is verified, what is permitted, what is currently broken
                           0/1/2. --record files a refusal as a deficit, for an
                           agent asking from a shell; a person's question files
                           nothing
-  check gate              the Claude Code PreToolUse hook: denies what is forbidden,
-                          asks about what asks first or has no grant, and never allows;
-                          run it in a terminal for the settings entry to paste
+  check gate              a brake on Claude Code tool calls: it can only deny
+                          or ask, never allow. It denies what is forbidden and
+                          asks about what asks first or has no grant; run it in
+                          a terminal for the settings entry to paste
   check credentials       what revoking each credential would end
   check weigh [server] [--timeout=30] [--recorded]   start each local tool server
                           your configs declare, ask for its tools, and record
@@ -192,9 +193,10 @@ check — what is verified, what is permitted, what is currently broken
                           each conversation's tool runs into the work ledger;
                           claude-code --statusline sets ambit statusline as the
                           status line where none is set, and never replaces one;
-                          claude-code --gate adds the gate to every tool call: it
-                          denies what is forbidden and asks about what asks first
-                          or has no grant. Ends on what is still missing
+                          claude-code --gate adds the brake to every tool call: it
+                          can only deny or ask, never allow. It denies what is
+                          forbidden and asks about what asks first or has no
+                          grant. Ends on what is still missing
   check port [server] [--to=<runtime|all>] [--from=<runtime>] [--dry-run]
                           port an MCP server between agent runtimes (Claude, Cursor, Codex, etc.)
   check toggle <server> [--off|--on] [--to=<runtime>] [--dry-run]
@@ -321,7 +323,7 @@ const INDEX: Record<string, [string, string][]> = {
     ['authority [cap]', 'what may run without asking, and what asks first'],
     ['can <cap>', 'one decision: allow, confirm or deny'],
     ['budget', 'a ceiling on what a capability may spend'],
-    ['gate', 'the Claude Code hook that asks or denies before a tool runs'],
+    ['gate', 'the brake on a Claude Code tool call: it can ask or deny, never allow'],
     ['weigh', "what each tool server's tool list costs in context"],
     ['toggle <server>', 'turn a tool server off or on across runtimes'],
     ['port [server]', 'copy a tool server from one runtime to another'],

@@ -26,7 +26,7 @@ function demo() {
 test('dollars keep US grouping on a German browser', () => {
   vi.stubGlobal('navigator', { language: 'de-DE', languages: ['de-DE'] });
   const said = demo();
-  expect(said).toContain('worth $9,600.');
+  expect(said).toContain('that is $9,600.');
   expect(said).toContain('$12.40 of $20 spent.');
   expect(said).not.toMatch(/\$\d+\.\d{3}\b/);
 });

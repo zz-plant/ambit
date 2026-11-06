@@ -1,15 +1,16 @@
 /**
- * The loadout, leg by leg: where this setup stands on the way from a pile of
- * configs to doing a class of work without you. The list below it is the
- * loadout's pieces; this is what they add up to, and the one move on each leg.
+ * The seven steps, step by step: where this setup stands on the way from a
+ * pile of configs to doing a class of work without you. The list below it is
+ * the setup's pieces; this is what they add up to, and the one move on each
+ * step.
  *
- * The page says it in plain words. "Your loadout, leg by leg" and "From A to
- * B" were the docs' framing used as labels, and a reader who had not read the
- * docs met three words nothing on the page explained. The framing stays in
- * the document the link opens.
+ * The page says it in plain words. "From A to B" and "the seven steps" were
+ * the docs' framing used as labels, and a reader who had not read the docs met
+ * words nothing on the page explained. The framing stays in the document the
+ * link opens.
  *
- * Every sentence is read from the graph and the ledger, and a leg nothing has
- * recorded says so. A command is copied, never run.
+ * Every sentence is read from the graph and the session history, and a step
+ * nothing has recorded says so. A command is copied, never run.
  */
 import { useEffect } from 'react';
 import { useCopied } from '../hooks/useCopied';

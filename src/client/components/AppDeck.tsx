@@ -167,7 +167,7 @@ const VIEW_TABS: { view: View; label: string; short?: string; title: string; ico
     label: 'Time & cost',
     short: 'Cost',
     title:
-      "Where your time and your agents' spend go, what may run without asking, and what would pay back fastest",
+      'What your agents cost in tokens, what they save you in time, what may run without asking, and what would pay back fastest',
     icon: (
       <>
         <path d="M2 12 L6 8 L9 11 L14 4" />

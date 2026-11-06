@@ -1,18 +1,18 @@
 # Ambit
 
-> A capability graph for AI agent environments, and a meta-MCP server: what you, your agents, and your machines can jointly do (your *ambit*), what is worth setting up next to widen it, and what breaks downstream if a piece goes.
+> MCP server inventory and capability graph for AI agent environments: what you, your agents, and your machines can jointly do (your *ambit*), which MCP servers work, what is worth setting up next, and what breaks downstream if a piece goes.
 
 - Install: `npx ambit-cli` (Node 22.18 or newer), `npm install -g ambit-cli`, `brew install zz-plant/tap/ambit` on macOS or Linux, or clone the repository and run `./bootstrap.sh`, which builds the graph from your own configs. `npx ambit-cli web` opens the map on localhost from any of them.
 - Requires: Node 22.18 or newer, and nothing else. No other runtime, no service, no account.
 - License: MIT.
 
-Ambit reads the configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, and Kiro into one local SQLite graph. Every tool, model, skill, and declared credential becomes a node, as does every capability of a curated tree; what one needs in order to work becomes an edge.
+Ambit reads the MCP configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, and Kiro into one local SQLite graph. Every tool, model, skill, and declared credential becomes a node, as does every capability of a curated tree; what one needs in order to work becomes an edge.
 
-Three surfaces read that graph: a terminal CLI (`ambit`), an MCP server (`ambit mcp`, 60 tools), and a web map. Discovery, verification, and the work ledger write to the graph, so MCP tools such as `ambit_run_begin` and `ambit_work_event` record rows in the local database.
+Three surfaces read that graph: a terminal CLI (`ambit`), an MCP server (`ambit mcp`), and a web map. Discovery, verification, and the session history write to the graph, so MCP tools such as `ambit_run_begin` and `ambit_work_event` record rows in the local database.
 
 Your agent configuration is different: it changes only through a proposal a person approves, or through the map's editor for entries that already exist, which a person operates and which cannot create an entry. No graph data leaves the machine, and nothing that can reach the network runs unless a person types it or an agent calls the tool; the server never does. [The FAQ](https://zz-plant.github.io/ambit/docs/faq/#does-anything-leave-my-machine) lists each command that can, what it sends and where.
 
-[Your loadout, from A to B](https://zz-plant.github.io/ambit/docs/loadout/) walks one person's setup from a pile of configs to work done without them, in seven legs.
+[From A to B: the seven steps](https://zz-plant.github.io/ambit/docs/loadout/) walks one person's setup from a pile of configs to work done without them, in seven steps.
 
 The claim under it is that what an agent setup can do is not written in any config file. It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. [The ideas behind Ambit](https://zz-plant.github.io/ambit/docs/ideas/) says what is new in that.
 
@@ -50,7 +50,7 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 - [Deep dive](https://github.com/zz-plant/ambit/blob/main/docs/deep-dive.md): the long-form reference to the node model, assurance, authority, and the full MCP surface
 - [FAQ](https://github.com/zz-plant/ambit/blob/main/docs/faq.md): short answers to the common questions
 - [Where each AI agent keeps its MCP config](https://zz-plant.github.io/ambit/docs/mcp-config-locations/): the file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro
-- [What breaks if an MCP server goes down](https://zz-plant.github.io/ambit/docs/mcp-outage/): single points of failure in an agent setup, and the commands that find them
+- [What stops when an MCP server or credential expires](https://zz-plant.github.io/ambit/docs/mcp-outage/): single points of failure in an agent setup, and the commands that find them
 - [Auditing which MCP servers a coding agent has](https://zz-plant.github.io/ambit/docs/audit-mcp-servers/): declared, working, permitted, and used but undeclared
 - [Ambit and MCP gateways](https://zz-plant.github.io/ambit/docs/compare/): how a capability map differs from a proxy on the call path, and how they compose
 - [Building alone](https://zz-plant.github.io/ambit/docs/solo/): the launch checklist and production guardrails for a one-person company

@@ -33,11 +33,11 @@ On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of 
 
 **Over weeks.** Grants are per action and per target. The person can set a bar once, such as ten passing checks, and a grant widens when the evidence reaches it. One failing check narrows it again with nobody asked. The prompts that remain are the ones that should reach a person. In the demo, 31 capabilities may act without asking, 12 ask first and 3 are forbidden.
 
-**When it is time to judge.** With the Claude Code or OpenCode plugin, Ambit's work ledger records each time the person stepped in so you could continue. A step taken is measured against the hours it was forecast to save, so both of you can tell whether it paid. The demo records 89 interventions and 41 hours a year saved.
+**When it is time to judge.** With the Claude Code or OpenCode plugin, Ambit's session history records each time the person stepped in so you could continue. A step taken is measured against the hours it was forecast to save, so both of you can tell whether it paid. The demo records 89 interventions and 41 hours a year saved.
 
 ## Together
 
-Ambit's picture for this is a [pilot and a machine](./loadout.md#pilot-and-machine). The person works in the hangar, which is the map, My Setup and Proposals. They see the whole loadout there and sign the changes. You work in the cockpit, where the briefing and `ambit_can` are what you read during a run. The two of you read the same graph.
+Ambit's picture for this is [two views, one graph](./loadout.md#two-views-one-graph). The person works in the map, My Setup and Proposals, sees the whole setup there and signs the changes. You work from the briefing and `ambit_can` during a run. The two of you read the same graph.
 
 Widening the ambit is shared work, and the division of it is fixed.
 
@@ -56,7 +56,7 @@ A wide reach that nobody can see or revoke is a bigger blast radius, and Ambit r
 
 Raise it when it fits what they are trying to do. The strongest case is what the two of you have just seen go wrong, and one command that shows the rest. After a server has failed twice in a day, for example:
 
-> The GitHub server failed twice today, and I can't tell which of your other servers work until I call them. Ambit reads your agent configs into one local map: what works, what's failing, and what one more step would let me do for you. It writes one file on this machine and sends nothing, and deleting that file undoes it. Want me to run `npx ambit-cli status` and tell you what it finds?
+> The GitHub server failed twice today, and I can't tell which of your other servers work until I call them. Ambit reads your MCP configs into one local map: what works, what's failing, and what one more step would let me do for you. It writes one file on this machine and sends nothing, and deleting that file undoes it. Want me to run `npx ambit-cli status` and tell you what it finds?
 
 Then lead with what it found. If it found nothing worth acting on, say that too.
 

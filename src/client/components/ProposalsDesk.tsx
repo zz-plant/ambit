@@ -95,7 +95,7 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
       }`,
     ],
     [
-      'Undo',
+      'Revert',
       d.reversible
         ? 'every step can be undone, and how is worked out before anything runs'
         : d.requires_person
@@ -313,7 +313,9 @@ export function ProposalsDesk() {
       {/* What approving does, said once for the desk rather than on every
           card that asks for the decision. */}
       {draftCount > 0 && (statusTab === 'all' || statusTab === 'draft') && (
-        <p className="gov-hint">Approving signs a receipt; nothing runs yet.</p>
+        <p className="gov-hint">
+          Review it, then approve. Approving signs a receipt; nothing runs until you apply.
+        </p>
       )}
 
       {/* The queue. No comment box: an approval has no field to keep one
@@ -406,7 +408,7 @@ export function ProposalsDesk() {
                             ? 'Approved'
                             : isRejected
                               ? 'Turned down'
-                              : 'Waiting for your approval'}
+                              : 'Waiting for review'}
                       </span>
                     </div>
                     <p className="gov-meta">
@@ -431,7 +433,7 @@ export function ProposalsDesk() {
                     {parsedSteps.length > 0 && (
                       <div className="gov-steps">
                         <div className="sp-section-label">
-                          {planTally(parsedSteps.length, p.decision)}
+                          What changes · {planTally(parsedSteps.length, p.decision)}
                         </div>
                         {/* An engine step is {id, name, chosen, …}; the demo's
                         hand-written ones are {action, provider}. Either reads

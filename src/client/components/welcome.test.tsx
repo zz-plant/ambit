@@ -75,7 +75,7 @@ test('the count of runtimes is the engine’s, so it cannot outlive a new reader
   for (const named of RUNTIMES) expect(read).toContain(named);
   // The lede names four and counts the rest, so the paragraph stays a
   // sentence instead of a list of every runtime in the engine.
-  expect(html).toContain(`configs of ${read.length} agent runtimes`);
+  expect(html).toContain(`MCP configs of ${read.length} AI coding agents and MCP clients`);
   expect(RUNTIMES.length).toBeGreaterThan(3);
   expect(RUNTIMES.length).toBeLessThan(read.length);
 });

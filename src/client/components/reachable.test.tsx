@@ -545,7 +545,7 @@ test('a proposal card carries what deciding on it needs', () => {
   const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
   expect(html).toContain('Forecast');
   expect(html).toContain('Costs');
-  expect(html).toContain('Undo');
+  expect(html).toContain('Revert');
   expect(html).toContain('ambit apply can make every change');
   expect(html).toContain('Local changes: you approved 4 of 4');
 });

@@ -73,4 +73,4 @@ Claude Code sessions are the one spend recorded on their own: declare what a mod
 - **Stand in for a security review** before you take money or store personal data.
 - **Run on Windows**, where it does not read the agent configs yet.
 
-[The guide](../README.md) covers installing and every command; [your loadout, from A to B](./loadout.md) is the longer walk through what Ambit makes possible.
+[The guide](../README.md) covers installing and every command; [from A to B: the seven steps](./loadout.md) is the longer walk through what Ambit makes possible.

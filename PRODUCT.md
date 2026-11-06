@@ -20,7 +20,7 @@ Agents are a fourth reader of the same graph, over MCP. They never see the UI, b
 
 ## Product Purpose
 
-Ambit computes what a person, their agents and their machines can jointly do, which no configuration file states, and helps them widen it. It reads the configs of every agent runtime on a machine into one capability graph, places that graph on a curated tree of capabilities in eras, and answers four questions: what is one step away, what is worth setting up next, what actually works, and what breaks if a dependency fails. A work ledger adds where the person's own time goes.
+Ambit computes what a person, their agents and their machines can jointly do, which no configuration file states, and helps them widen it. It reads the configs of every agent runtime on a machine into one capability graph, places that graph on a curated tree of capabilities in eras, and answers four questions: what is one step away, what is worth setting up next, what actually works, and what breaks if a dependency fails. A session history adds where the person's own time goes.
 
 Success is a person who takes a next step with confidence and sees it reached and then verified, and an agent that knows what it may do before it tries.
 
@@ -34,7 +34,7 @@ The word *ambit* is unfamiliar to most readers. It is defined wherever a reader 
 
 ## Operating Context
 
-- **Views.** The map (the curated tree in era columns), My Setup (Entries, Environment, Briefing), Audit (the trail), Proposals (the decision desk) and Time & cost (the work ledger). Search, the finder and keyboard navigation reach all of them.
+- **Views.** The map (the curated tree in era columns), My Setup (Entries, Environment, Briefing), Audit (the trail), Proposals (the decision desk) and Time & cost (the session history). Search, the finder and keyboard navigation reach all of them.
 - **Arrival.** Search visitors land on the docs pages under `/ambit/docs/`, not the home tour. The demo's tour is reachable directly through `?tour=outage|failing|yours`.
 - **Decisions.** Agents draft changes; a person approves or rejects each one, on the page or with `ambit approve`. An approval mints a signed artifact that only `ambit apply` and the control plane spend.
 - **Artifacts that leave the page.** The Image menu saves the map, the relief and a finding card for posting; `ambit share` writes a self-contained HTML snapshot. The README's images come from `npm run render:images` and `npm run shots`.

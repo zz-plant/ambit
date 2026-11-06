@@ -1,10 +1,10 @@
 /**
- * A loadout, read as a journey: seven legs from "a pile of configs" to "a
- * setup that does a class of work without you", each with where this one
- * stands, read from the graph and the ledger and nothing else.
+ * The seven steps, read as a journey: from "a pile of configs" to "a setup
+ * that does a class of work without you", each with where this one stands,
+ * read from the graph and the session history and nothing else.
  *
- * A leg with nothing recorded says so and is never drawn as zero: a ledger
- * that has not run is not a ledger that measured nothing (rule 16). Pure, so
+ * A step with nothing recorded says so and is never drawn as zero: a session
+ * history that has not run is not one that measured nothing (rule 16). Pure, so
  * the readout is tested without a page.
  */
 import type { LoopSnapshot, ProposalRow } from '../../shared/api';
