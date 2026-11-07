@@ -37,7 +37,7 @@ import { svgToPng } from './utils/saveImage';
 import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg, type Showing } from './utils/shareCard';
 import type { ImageKind } from './components/civ/ImageMenu';
 import { embeddedFontCss } from './fonts';
-import { INSTALL } from './utils/copy';
+import { copyText, INSTALL } from './utils/copy';
 import { isMissingFile } from './utils/loadFailure';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
@@ -446,10 +446,10 @@ export default function App() {
    * sharing is a copy of the address bar and not a second serializer.
    */
   const share = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
+    const ok = await copyText(window.location.href);
+    if (ok) {
       setToast('Link copied. It opens on this view.');
-    } catch {
+    } else {
       setToast('Could not copy. The address bar is a link to this view.');
     }
   };

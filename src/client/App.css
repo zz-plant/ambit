@@ -165,6 +165,18 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: 2px;
 }
 
+/* Browser surfaces: selection highlight and caret themed to Readout Blue. */
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  caret-color: var(--accent);
+}
+
 /* A dialog takes the focus itself when it opens, so it is announced by its
    name; it is not a control, and a ring round the whole of it marks nothing. */
 [role='dialog'][tabindex='-1']:focus-visible {
@@ -1381,7 +1393,7 @@ button.app-sample-tag:hover {
 .sp-edge-dot {
   width: 12px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-full);
   background: var(--accent);
 }
 
@@ -1725,7 +1737,7 @@ button.app-sample-tag:hover {
 .sp-ladder-bar {
   display: flex;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-full);
   overflow: hidden;
   background: var(--fig-track, rgba(255, 255, 255, 0.07));
 }
@@ -1790,7 +1802,8 @@ button.app-sample-tag:hover {
   border-radius: 50%;
   box-sizing: border-box;
   color: var(--on-accent);
-  font-size: 9px;
+  font-size: var(--fs-xs);
+  line-height: 1;
   font-weight: 700;
 }
 
@@ -1981,6 +1994,16 @@ button.app-sample-tag:hover {
 .civ-zoom-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.civ-zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.civ-zoom-btn:disabled:hover {
+  background: transparent;
+  color: inherit;
 }
 
 /* A map tool whose panel or strip is open. */
@@ -2618,7 +2641,7 @@ button.app-sample-tag:hover {
   width: 2px;
   height: 10px;
   margin-left: -1px;
-  border-radius: 1px;
+  border-radius: var(--radius-full);
   background: var(--text-muted);
   transform: translateY(-50%);
 }
@@ -2653,13 +2676,13 @@ button.app-sample-tag:hover {
 
 .civ-timeline-range::-webkit-slider-runnable-track {
   height: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-full);
   background: var(--border-bright);
 }
 
 .civ-timeline-range::-moz-range-track {
   height: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-full);
   background: var(--border-bright);
 }
 
@@ -2781,7 +2804,7 @@ button.app-sample-tag:hover {
   position: absolute;
   box-sizing: border-box;
   border: 1.5px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: var(--accent-soft);
   cursor: grab;
 }
@@ -3962,7 +3985,7 @@ button.app-sample-tag:hover {
 .fig-history-bar {
   flex: none;
   width: 4px;
-  border-radius: 1px;
+  border-radius: var(--radius-full);
 }
 
 .fig-history-bar--pass {
@@ -4017,7 +4040,7 @@ button.app-sample-tag:hover {
 }
 
 .fig-stack-seg {
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   min-width: 3px;
 }
 
@@ -4053,7 +4076,7 @@ button.app-sample-tag:hover {
 .fig-key-swatch {
   width: 8px;
   height: 8px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .fig-key-swatch--proven {
@@ -4388,7 +4411,7 @@ button.app-sample-tag:hover {
   bottom: -3px;
   width: 2px;
   margin-left: -1px;
-  border-radius: 1px;
+  border-radius: var(--radius-full);
   background: var(--text-primary);
 }
 
@@ -6865,7 +6888,7 @@ button.app-sample-tag:hover {
 .fig-option-bar {
   display: block;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-full);
   background: var(--fig-context);
 }
 
@@ -7256,7 +7279,7 @@ button.app-sample-tag:hover {
   padding: 16px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 12px 12px 12px 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-xs);
 }
 
 .gov-card--rejected .gov-ask {
@@ -7286,7 +7309,7 @@ button.app-sample-tag:hover {
   margin-left: auto;
   padding: 6px 12px;
   border: 1px dashed var(--border-bright);
-  border-radius: 12px 12px 3px 12px;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
   font-size: var(--fs-md);
   color: var(--text-muted);
 }
@@ -7714,7 +7737,7 @@ button.app-sample-tag:hover {
   left: 0;
   right: 0;
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-full);
   background: var(--border);
   /* The bar is part of the rung's button underneath it. */
   pointer-events: none;

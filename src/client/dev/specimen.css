@@ -9,6 +9,6 @@ body { background: var(--bg-deep); color: var(--text-primary); font-family: var(
 .specimen-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; }
 .specimen-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 .specimen-pair { display: flex; gap: 16px; align-items: flex-start; }
-.specimen-key { display: flex; flex-direction: column; gap: 6px; margin: 0; max-width: 220px; font-size: 13px; }
+.specimen-key { display: flex; flex-direction: column; gap: 6px; margin: 0; max-width: 220px; font-size: var(--fs-md); }
 .specimen-key span { display: block; color: var(--text-muted); margin-top: 2px; }
 .specimen-keys { display: flex; flex-wrap: wrap; gap: 24px; }

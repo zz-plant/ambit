@@ -153,6 +153,7 @@ export function FinderView(p: FinderViewProps) {
       >
         <input
           ref={p.inputRef}
+          type="text"
           className="finder-input"
           placeholder={
             p.withActions
@@ -160,9 +161,19 @@ export function FinderView(p: FinderViewProps) {
               : 'Find a capability, a server, an agent…'
           }
           aria-label="Find a capability or run an action"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
           value={p.query}
           onChange={e => p.onQuery(e.target.value)}
         />
+        <div className="visually-hidden" aria-live="polite" aria-atomic="true">
+          {p.query.trim()
+            ? p.rows.length === 0
+              ? 'No results found'
+              : `${p.rows.length} ${p.rows.length === 1 ? 'match' : 'matches'}`
+            : ''}
+        </div>
         <ul ref={p.listRef} className="finder-list">
           {p.rows.map((row, i) => {
             const firstOfGroup = i === 0 || groupOf(p.rows[i - 1]) !== groupOf(row);

@@ -10,7 +10,7 @@ import type React from 'react';
 import { Fragment, useId } from 'react';
 import type { ActiveLens } from '../../linkState';
 import { termTitle } from '../Term';
-import { ZOOM_MIN } from './viewport';
+import { ZOOM_MAX, ZOOM_MIN } from './viewport';
 import { Icon } from '../Icon';
 
 export const LENSES: readonly [ActiveLens, string, string][] = [
@@ -102,6 +102,7 @@ export function ZoomHud({
               type="button"
               className="civ-zoom-btn"
               onClick={() => zoomTo(z => +(z - 0.2).toFixed(2))}
+              disabled={zoom <= ZOOM_MIN}
               title="Zoom out (−)"
               aria-label="Zoom out"
             >
@@ -131,6 +132,7 @@ export function ZoomHud({
               type="button"
               className="civ-zoom-btn"
               onClick={() => zoomTo(z => +(z + 0.2).toFixed(2))}
+              disabled={zoom >= ZOOM_MAX}
               title="Zoom in (+)"
               aria-label="Zoom in"
             >

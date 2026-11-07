@@ -239,16 +239,34 @@ export default function AuditView() {
               <label className="visually-hidden" htmlFor="audit-query">
                 Filter the trail
               </label>
-              <input
-                id="audit-query"
-                type="search"
-                className="tp-search"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="actor:human:web action:approved target:prop-…"
-                spellCheck={false}
-                autoComplete="off"
-              />
+              <div className="tp-search-wrap">
+                <input
+                  id="audit-query"
+                  type="search"
+                  className="tp-search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape' && query) {
+                      e.stopPropagation();
+                      setQuery('');
+                    }
+                  }}
+                  placeholder="actor:human:web action:approved target:prop-…"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    className="tp-search-clear"
+                    onClick={() => setQuery('')}
+                    aria-label="Clear the filter"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <p className="audit-hint">
                 <code>actor:</code>, <code>action:</code> and <code>target:</code> match an id
                 exactly, colons and all. Any other word is looked for in every field.

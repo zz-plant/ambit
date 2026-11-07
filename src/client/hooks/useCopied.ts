@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { copyText } from '../utils/copy';
 
 /**
  * A copy button's two seconds of "Copied".
@@ -16,7 +17,7 @@ export function useCopied(ms = 2000) {
     return () => clearTimeout(t);
   }, [copied, ms]);
   const copy = useCallback((key: string, text: string) => {
-    navigator.clipboard?.writeText(text);
+    void copyText(text);
     setCopied(key);
   }, []);
   return [copied, copy] as const;

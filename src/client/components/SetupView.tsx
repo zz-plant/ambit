@@ -292,7 +292,23 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
             {findings}
           </div>
           {backend === 'live' && (
-            <div className="setup-tabs" role="tablist" aria-label="Sections of My Setup">
+            <div
+              className="setup-tabs"
+              role="tablist"
+              aria-label="Sections of My Setup"
+              onKeyDown={e => {
+                const tabs: Tab[] = ['entries', 'environment', 'briefing'];
+                const cur = tabs.indexOf(tab);
+                if (cur === -1) return;
+                if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  onTab(tabs[(cur + 1) % tabs.length]);
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  onTab(tabs[(cur - 1 + tabs.length) % tabs.length]);
+                }
+              }}
+            >
               {(
                 [
                   [
@@ -369,13 +385,22 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
               // The sender and the addressee are the two marks; the text is
               // exactly what the agent receives.
               <div className="setup-briefing-message">
-                <p className="setup-briefing-route">
+                <div className="setup-briefing-route">
                   <ActorMark id="ambit" size={20} decorative />
                   <span>
                     Ambit <span aria-hidden="true">→</span>{' '}
                     <ActorMark id="agent" size={16} decorative /> the agent, when it connects
                   </span>
-                </p>
+                  <button
+                    type="button"
+                    className={`sp-cli-copy-btn ${copied === 'briefing' ? 'sp-cli-copy-btn--copied' : ''}`}
+                    style={{ marginLeft: 'auto' }}
+                    onClick={() => copy('briefing', briefing.text)}
+                    aria-label="Copy briefing text"
+                  >
+                    {copied === 'briefing' ? 'Copied ✓' : 'Copy'}
+                  </button>
+                </div>
                 <pre className="setup-briefing-text bubble bubble--from">{briefing.text}</pre>
               </div>
             ) : (
@@ -389,11 +414,20 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
               <div className="tp-search-wrap">
                 <input
                   id="tp-search-input"
+                  type="text"
                   className="tp-search"
                   placeholder="Filter entries"
                   aria-label="Filter entries"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={searchQuery}
                   onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape' && searchQuery) {
+                      e.stopPropagation();
+                      setSearch('');
+                    }
+                  }}
                 />
                 {searchQuery && (
                   <button
