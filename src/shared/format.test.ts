@@ -1,5 +1,11 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import { formatDollars, formatRelativeTime, readerLocale } from './format';
+import {
+  formatDollars,
+  formatRelativeTime,
+  parseUtcDate,
+  readerLocale,
+  toUtcEpoch,
+} from './format';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -34,4 +40,32 @@ test('formatRelativeTime returns human-readable relative time', () => {
   const pastHour = new Date(now - 3600 * 1000);
   expect(formatRelativeTime(pastMinute)).toContain('minute');
   expect(formatRelativeTime(pastHour)).toContain('hour');
+});
+
+test('parseUtcDate and toUtcEpoch parse space-separated SQLite dates and zoneless ISO dates as UTC', () => {
+  // SQLite format: space, no T, no zone
+  const sqliteStr = '2026-11-06 12:00:00';
+  const parsedSqlite = parseUtcDate(sqliteStr);
+  expect(parsedSqlite).toBeDefined();
+  expect(parsedSqlite?.toISOString()).toBe('2026-11-06T12:00:00.000Z');
+  expect(toUtcEpoch(sqliteStr)).toBe(Date.parse('2026-11-06T12:00:00.000Z'));
+
+  // ISO format with T and no zone: must still be parsed as UTC, not local time
+  const isoZoneless = '2026-11-06T12:00:00';
+  const parsedIso = parseUtcDate(isoZoneless);
+  expect(parsedIso).toBeDefined();
+  expect(parsedIso?.toISOString()).toBe('2026-11-06T12:00:00.000Z');
+  expect(toUtcEpoch(isoZoneless)).toBe(toUtcEpoch(sqliteStr));
+
+  // Explicit UTC zone 'Z'
+  const isoZ = '2026-11-06T12:00:00Z';
+  expect(parseUtcDate(isoZ)?.toISOString()).toBe('2026-11-06T12:00:00.000Z');
+
+  // Invalid or empty inputs
+  expect(parseUtcDate(undefined)).toBeUndefined();
+  expect(parseUtcDate(null)).toBeUndefined();
+  expect(parseUtcDate('')).toBeUndefined();
+  expect(parseUtcDate('invalid-date')).toBeUndefined();
+  expect(toUtcEpoch(undefined)).toBeUndefined();
+  expect(toUtcEpoch('invalid')).toBeUndefined();
 });

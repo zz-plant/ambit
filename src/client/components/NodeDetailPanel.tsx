@@ -27,6 +27,7 @@ import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
+import { toUtcEpoch } from '../../shared/format';
 import { carryDetail, carryOf, carryTokens } from '../utils/carry';
 import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
@@ -170,7 +171,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const lastChecked = item.meta?.lastChecked as string | undefined;
   const agoLabel = (ts?: string) => {
     if (!ts) return undefined;
-    const ms = Date.now() - new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z').getTime();
+    const epoch = toUtcEpoch(ts);
+    if (epoch === undefined) return undefined;
+    const ms = Date.now() - epoch;
     if (!(ms >= 0)) return undefined;
     const mins = Math.round(ms / 60000);
     if (mins < 60) return `${mins}m ago`;

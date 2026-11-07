@@ -9,6 +9,7 @@ import type {
   UsageWindow,
   UsageWindowModel,
 } from '../shared/api.ts';
+import { toUtcEpoch } from '../shared/format.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import { capabilitiesFor } from './gate.ts';
@@ -55,10 +56,7 @@ import { DEFAULT_WINDOW_DAYS, GATE_KINDS, TOKEN_SOURCES } from './vocabulary.ts'
  * the same way.
  */
 function toEpoch(value?: string | null): number | undefined {
-  if (!value) return undefined;
-  const text = value.trim().replace(' ', 'T');
-  const t = Date.parse(/T[\d:.]+$/.test(text) ? `${text}Z` : text);
-  return Number.isFinite(t) ? t : undefined;
+  return toUtcEpoch(value);
 }
 
 function durationSeconds(started?: string | null, ended?: string | null): number | undefined {

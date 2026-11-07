@@ -168,6 +168,21 @@ test('the exit code says what the words say', () => {
     const error = 'Usage: ambit sync export [path] | ambit sync import <path>';
     expect(usage.stdout).toBe(`${JSON.stringify({ error }, null, 2)}\n`);
     expect(piped(dir, 'goal', '--paths').status).toBe(1);
+    expect(piped(dir, 'help', 'no-such-concept').status).toBe(1);
+    expect(piped(dir, 'delegation', 'source').status).toBe(1);
+    expect(piped(dir, 'delegation', 'ingest').status).toBe(1);
+
+    // A known value flag without value exits 1.
+    const missingVal = piped(dir, 'can', 'offline-capable', '--target');
+    expect(missingVal.status).toBe(1);
+    expect(missingVal.stdout + missingVal.stderr).toContain('Flag --target requires a value');
+
+    // Space-separated value flag is accepted
+    const spaceVal = piped(dir, 'can', 'offline-capable', '--target', 'svc:ollama', '--json');
+    expect(spaceVal.status).toBe(0);
+    const parsedCan = JSON.parse(spaceVal.stdout);
+    expect(parsedCan.reason).toContain('on svc:ollama');
+    expect(parsedCan.to_grant).toContain('--scope=svc:ollama');
 
     // An answer exits 0.
     expect(piped(dir, 'where').status).toBe(0);

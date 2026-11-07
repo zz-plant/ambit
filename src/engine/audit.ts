@@ -1,5 +1,6 @@
 import type { Db } from './db.ts';
 import type { AuditEvent, AuditOutcome, AuditResponse } from '../shared/api.ts';
+import { parseUtcDate } from '../shared/format.ts';
 import { canExecute } from './assurance.ts';
 import { delegationRecords } from './delegation.ts';
 import {
@@ -321,11 +322,7 @@ const STREAM_MAX = 1000;
  */
 function isoTime(stamp: unknown): string | undefined {
   if (typeof stamp !== 'string' || !stamp.trim()) return undefined;
-  let text = stamp.trim().replace(' ', 'T');
-  // No zone is SQLite's own form, and SQLite's times are UTC.
-  if (/T[\d:.]+$/.test(text)) text += 'Z';
-  const ms = Date.parse(text);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
+  return parseUtcDate(stamp)?.toISOString();
 }
 
 const outcomeOf = (key: keyof typeof AUDIT_OUTCOMES): AuditOutcome => ({ ...AUDIT_OUTCOMES[key] });

@@ -724,31 +724,29 @@ async function runCommand(
       } else if (arg === 'verify') emit(verifyChain(db));
       // A person contesting a record Ambit wrote, and the answer they are owed.
       // Neither widens authority: see recordObjection for why that is deliberate.
-      else if (arg === 'object')
-        emit(
-          recordObjection(db, {
-            record: positional[1] || value('record') || '',
-            by: by() || '',
-            basis: value('basis') || '',
-            requested:
-              value('requested') === 'reversal'
-                ? 'reversal'
-                : value('requested') === 'narrowing'
-                  ? 'narrowing'
-                  : 'reconsideration',
-            note: value('note'),
-          })
-        );
-      else if (arg === 'answer')
-        emit(
-          answerObjection(db, {
-            objection: positional[1] || value('objection') || '',
-            disposition: flags.has('--refuse') ? 'refused' : 'upheld',
-            because: value('because') || '',
-            by: by() || '',
-          })
-        );
-      else if (arg === 'objections') emit(unansweredObjections(db));
+      else if (arg === 'object') {
+        const res = recordObjection(db, {
+          record: positional[1] || value('record') || '',
+          by: by() || '',
+          basis: value('basis') || '',
+          requested:
+            value('requested') === 'reversal'
+              ? 'reversal'
+              : value('requested') === 'narrowing'
+                ? 'narrowing'
+                : 'reconsideration',
+          note: value('note'),
+        });
+        emit(!res.ok ? { error: res.reason } : res);
+      } else if (arg === 'answer') {
+        const res = answerObjection(db, {
+          objection: positional[1] || value('objection') || '',
+          disposition: flags.has('--refuse') ? 'refused' : 'upheld',
+          because: value('because') || '',
+          by: by() || '',
+        });
+        emit(!res.ok ? { error: res.reason } : res);
+      } else if (arg === 'objections') emit(unansweredObjections(db));
       // Reading another system's stream. Foreign discrepancies land as evidence
       // attributed to the sender; they never move a lifecycle on their own.
       // Where foreign records arrive from, declared once instead of typed each
@@ -757,29 +755,33 @@ async function runCommand(
       else if (arg === 'source') {
         const action = positional[1];
         const id = positional[2] || value('id') || '';
-        if (action === 'add')
-          emit(
-            declareDelegationSource(db, {
-              id,
-              system: value('system') || '',
-              instance: value('instance'),
-              location: value('from') || '',
-              by: by() || '',
-            })
-          );
-        else if (action === 'disable') emit(setDelegationSourceEnabled(db, id, false));
-        else if (action === 'enable') emit(setDelegationSourceEnabled(db, id, true));
-        else if (action === 'forget') emit(forgetDelegationSource(db, id));
-        else
+        if (action === 'add') {
+          const res = declareDelegationSource(db, {
+            id,
+            system: value('system') || '',
+            instance: value('instance'),
+            location: value('from') || '',
+            by: by() || '',
+          });
+          emit(!res.ok ? { error: res.reason } : res);
+        } else if (action === 'disable') {
+          const res = setDelegationSourceEnabled(db, id, false);
+          emit(!res.ok ? { error: res.reason } : res);
+        } else if (action === 'enable') {
+          const res = setDelegationSourceEnabled(db, id, true);
+          emit(!res.ok ? { error: res.reason } : res);
+        } else if (action === 'forget') {
+          const res = forgetDelegationSource(db, id);
+          emit(!res.ok ? { error: res.reason } : res);
+        } else
           emit({
-            ok: false,
-            reason: 'ambit delegation source add|enable|disable|forget <id>',
+            error: 'Usage: ambit delegation source add|enable|disable|forget <id>',
           });
       } else if (arg === 'pull')
         emit(pullDelegationSources(db, path => readFileSync(path, 'utf8')));
       else if (arg === 'ingest') {
         const path = positional[1] || value('file');
-        if (!path) emit({ ok: false, reason: 'pass a file: ambit delegation ingest <path>' });
+        if (!path) emit({ error: 'Pass a file: ambit delegation ingest <path>' });
         else emit(ingestForeignRecords(db, readFileSync(path, 'utf8')));
       } else
         emit({
@@ -1251,6 +1253,83 @@ async function runCommand(
  * type, so the command grouping, flag parsing and argument handling are all
  * still under test rather than bypassed.
  */
+const VALUE_FLAGS = new Set([
+  'target',
+  'by',
+  'scope',
+  'amount',
+  'period',
+  'limit',
+  'to',
+  'from',
+  'file',
+  'system',
+  'instance',
+  'basis',
+  'requested',
+  'because',
+  'objection',
+  'timeout',
+  'provider',
+  'model',
+  'account',
+  'account-id',
+  'token',
+  'note',
+  'verify',
+  'provides',
+  'runtime',
+  'description',
+  'url',
+  'condition',
+  'ttl',
+  'expires',
+  'actor',
+  'tool',
+  'command',
+  'name',
+  'threshold',
+]);
+
+/**
+ * Normalises CLI arguments into positional arguments and flags.
+ *
+ * Known value flags take either `--key=value` or `--key value`. A known value
+ * flag that arrives without a value is refused rather than silently dropping
+ * its value into positional arguments.
+ */
+function parseArgv(argv: string[]): { positional: string[]; flags: Set<string>; error?: string } {
+  const positional: string[] = [];
+  const flags = new Set<string>();
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith('--')) {
+      const eq = arg.indexOf('=');
+      const flagName = eq >= 0 ? arg.slice(2, eq) : arg.slice(2);
+      if (VALUE_FLAGS.has(flagName)) {
+        if (eq >= 0) {
+          flags.add(arg);
+        } else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+          flags.add(`--${flagName}=${argv[++i]}`);
+        } else {
+          return {
+            positional,
+            flags,
+            error: `Flag --${flagName} requires a value (e.g. --${flagName}=<value>)`,
+          };
+        }
+      } else {
+        flags.add(arg);
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return { positional, flags };
+}
+
 function begin(db: Db, argv: string[], mappingOverride?: string) {
   const resolved = resolveCommand(argv[0], argv.slice(1));
   if (!resolved.cmd) throw new Error('capture needs a command');
@@ -1260,13 +1339,12 @@ function begin(db: Db, argv: string[], mappingOverride?: string) {
     state.value = data;
     state.calls++;
   });
-  const done = runCommand(
-    db,
-    resolved.cmd,
-    resolved.argv.filter(a => !a.startsWith('--')),
-    new Set(resolved.argv.filter(a => a.startsWith('--'))),
-    mappingOverride
-  );
+  const parsed = parseArgv(resolved.argv);
+  if (parsed.error) {
+    emit({ error: parsed.error });
+    return { state, done: Promise.resolve(), restore: () => void setSink(previous) };
+  }
+  const done = runCommand(db, resolved.cmd, parsed.positional, parsed.flags, mappingOverride);
   return { state, done, restore: () => void setSink(previous) };
 }
 
@@ -1397,8 +1475,13 @@ async function main() {
   // Flags are not arguments. Taking argv[3] blindly meant `tt verify --json`
   // looked for a capability named "--json", which every flag-taking command
   // silently inherited.
-  const positional = resolved.argv.filter(a => !a.startsWith('--'));
-  const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
+  const parsed = parseArgv(resolved.argv);
+  if (parsed.error) {
+    emit({ error: parsed.error });
+    db.close();
+    return;
+  }
+  const { positional, flags } = parsed;
   const mappingOverride = process.env.CONFIG_MAPPING;
 
   // An unseeded graph answered every question with "Nothing to report", which
