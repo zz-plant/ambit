@@ -14,6 +14,7 @@ import {
   CHECK_RUN_SQL,
   COUNTED_SQL,
   FAILING,
+  isReached,
   REACHED_SQL,
   RECOVERING_SQL,
 } from '../vocabulary.ts';
@@ -116,7 +117,7 @@ function deriveLifecycles(db: Db): number {
          AND ${CHECK_RUN_SQL} ORDER BY timestamp DESC, id DESC LIMIT ?`
       )
       .all(node.id, RECENT_RUNS * 2) as { action: string }[];
-    update.run(lifecycleFrom(node.state !== 'locked', provided.has(node.id), history), node.id);
+    update.run(lifecycleFrom(isReached(node.state), provided.has(node.id), history), node.id);
     count++;
   }
   return count;

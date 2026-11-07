@@ -1,4 +1,5 @@
 import type { Migratable } from './migrate.ts';
+import { parseUtcDate } from '../shared/format.ts';
 import { attentionOwner, attentionValueCentsPerHour } from './economics.ts';
 import type { CapabilityRow, ProposalRow } from './rows.ts';
 
@@ -35,7 +36,7 @@ function sqliteDatetime(d: Date): string {
   return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 function parseDatetime(s: string): Date {
-  return new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z');
+  return parseUtcDate(s) ?? new Date(NaN);
 }
 
 interface WindowStats {

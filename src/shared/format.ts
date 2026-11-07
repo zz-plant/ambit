@@ -42,10 +42,38 @@ export function formatCount(n: number): string {
 }
 
 /**
+ * Parse a datetime string stored in SQLite or ISO-8601 into a Date in UTC.
+ *
+ * Either spelling with no zone (space-separated SQLite `datetime('now')` or ISO
+ * `YYYY-MM-DDTHH:mm:ss`) is UTC, which is how SQLite writes it. Native Date.parse
+ * parses an ISO datetime with a 'T' and no zone as local time under ECMAScript,
+ * which causes timezone offset skew. This ensures zoneless times append 'Z'.
+ */
+export function parseUtcDate(value?: string | null): Date | undefined {
+  if (!value || typeof value !== 'string') return undefined;
+  const text = value.trim().replace(' ', 'T');
+  if (!text) return undefined;
+  const t = Date.parse(/T[\d:.]+$/.test(text) ? `${text}Z` : text);
+  return Number.isFinite(t) ? new Date(t) : undefined;
+}
+
+/**
+ * Epoch milliseconds for a SQLite or ISO datetime string parsed as UTC.
+ */
+export function toUtcEpoch(value?: string | null): number | undefined {
+  return parseUtcDate(value)?.getTime();
+}
+
+/**
  * Format a past or future date relative to now (e.g. "2 hours ago", "in 3 days").
  */
 export function formatRelativeTime(date: Date | string | number): string {
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+  const d =
+    typeof date === 'string'
+      ? (parseUtcDate(date) ?? new Date(date))
+      : typeof date === 'number'
+        ? new Date(date)
+        : date;
   const now = Date.now();
   const diffMs = d.getTime() - now;
   const diffSeconds = Math.round(diffMs / 1000);

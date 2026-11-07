@@ -381,10 +381,10 @@ textarea::placeholder {
   color: var(--text-primary);
 }
 
-.app-status-seg + .app-status-seg::before {
+.app-status-seg:not(:last-of-type)::after {
   content: '·';
   color: var(--text-muted);
-  margin-right: 6px;
+  margin-left: 6px;
 }
 
 .app-status-seg:hover {

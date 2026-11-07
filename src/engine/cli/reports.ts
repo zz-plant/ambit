@@ -14,14 +14,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shellQuote } from '../../shared/shell.ts';
-import { formatCount } from '../../shared/format.ts';
+import { formatCount, toUtcEpoch } from '../../shared/format.ts';
 import { ENGINE_DIR, loadTechTree } from '../paths.ts';
 import { findBottlenecks, singlePointsOfFailure } from '../inference.ts';
 import { ledgerHistory, ledgerSince } from '../ledger.ts';
 import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
-import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
+import { C, formatGeneric, raiseExitCode, terminalPalette, type Palette } from './output.ts';
 import { HELP_SHORT, helpTopic } from './help.ts';
 import { commandWords } from './groups.ts';
 import { nearest } from '../../shared/nearest.ts';
@@ -49,7 +49,9 @@ import {
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
 function ago(ts: string | null | undefined): string | undefined {
   if (!ts) return undefined;
-  const ms = Date.now() - new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z').getTime();
+  const epoch = toUtcEpoch(ts);
+  if (epoch === undefined) return undefined;
+  const ms = Date.now() - epoch;
   if (!(ms >= 0)) return undefined;
   const mins = Math.round(ms / 60000);
   if (mins < 60) return `${mins}m ago`;
@@ -1542,6 +1544,7 @@ function explain(wanted: string): void {
     if (meant.length) console.log(`Did you mean ${meant.map(m => `ambit help ${m}`).join(', ')}?`);
     console.log(`Words: ${all.map(lookupWord).join(', ')}`);
     console.log(`${paint.grey}ambit help --all lists every command.${paint.reset}`);
+    raiseExitCode(1);
     return;
   }
   console.log('');

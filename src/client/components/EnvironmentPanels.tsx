@@ -5,7 +5,7 @@ import type {
   RepoScanResponse,
   UnmappedResponse,
 } from '../../shared/api';
-import { formatRelativeTime } from '../../shared/format';
+import { formatRelativeTime, parseUtcDate } from '../../shared/format';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { Icon } from './Icon';
@@ -308,8 +308,7 @@ export function InfrastructurePanel({
 
 /** SQLite's `datetime('now')` is UTC with no zone; the moment it names, or nothing if it will not parse. */
 function stampDate(stamp: string): Date | undefined {
-  const d = new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`);
-  return Number.isNaN(d.getTime()) ? undefined : d;
+  return parseUtcDate(stamp);
 }
 
 /** A stored time as a label, or nothing if it will not parse. */

@@ -27,6 +27,7 @@ import {
   usable,
 } from './assurance.ts';
 import { shellQuote } from '../shared/shell.ts';
+import { toUtcEpoch } from '../shared/format.ts';
 import { humanDigest } from './attention.ts';
 import { budgetStanding } from './budgets.ts';
 import { installText } from './catalog.ts';
@@ -303,8 +304,9 @@ const isMode = (m: unknown): m is AuthorityMode =>
 /** Whole days since a stored timestamp, or nothing when the clocks disagree. */
 function daysSince(stamp: unknown): number | undefined {
   if (typeof stamp !== 'string' || !stamp) return undefined;
-  const ms =
-    Date.now() - new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`).getTime();
+  const epoch = toUtcEpoch(stamp);
+  if (epoch === undefined) return undefined;
+  const ms = Date.now() - epoch;
   return Number.isFinite(ms) && ms >= 0 ? Math.floor(ms / 86_400_000) : undefined;
 }
 

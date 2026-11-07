@@ -1,7 +1,7 @@
 import type { Db } from './db.ts';
 import { usable } from './assurance.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
-import { isReached } from './vocabulary.ts';
+import { isReached, PROVEN } from './vocabulary.ts';
 
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ function frontierNow(db: Db): Observation {
     lifecycles[r.id] = r.lifecycle || 'unknown';
   }
   const verified = rows.filter(
-    r => inFrontier(r.kind) && (r.lifecycle === 'verified' || r.lifecycle === 'reliable')
+    r => inFrontier(r.kind) && (PROVEN as readonly string[]).includes(r.lifecycle)
   ).length;
   return { taken_at: null, states, kinds, lifecycles, verified };
 }
