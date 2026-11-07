@@ -216,6 +216,12 @@ export default function AppDeck(p: AppDeckProps) {
   // line opening on a stray "·". What gives way is still in its tooltip.
   const pill = useRef<HTMLDivElement>(null);
   const [fold, setFold] = useState(0);
+  const [shared, setShared] = useState(false);
+  useEffect(() => {
+    if (!shared) return;
+    const t = setTimeout(() => setShared(false), 2000);
+    return () => clearTimeout(t);
+  }, [shared]);
   useLayoutEffect(() => {
     if (pill.current && fold < 2 && wraps(pill.current)) setFold(fold + 1);
   });
@@ -416,9 +422,16 @@ export default function AppDeck(p: AppDeckProps) {
         <button
           type="button"
           className="app-deck-btn app-deck-btn--share"
-          onClick={p.onShare}
-          title="Copy a link that opens exactly this view, with its graph, node and lens"
-          aria-label="Share view link"
+          onClick={() => {
+            p.onShare();
+            setShared(true);
+          }}
+          title={
+            shared
+              ? 'Link copied. It opens on this view'
+              : 'Copy a link that opens exactly this view, with its graph, node and lens'
+          }
+          aria-label={shared ? 'Link copied' : 'Share view link'}
         >
           <Icon strokeLinejoin="round" className="app-deck-icon">
             <circle cx="4" cy="8" r="2" />
@@ -426,7 +439,7 @@ export default function AppDeck(p: AppDeckProps) {
             <circle cx="12" cy="12" r="2" />
             <path d="M5.8 7.1 L10.2 4.9 M5.8 8.9 L10.2 11.1" />
           </Icon>
-          <span className="app-deck-btn-label">Share</span>
+          <span className="app-deck-btn-label">{shared ? 'Copied ✓' : 'Share'}</span>
         </button>
         <button
           type="button"

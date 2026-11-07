@@ -133,7 +133,21 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           </button>
         </div>
 
-        <div className="docs-tabs" role="tablist">
+        <div
+          className="docs-tabs"
+          role="tablist"
+          onKeyDown={e => {
+            const cur = TABS.findIndex(t => t.id === tab);
+            if (cur === -1) return;
+            if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              setTab(TABS[(cur + 1) % TABS.length].id);
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              setTab(TABS[(cur - 1 + TABS.length) % TABS.length].id);
+            }
+          }}
+        >
           {TABS.map(t => (
             <button
               type="button"
