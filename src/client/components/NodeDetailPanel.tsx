@@ -273,6 +273,16 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   // Execution: the command entry that supplies it carries the same name.
   const needs = incoming.filter(({ conn }) => !isProvision(conn));
   const suppliers = incoming.filter(({ conn }) => isProvision(conn));
+  const suppliedByMeta = Array.isArray(item.meta?.providers)
+    ? (item.meta.providers as string[])
+        .map(id => byId.get(id))
+        .filter((n): n is Item => Boolean(n))
+        .map(node => ({ node }))
+    : [];
+  const allSuppliers = [
+    ...suppliers,
+    ...suppliedByMeta.filter(m => !suppliers.some(s => s.node.id === m.node.id)),
+  ];
   const enables = connections
     .filter(c => c.from === item.id && byId.has(c.to))
     .map(c => ({ node: byId.get(c.to)!, conn: c }));
@@ -755,6 +765,26 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         </div>
       )}
 
+      {/* Review setup plan: where it runs and what it would do before taking it on. */}
+      {item.status !== 'built' && (
+        <div className="sp-cli-actions">
+          <div className="sp-section-label">Review setup plan</div>
+          <div className="sp-cli-row">
+            <code className="sp-cli-cmd">
+              <Command text={`ambit goal ${item.id} --paths`} />
+            </code>
+            <button
+              type="button"
+              className={`sp-cli-copy-btn ${copiedCmd === 'plan' ? 'sp-cli-copy-btn--copied' : ''}`}
+              onClick={() => copy('plan', `ambit goal ${item.id} --paths`)}
+              aria-label={`Copy command ambit goal ${item.id} --paths`}
+            >
+              {copiedCmd === 'plan' ? 'Copied ✓' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <LinkList
         title="Needs"
         edge="needs"
@@ -764,7 +794,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
       <LinkList
         title="Provided by"
         edge="needs"
-        links={suppliers.map(({ node }) => ({ node }))}
+        links={allSuppliers.map(({ node }) => ({ node }))}
         onShow={onShow ?? selectItem}
       />
       <LinkList

@@ -645,7 +645,7 @@
             }
           },
           {
-            "name": "read-only database MCP",
+            "name": "custom read-only database MCP",
             "setup_seconds": 600,
             "recurring_cost": "none",
             "privacy": "local",

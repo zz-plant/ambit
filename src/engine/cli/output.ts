@@ -127,6 +127,11 @@ function emit(data: any, human: (data: any) => string[] = formatGeneric): void {
   for (const line of human(data)) console.log(line);
 }
 
+/** Strips terminal control sequences and non-printable control characters. */
+function sanitizeTerminal(text: string): string {
+  return text.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F]/g, '');
+}
+
 /**
  * The generic rendering, as the lines a terminal shows.
  *
@@ -153,10 +158,15 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
     needs_approval: 'asks first',
     autonomous: 'runs without asking',
     unattended_inside: 'runs without asking inside',
+    capability_id: 'capability',
+    setup_seconds: 'setup time',
+    expires_at: 'expires',
   };
   const label = (k: string) => SAYS[k] ?? k.replace(/_/g, ' ');
   const scalar = (v: any) =>
-    Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : String(v);
+    sanitizeTerminal(
+      Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : String(v)
+    );
   const skip = (_k: string, v: any) =>
     v === null ||
     v === undefined ||
@@ -190,11 +200,11 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
 
   const renderOne = (row: any, indent = '  ', headline = true) => {
     if (typeof row !== 'object' || row === null) {
-      say(indent + String(row));
+      say(indent + sanitizeTerminal(String(row)));
       return;
     }
     const headKey = headline ? HEADLINE.find(k => row[k] !== undefined) : undefined;
-    if (headKey) say(`${indent}${c.bold}${row[headKey]}${c.reset}`);
+    if (headKey) say(`${indent}${c.bold}${sanitizeTerminal(String(row[headKey]))}${c.reset}`);
     // Arrays of scalars are values, not nesting. Skipping every object dropped
     // them, which `scalar`'s array branch shows was never the intent — and it
     // silently removed the answer from the commands whose answer is a list:

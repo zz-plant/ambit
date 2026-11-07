@@ -215,3 +215,14 @@ test('a failed result exits 1 on the way out, and never through the sink', () =>
     process.exitCode = before;
   }
 });
+
+test('control characters in names or scalar values are sanitized from generic output', () => {
+  const evil = 'injected\x1b[2K\x1b[1A\x07name';
+  const out = formatGeneric({ name: evil, note: 'hidden\x00note' }, PLAIN);
+  expect(out.join('\n')).not.toContain('\x1b');
+  expect(out.join('\n')).not.toContain('\x07');
+  expect(out.join('\n')).not.toContain('\x00');
+  expect(out.join('\n')).toContain('injectedname');
+  expect(out.join('\n')).toContain('hiddennote');
+});
+

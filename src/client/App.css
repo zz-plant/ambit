@@ -858,8 +858,21 @@ button.app-sample-tag:hover {
   background: var(--error);
 }
 
+.setup-finding--next::before {
+  background: var(--accent);
+}
+
 .setup-finding--warn::before {
   background: var(--warn);
+}
+
+.setup-row-fail-reason {
+  grid-column: 1 / -1;
+  font-size: var(--fs-xs);
+  color: var(--error);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .setup-row-idle {
