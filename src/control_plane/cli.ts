@@ -15,9 +15,9 @@ import { AdapterRefusal, commandProblem, selectAdapter } from './docker.ts';
  * Chosen before the graph is opened, so a Docker that cannot run the step
  * leaves no run, no proposal and no state file behind.
  */
-function adapterOrExit(envDir: string, flag: string | undefined) {
+function adapterOrExit(envDir: string, flag: string | undefined, runtimeFlag: string | undefined) {
   try {
-    return selectAdapter(envDir, { adapter: flag });
+    return selectAdapter(envDir, { adapter: flag, runtime: runtimeFlag });
   } catch (e) {
     if (!(e instanceof AdapterRefusal)) throw e;
     console.log(
@@ -30,7 +30,8 @@ function adapterOrExit(envDir: string, flag: string | undefined) {
 function main() {
   const argv = process.argv.slice(2);
   const adapterFlag = argv.find(a => a.startsWith('--adapter='))?.slice('--adapter='.length);
-  const args = argv.filter(a => !a.startsWith('--adapter='));
+  const runtimeFlag = argv.find(a => a.startsWith('--runtime='))?.slice('--runtime='.length);
+  const args = argv.filter(a => !a.startsWith('--adapter=') && !a.startsWith('--runtime='));
   const command = args[0];
 
   if (!command || command === '--help' || command === '-h') {
@@ -46,11 +47,13 @@ Commands:
 Environment adapter (setup-env and exec):
   --adapter=simulated   the default: the change is merged into a JSON file and nothing runs
   --adapter=docker      an approved step's payload.command runs in a throwaway container
+  --runtime=<name>      alternative container runtime for docker (e.g. runsc for gVisor)
   AMBIT_ADAPTER         the same choice; --adapter wins
   AMBIT_DOCKER_IMAGE    the image a step runs in (default alpine:3.20); never pulled for you
   AMBIT_DOCKER_NETWORK  none (default) or bridge, given only to a step whose capability
                         holds a grant for the network action
   AMBIT_DOCKER_WORKDIR  a directory mounted read-only at /work; none by default
+  AMBIT_DOCKER_RUNTIME  container runtime identifier (e.g. runsc)
 `);
     process.exit(0);
   }
@@ -58,7 +61,7 @@ Environment adapter (setup-env and exec):
   if (command === 'setup-env') {
     const envDir = args[1] || './mock_env';
     const dbPath = args[2] || './graph.db';
-    const adapter = adapterOrExit(envDir, adapterFlag);
+    const adapter = adapterOrExit(envDir, adapterFlag, runtimeFlag);
     const db = getDb(dbPath);
     setupControlPlaneGraph(db);
     const envState = createInitialSimulatedEnvironment(envDir);
@@ -82,7 +85,7 @@ Environment adapter (setup-env and exec):
       process.exit(1);
     }
     const request: AgentExecutionRequest = JSON.parse(rawReq);
-    const adapter = adapterOrExit(envDir, adapterFlag);
+    const adapter = adapterOrExit(envDir, adapterFlag, runtimeFlag);
     // A Docker step without a command could only fail after the gate had
     // recorded it as permitted, so the request is refused before either.
     const missing =

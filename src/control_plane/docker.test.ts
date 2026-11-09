@@ -28,6 +28,7 @@ import {
   dockerRunArgv,
   imageProblem,
   MAX_OUTPUT,
+  runtimeProblem,
   selectAdapter,
   type DockerEnvironment,
   type DockerResult,
@@ -145,11 +146,24 @@ test('nothing from the host is mounted unless a working directory is named, and 
   expect(mounted).toContain('--workdir=/work');
 });
 
-test('the argument builder refuses a name, image or network it did not expect', () => {
+test('the argument builder refuses a name, image, network or runtime it did not expect', () => {
   expect(() => dockerRunArgv({ ...STEP, name: 'mine' })).toThrow(/generated/);
   expect(() => dockerRunArgv({ ...STEP, image: '--privileged' })).toThrow(/image reference/);
   expect(() => dockerRunArgv({ ...STEP, network: 'host' as never })).toThrow(/loopback/);
+  expect(() => dockerRunArgv({ ...STEP, runtime: '--bad' })).toThrow(/runtime identifier/);
   expect(() => dockerRunArgv({ ...STEP, command: [] })).toThrow(/payload.command/);
+
+  const gvisor = dockerRunArgv({ ...STEP, runtime: 'runsc' });
+  expect(gvisor).toContain('--runtime=runsc');
+});
+
+test('a runtime reference cannot be a flag or carry a shell', () => {
+  for (const good of ['runsc', 'runc', 'crun', 'kata-qemu', 'gvisor_custom'])
+    expect(runtimeProblem(good)).toBeNull();
+  expect(runtimeProblem(undefined)).toBeNull();
+  expect(runtimeProblem(null)).toBeNull();
+  for (const bad of ['-v', '--privileged', 'runsc;rm -rf /', 'run sc', 'x:$(id)'])
+    expect(runtimeProblem(bad)).not.toBeNull();
 });
 
 test('an image reference cannot be a flag or carry a shell', () => {
@@ -280,6 +294,15 @@ describe('choosing Docker when it cannot run a step', () => {
     expect(selectAdapter(dir, { env: { AMBIT_ADAPTER: 'Docker' }, run: docker.run }).name).toBe(
       'docker'
     );
+    expect(() =>
+      selectAdapter(dir, { adapter: 'docker', runtime: '--bad', run: docker.run })
+    ).toThrow(AdapterRefusal);
+    const withGvisor = selectAdapter(dir, {
+      adapter: 'docker',
+      env: { AMBIT_DOCKER_RUNTIME: 'runsc' },
+      run: docker.run,
+    });
+    expect(withGvisor.name).toBe('docker');
   });
 });
 

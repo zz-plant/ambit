@@ -420,4 +420,12 @@ function credentialReport(db: Db) {
   });
 }
 
-export { providersOf, sharedCredentials, analyzeImpact, singlePointsOfFailure, credentialReport };
+export {
+  providersOf,
+  sharedCredentials,
+  outageCascade,
+  analyzeImpact,
+  singlePointsOfFailure,
+  credentialReport,
+  type Edge,
+};

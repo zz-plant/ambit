@@ -138,6 +138,8 @@ export interface DockerOptions {
   run?: DockerRunner;
   /** The home directory the mount rule protects; the real one by default. */
   home?: string;
+  /** Container runtime identifier (e.g. `runsc` for gVisor, `runc`). */
+  runtime?: string;
 }
 
 /**
@@ -206,6 +208,20 @@ export function imageProblem(image: string): string | null {
 export function networkProblem(network: string): string | null {
   if (network === 'none' || network === 'bridge') return null;
   return `${JSON.stringify(network)} is not a network the adapter gives a step: none (the default) or bridge. host is refused because it puts the container on this machine's loopback, where the API and every local service listen.`;
+}
+
+/**
+ * A Docker runtime reference, such as `runsc` (gVisor), `runc`, or `crun`.
+ * It cannot start with `-` so it is never read as a flag.
+ */
+const RUNTIME_REF = /^[a-zA-Z0-9_.-]{1,64}$/;
+
+/** Why a container runtime choice is refused, or null for a valid identifier or undefined. */
+export function runtimeProblem(runtime?: string | null): string | null {
+  if (!runtime) return null;
+  if (!RUNTIME_REF.test(runtime) || runtime.startsWith('-'))
+    return `${JSON.stringify(runtime)} is not a container runtime identifier such as "runsc".`;
+  return null;
 }
 
 /**
@@ -321,11 +337,15 @@ export function dockerRunArgv(spec: {
   command: string[];
   network: DockerNetwork;
   workdir: string | null;
+  runtime?: string | null;
 }): string[] {
   if (!/^ambit-step-[a-f0-9]+$/.test(spec.name))
     throw new Error('a step container name is generated, never given');
   const wrong =
-    imageProblem(spec.image) || networkProblem(spec.network) || commandProblem(spec.command);
+    imageProblem(spec.image) ||
+    networkProblem(spec.network) ||
+    commandProblem(spec.command) ||
+    runtimeProblem(spec.runtime);
   if (wrong) throw new Error(wrong);
   return [
     'run',
@@ -333,6 +353,7 @@ export function dockerRunArgv(spec: {
     `--name=${spec.name}`,
     `--label=${STEP_LABEL}=step`,
     `--label=ambit.step=${spec.name}`,
+    ...(spec.runtime ? [`--runtime=${spec.runtime}`] : []),
     '--pull=never',
     `--network=${spec.network}`,
     '--read-only',
@@ -371,9 +392,10 @@ export function dockerAdapter(
   const run = options.run ?? dockerCli;
   const image = options.image || DEFAULT_DOCKER_IMAGE;
   const network = options.network || 'none';
+  const runtime = options.runtime || process.env.AMBIT_DOCKER_RUNTIME || null;
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS;
 
-  const wrong = imageProblem(image) || networkProblem(network);
+  const wrong = imageProblem(image) || networkProblem(network) || runtimeProblem(runtime);
   if (wrong) throw new AdapterRefusal(wrong);
   let workdir: string | null = null;
   if (options.workdir) {
@@ -445,7 +467,7 @@ export function dockerAdapter(
       const name = `ambit-step-${randomBytes(6).toString('hex')}`;
       const started = Date.now();
       const out = run(
-        dockerRunArgv({ name, image, command, network: net, workdir }),
+        dockerRunArgv({ name, image, command, network: net, workdir, runtime }),
         timeoutSeconds * 1000
       );
       const seconds = (Date.now() - started) / 1000;
@@ -507,12 +529,13 @@ export function dockerAdapter(
 /**
  * The adapter the entry point was asked for: `--adapter` first, then
  * `AMBIT_ADAPTER`, then the simulator. Docker's settings come from
- * `AMBIT_DOCKER_IMAGE`, `AMBIT_DOCKER_NETWORK` and `AMBIT_DOCKER_WORKDIR`. A
+ * `AMBIT_DOCKER_IMAGE`, `AMBIT_DOCKER_NETWORK`, `AMBIT_DOCKER_RUNTIME` and
+ * `AMBIT_DOCKER_WORKDIR`. A
  * name it does not know, or a Docker it cannot use, is an AdapterRefusal.
  */
 export function selectAdapter(
   envDir: string,
-  choice: { adapter?: string; env?: NodeJS.ProcessEnv; run?: DockerRunner } = {}
+  choice: { adapter?: string; runtime?: string; env?: NodeJS.ProcessEnv; run?: DockerRunner } = {}
 ): EnvironmentAdapter<SimulatedEnvironment> {
   const env = choice.env ?? process.env;
   const name = (choice.adapter ?? env.AMBIT_ADAPTER ?? '').trim().toLowerCase() || ADAPTERS[0];
@@ -525,6 +548,7 @@ export function selectAdapter(
     image: env.AMBIT_DOCKER_IMAGE,
     network: env.AMBIT_DOCKER_NETWORK,
     workdir: env.AMBIT_DOCKER_WORKDIR,
+    runtime: choice.runtime || env.AMBIT_DOCKER_RUNTIME,
     run: choice.run,
   });
 }
