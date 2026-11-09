@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { CHROME, Cdp, freePort, launchChrome, sleep } from './lib/chrome.ts';
 import { servedDir } from './render-images.ts';
 
@@ -259,38 +260,95 @@ function cleanup() {
   if (work) rmSync(work, { recursive: true, force: true });
 }
 
-function parseArgs(argv: string[]): {
-  out: string;
-  live: boolean;
-  home?: string;
-  only?: string[];
-} {
-  let out = join(ROOT, 'output', 'shots');
-  let live = false;
-  let home: string | undefined;
-  let only: string[] | undefined;
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--live') live = true;
-    else if (a === '--out' || a.startsWith('--out='))
-      out = resolve(a === '--out' ? argv[++i] : a.slice(6));
-    else if (a === '--home' || a.startsWith('--home=')) {
-      home = resolve(a === '--home' ? argv[++i] : a.slice(7));
-      live = true;
-    } else if (a === '--only' || a.startsWith('--only='))
-      only = (a === '--only' ? argv[++i] : a.slice(7)).split(',');
-    else
+const HELP = `Usage: npm run shots -- [options]
+
+  --url <url>    Use a running dev or hosted site at /ambit/ (default: build locally)
+  --only <names> Comma-separated shot names
+  --size <name>  Capture one viewport: ${Object.keys(SIZES).join(', ')}
+  --strict       Exit nonzero when a frame is flagged
+  --live         Include views that require a live Ambit API
+  --home <dir>   Use this HOME for the API started by the runner; implies --live
+  --out <dir>    Write PNGs, index.html and report.json here (default: output/shots)
+
+Shots:
+${SHOTS.map(s => `  ${s.name.padEnd(17)} ${s.sizes.join(', ')}${s.live ? ' (requires --live)' : s.offline ? ' (local build only)' : ''}`).join('\n')}`;
+
+export function parseShotArgs(args: string[]) {
+  const { values } = parseArgs({
+    args,
+    options: {
+      url: { type: 'string' },
+      only: { type: 'string' },
+      size: { type: 'string' },
+      out: { type: 'string' },
+      home: { type: 'string' },
+      live: { type: 'boolean' },
+      strict: { type: 'boolean' },
+      help: { type: 'boolean', short: 'h' },
+    },
+  });
+  const { url, only, size, out, home, live, strict, help } = values;
+  let origin: string | undefined;
+  if (url !== undefined) {
+    const target = URL.parse(url);
+    if (
+      !target ||
+      !['http:', 'https:'].includes(target.protocol) ||
+      target.username ||
+      target.password ||
+      !['/', '/ambit', '/ambit/'].includes(target.pathname) ||
+      target.search ||
+      target.hash
+    ) {
       throw new Error(
-        `unknown argument ${a}: takes --out <dir>, --only <names>, --live and --home <dir>`
+        '--url takes an HTTP(S) origin or /ambit/ URL without credentials, query or fragment'
       );
+    }
+    if (home !== undefined) throw new Error('--home applies only to the API started by the runner');
+    origin = target.origin;
   }
-  return { out, live, home, only };
+  if (size !== undefined && !Object.hasOwn(SIZES, size)) throw new Error(`Unknown size: ${size}`);
+  if (out === '' || home === '') throw new Error('--out and --home require a directory');
+  return {
+    origin,
+    size: size as SizeName | undefined,
+    out: out ? resolve(out) : join(ROOT, 'output', 'shots'),
+    home: home ? resolve(home) : undefined,
+    only: only?.split(',').map(name => name.trim()),
+    live: Boolean(live || home),
+    strict: Boolean(strict),
+    help,
+  };
+}
+
+export function selectShots({
+  origin,
+  live,
+  only,
+  size,
+}: ReturnType<typeof parseShotArgs>): Shot[] {
+  const available = SHOTS.filter(s => (live || !s.live) && (!origin || !s.offline));
+  for (const name of only ?? []) {
+    const shot = available.find(s => s.name === name);
+    if (!shot) throw new Error(`Shot unavailable for this target: ${name}. See --help.`);
+    if (size && !shot.sizes.includes(size)) {
+      throw new Error(`Shot ${name} has no ${size} viewport. See --help.`);
+    }
+  }
+  return available.filter(
+    s => (!only || only.includes(s.name)) && (!size || s.sizes.includes(size))
+  );
+}
+
+interface ShotResult {
+  name: string;
+  size: SizeName;
+  file: string | null;
+  found: string[];
 }
 
 /** The contact sheet: every shot by view and size, with what the checks found under each. */
-export function contactSheet(
-  rows: { name: string; size: SizeName; file: string; found: string[] }[]
-): string {
+export function contactSheet(rows: ShotResult[]): string {
   const html = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const views = [...new Set(rows.map(r => r.name))];
   const cells = views
@@ -299,7 +357,7 @@ export function contactSheet(
         .filter(r => r.name === view)
         .map(
           r =>
-            `<figure class="${r.size}${r.found.length ? ' flagged' : ''}"><img src="${r.file}" alt="${html(`${view} at ${r.size}`)}"><figcaption>${r.size}${r.found.map(f => `<br><b>${html(f)}</b>`).join('')}</figcaption></figure>`
+            `<figure class="${r.size}${r.found.length ? ' flagged' : ''}">${r.file ? `<img src="${r.file}" alt="${html(`${view} at ${r.size}`)}">` : ''}<figcaption>${r.size}${r.found.map(f => `<br><b>${html(f)}</b>`).join('')}</figcaption></figure>`
         )
         .join('');
       return `<section><h2>${html(view)}</h2><div class="row">${shots}</div></section>`;
@@ -314,23 +372,26 @@ figcaption{margin-top:6px;color:#8a8e96}figcaption b{color:#ef6461;font-weight:6
 </style><h1>Every view, as a screenshot</h1>${cells}`;
 }
 
-async function main() {
-  process.on('exit', cleanup);
-  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const)
-    process.on(sig, () => {
-      cleanup();
-      process.exit(1);
+async function hasApi(origin: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${origin}/api/health`, {
+      redirect: 'error',
+      signal: AbortSignal.timeout(1000),
     });
-  const { out, live, home, only } = parseArgs(process.argv.slice(2));
-  const served = servedDir(out);
-  if (served) throw new Error(`${out} is under ${served}/, which is served; choose another --out`);
-  if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}; set CHROME_PATH`);
-  const shots = SHOTS.filter(s => (live || !s.live) && (!only || only.includes(s.name)));
+    if (!response.ok) return false;
+    const health = await response.json();
+    return (
+      typeof health === 'object' && health !== null && 'status' in health && health.status === 'ok'
+    );
+  } catch {
+    return false;
+  }
+}
 
-  work = mkdtempSync(join(tmpdir(), 'ambit-shots-'));
+async function startPreview(directory: string, live: boolean, home?: string) {
   const vite = await import('vite');
   const config = join(ROOT, 'vite.config.ts');
-  const outDir = join(work, 'dist');
+  const outDir = join(directory, 'dist');
   await vite.build({ configFile: config, logLevel: 'error', build: { outDir, emptyOutDir: true } });
 
   // The page with an engine behind it, for --live, and with none, for the demo
@@ -350,12 +411,12 @@ async function main() {
       }
     );
     procs.push(api);
-    for (let i = 0; i < 60; i++) {
-      try {
-        if ((await fetch(`http://127.0.0.1:${apiPort}/api/health`)).ok) break;
-      } catch {}
-      await sleep(250);
+    let up = false;
+    for (let i = 0; i < 60 && api.exitCode === null && !up; i++) {
+      up = await hasApi(`http://127.0.0.1:${apiPort}`);
+      if (!up) await sleep(250);
     }
+    if (!up) throw new Error(`Ambit API did not start on port ${apiPort}`);
   }
   // With no engine the page is static files, as the hosted site is: /api/health
   // answers with index.html, which the page reads as no engine. A proxy to a
@@ -375,10 +436,32 @@ async function main() {
       },
     });
     closers.push(() => server.httpServer.close());
-    return port;
+    return `http://127.0.0.1:${port}`;
   };
-  const noApi = await serve();
-  const withApi = live ? await serve(apiPort) : noApi;
+  const offline = await serve();
+  return { offline, main: live ? await serve(apiPort) : offline };
+}
+
+async function main(): Promise<number> {
+  const options = parseShotArgs(process.argv.slice(2));
+  if (options.help) {
+    console.log(HELP);
+    return 0;
+  }
+  const { out, live, home, origin, size, strict } = options;
+  const shots = selectShots(options);
+  const served = servedDir(out);
+  if (served) throw new Error(`${out} is under ${served}/, which is served; choose another --out`);
+  if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}; set CHROME_PATH`);
+
+  process.on('exit', cleanup);
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const)
+    process.on(sig, () => process.exit(1));
+  work = mkdtempSync(join(tmpdir(), 'ambit-shots-'));
+  const sites = origin ? { main: origin, offline: origin } : await startPreview(work, live, home);
+  const target = origin ? `${origin}/ambit/` : 'local build';
+  console.log(`Capturing ${target}`);
+  const apiMissing = origin && shots.some(shot => shot.live) && !(await hasApi(origin));
 
   const cdpPort = await freePort();
   procs.push(launchChrome(cdpPort, join(work, 'profile'), { width: 1440, height: 900 }));
@@ -398,7 +481,8 @@ async function main() {
     for (let attempt = 0; attempt < 2; attempt++) {
       await cdp.eval('window.__shotsLeft = true').catch(() => {});
       try {
-        await cdp.send('Page.navigate', { url }, 10_000);
+        const { errorText } = await cdp.send('Page.navigate', { url }, 10_000);
+        if (errorText) return errorText as string;
       } catch {
         await cdp.send('Page.stopLoading').catch(() => {});
       }
@@ -406,18 +490,18 @@ async function main() {
         const fresh = await cdp
           .eval("!window.__shotsLeft && document.readyState !== 'loading'")
           .catch(() => false);
-        if (fresh) return true;
+        if (fresh) return null;
         await sleep(200);
       }
     }
-    return false;
+    return 'the page never arrived';
   };
 
   mkdirSync(out, { recursive: true });
-  const rows: { name: string; size: SizeName; file: string; found: string[] }[] = [];
+  const rows: ShotResult[] = [];
   for (const shot of shots) {
-    const origin = `http://127.0.0.1:${shot.offline ? noApi : withApi}`;
-    for (const sizeName of shot.sizes) {
+    const origin = shot.offline ? sites.offline : sites.main;
+    for (const sizeName of size ? [size] : shot.sizes) {
       const size = SIZES[sizeName];
       await cdp.send('Emulation.setDeviceMetricsOverride', {
         width: size.width,
@@ -434,55 +518,69 @@ async function main() {
           storageTypes: 'local_storage,session_storage',
         });
       }
-      const arrived = await go(origin + shot.path);
+      const navigationError =
+        shot.live && apiMissing ? 'No live Ambit API at /api/health' : await go(origin + shot.path);
       let ready = false;
-      for (let i = 0; i < 100 && !ready; i++) {
+      for (let i = 0; !navigationError && i < 100 && !ready; i++) {
         ready = await cdp.eval(`Boolean(${shot.ready})`).catch(() => false);
         if (!ready) await sleep(200);
       }
-      await cdp.eval('document.fonts.ready.then(() => true)').catch(() => {});
+      if (ready) await cdp.eval('document.fonts.ready.then(() => true)').catch(() => {});
       // A shot whose action failed is of some other state, and says so.
-      const acted = shot.act
-        ? await cdp.eval(shot.act).then(
-            () => true,
-            e => {
-              console.error(`${shot.name}: ${e.message}`);
-              return false;
-            }
-          )
-        : true;
+      const acted =
+        ready && shot.act
+          ? await cdp.eval(shot.act).then(
+              () => true,
+              e => {
+                console.error(`${shot.name}: ${e.message}`);
+                return false;
+              }
+            )
+          : true;
       // Framing scrolls smoothly, and a simulation settles over a second.
-      await sleep(2200);
-      const found: string[] = !arrived
-        ? ['the page never arrived']
+      if (ready) await sleep(2200);
+      const found: string[] = navigationError
+        ? [navigationError]
         : !ready
           ? ['the view never drew']
           : [...(acted ? [] : ['the action before the shot failed']), ...(await cdp.eval(CHECKS))];
-      const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' }, 30_000);
-      const file = `${shot.name}--${sizeName}.png`;
-      writeFileSync(join(out, file), Buffer.from(data, 'base64'));
+      const filename = `${shot.name}--${sizeName}.png`;
+      let file: string | null = null;
+      if (!navigationError) {
+        const png = await cdp.shot().catch(error => {
+          found.push(`Chrome could not capture the frame: ${error.message}`);
+          return null;
+        });
+        if (png) {
+          writeFileSync(join(out, filename), png);
+          file = filename;
+        }
+      }
       rows.push({ name: shot.name, size: sizeName, file, found });
-      console.log(`${found.length ? '!' : '✓'} ${file}${found.map(f => `\n    ${f}`).join('')}`);
+      console.log(
+        `${found.length ? '!' : '✓'} ${filename}${found.map(f => `\n    ${f}`).join('')}`
+      );
     }
   }
   const sheet = join(out, 'index.html');
   writeFileSync(sheet, contactSheet(rows));
   const flagged = rows.filter(r => r.found.length).length;
+  writeFileSync(
+    join(out, 'report.json'),
+    JSON.stringify({ target, flagged, shots: rows }, null, 2) + '\n'
+  );
   const rel = relative(process.cwd(), sheet);
   console.log(
-    `\n${rows.length} shots, ${flagged ? `${flagged} flagged` : 'none flagged'}. The sheet: ${rel.startsWith('..') ? sheet : rel}`
+    `\n${rows.length} ${rows.length === 1 ? 'shot' : 'shots'}, ${flagged ? `${flagged} flagged` : 'none flagged'}. The sheet: ${rel.startsWith('..') ? sheet : rel}`
   );
+  return strict && flagged ? 1 : 0;
 }
 
 if (process.argv[1]?.endsWith('shots.ts')) {
   main()
-    .then(() => {
-      cleanup();
-      process.exit(0);
-    })
+    .then(code => process.exit(code))
     .catch(e => {
       console.error(`shots failed: ${e.message}`);
-      cleanup();
       process.exit(1);
     });
 }

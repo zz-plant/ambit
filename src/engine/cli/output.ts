@@ -129,6 +129,7 @@ function emit(data: any, human: (data: any) => string[] = formatGeneric): void {
 
 /** Strips terminal control sequences and non-printable control characters. */
 function sanitizeTerminal(text: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: strip terminal escape sequences and control characters
   return text.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F]/g, '');
 }
 

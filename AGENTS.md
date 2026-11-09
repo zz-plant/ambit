@@ -10,12 +10,15 @@ Capability graph engine, an SVG map of the curated tree in era columns, MCP serv
 ./bootstrap.sh                          # seed a graph and link the ambit command
 ./bootstrap.sh web                      # the same, then open the map on :3000
 npm run dev                             # API on :3001 and Vite on :3000, together
+npm run dev:fixture                     # disposable graph and config, API :3101 and Vite :3100
 ./cli.js status                         # the CLI from a checkout, nothing installed
 npx vitest run src/engine/cli.test.ts   # one test file
 ./cli.js where                          # which graph is open, and whether it is seeded
 npm run render:images -- --demo         # the saved map, relief and specimens, to output/images
 npm run shots                           # every view as a screenshot at three sizes, to output/shots
 ```
+
+For site work in a fresh worktree, start with `npm ci` and `npm run dev:fixture`. [The site iteration guide](./CONTRIBUTING.md#iterate-on-the-site) has the dev and production URLs, how to override ports, and screenshot commands. `npm run shots -- --help` lists cases and sizes. A run writes a contact sheet and `report.json`; add `--strict` when you want flags to fail the command.
 
 Work on how the map draws starts at the specimen page: `npx vite`, or the `ambit-specimen` launch configuration, then `/ambit/dev/specimen.html`. It draws every node state at three times its size through the map's own code, beside the key entry for it, and `?still` draws them as a saved file does. `npm run render:images` writes the files the Image menu saves, and the specimen page whole, from a headless Chrome: this checkout's graph, or the demo with `--demo`. The demo carries a failing check and a recovering one, so the stripes and the waver show without a graph of your own. `npm run shots` photographs every view at 1440×900, 1280×720 and a phone, with a contact sheet, and flags the frames a machine can fault: a status pill that wraps, a map column cut at the left edge or under the panel, a simulation's banner over an era name, an outage's callout off the map, a view still loading. Look at it before a pull request that changes how a view looks; `--live --home <dir>` adds the machine's own views from a fixture's configs.
 

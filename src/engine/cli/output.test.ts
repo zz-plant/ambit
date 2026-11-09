@@ -225,4 +225,3 @@ test('control characters in names or scalar values are sanitized from generic ou
   expect(out.join('\n')).toContain('injectedname');
   expect(out.join('\n')).toContain('hiddennote');
 });
-
