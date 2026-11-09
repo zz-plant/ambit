@@ -1,18 +1,48 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
+import { setTimeout } from 'node:timers/promises';
+import { hasApi } from './scripts/lib/api-health.ts';
 
 /** The released version, for the page's structured data, read from the one place it is written. */
 const VERSION = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8')
 ).version;
+const API_ORIGIN = `http://127.0.0.1:${process.env.AMBIT_API_PORT || 3001}`;
+const REVISION = process.env.AMBIT_SITE_REVISION;
 
 export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'ambit-version',
-      transformIndexHtml: html => html.replace('%AMBIT_VERSION%', VERSION),
+      name: 'ambit-build-info',
+      transformIndexHtml: html => ({
+        html: html.replace('%AMBIT_VERSION%', VERSION),
+        tags:
+          REVISION && /^[0-9a-f]{40}$/.test(REVISION)
+            ? [
+                {
+                  tag: 'meta',
+                  attrs: { name: 'ambit-revision', content: REVISION },
+                  injectTo: 'head',
+                },
+              ]
+            : [],
+      }),
+    },
+    {
+      name: 'ambit-dev-api',
+      async configureServer() {
+        if (process.env.AMBIT_DEV_WAIT_FOR_API !== '1') return;
+        // The client probes once per page load. Serve the page only once that
+        // probe can succeed, so a fast first visit sees the live graph.
+        const deadline = Date.now() + 15_000;
+        do {
+          if (await hasApi(API_ORIGIN)) return;
+          await setTimeout(200);
+        } while (Date.now() < deadline);
+        throw new Error(`Ambit API did not become ready at ${API_ORIGIN}/api/health`);
+      },
     },
   ],
   // GitHub Pages serves the demo under /ambit/.
@@ -29,7 +59,7 @@ export default defineConfig({
       // The API server reads the same variable, so the two can move together.
       // It listens on 127.0.0.1 only, and `localhost` can resolve to ::1,
       // where another server may hold the same port.
-      '/api': `http://127.0.0.1:${process.env.AMBIT_API_PORT || 3001}`,
+      '/api': API_ORIGIN,
     },
   },
   build: {

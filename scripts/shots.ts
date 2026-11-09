@@ -25,10 +25,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { hasApi } from './lib/api-health.ts';
 import { CHROME, Cdp, freePort, launchChrome, sleep } from './lib/chrome.ts';
 import { servedDir } from './render-images.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const COMMIT_SHA = /^[0-9a-f]{40}$/;
 
 export const SIZES = {
   desk: { width: 1440, height: 900, mobile: false },
@@ -266,6 +268,7 @@ const HELP = `Usage: npm run shots -- [options]
   --only <names> Comma-separated shot names
   --size <name>  Capture one viewport: ${Object.keys(SIZES).join(', ')}
   --strict       Exit nonzero when a frame is flagged
+  --expect-revision <sha>  Require this full commit SHA on every page; implies --strict
   --live         Include views that require a live Ambit API
   --home <dir>   Use this HOME for the API started by the runner; implies --live
   --out <dir>    Write PNGs, index.html and report.json here (default: output/shots)
@@ -284,10 +287,14 @@ export function parseShotArgs(args: string[]) {
       home: { type: 'string' },
       live: { type: 'boolean' },
       strict: { type: 'boolean' },
+      'expect-revision': { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
   const { url, only, size, out, home, live, strict, help } = values;
+  const revision = values['expect-revision']?.toLowerCase();
+  if (revision !== undefined && !COMMIT_SHA.test(revision))
+    throw new Error('--expect-revision requires a full commit SHA');
   let origin: string | undefined;
   if (url !== undefined) {
     const target = URL.parse(url);
@@ -316,7 +323,8 @@ export function parseShotArgs(args: string[]) {
     home: home ? resolve(home) : undefined,
     only: only?.split(',').map(name => name.trim()),
     live: Boolean(live || home),
-    strict: Boolean(strict),
+    strict: Boolean(strict || revision),
+    revision,
     help,
   };
 }
@@ -345,6 +353,7 @@ interface ShotResult {
   size: SizeName;
   file: string | null;
   found: string[];
+  revision: string | null;
 }
 
 /** The contact sheet: every shot by view and size, with what the checks found under each. */
@@ -370,22 +379,6 @@ figure{margin:0}figure img{display:block;width:480px;border:1px solid #333;borde
 figure.phone img{width:180px}figure.flagged img{border-color:#ef6461}
 figcaption{margin-top:6px;color:#8a8e96}figcaption b{color:#ef6461;font-weight:600}
 </style><h1>Every view, as a screenshot</h1>${cells}`;
-}
-
-async function hasApi(origin: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${origin}/api/health`, {
-      redirect: 'error',
-      signal: AbortSignal.timeout(1000),
-    });
-    if (!response.ok) return false;
-    const health = await response.json();
-    return (
-      typeof health === 'object' && health !== null && 'status' in health && health.status === 'ok'
-    );
-  } catch {
-    return false;
-  }
 }
 
 async function startPreview(directory: string, live: boolean, home?: string) {
@@ -448,7 +441,7 @@ async function main(): Promise<number> {
     console.log(HELP);
     return 0;
   }
-  const { out, live, home, origin, size, strict } = options;
+  const { out, live, home, origin, size, strict, revision } = options;
   const shots = selectShots(options);
   const served = servedDir(out);
   if (served) throw new Error(`${out} is under ${served}/, which is served; choose another --out`);
@@ -520,6 +513,15 @@ async function main(): Promise<number> {
       }
       const navigationError =
         shot.live && apiMissing ? 'No live Ambit API at /api/health' : await go(origin + shot.path);
+      // Read from the same document as the frame. A deploy may land between
+      // navigations, and a separate request could hit a different cache.
+      const revisionTag: unknown = navigationError
+        ? null
+        : await cdp
+            .eval("document.querySelector('meta[name=ambit-revision]')?.content || null")
+            .catch(() => null);
+      const pageRevision =
+        typeof revisionTag === 'string' && COMMIT_SHA.test(revisionTag) ? revisionTag : null;
       let ready = false;
       for (let i = 0; !navigationError && i < 100 && !ready; i++) {
         ready = await cdp.eval(`Boolean(${shot.ready})`).catch(() => false);
@@ -544,6 +546,9 @@ async function main(): Promise<number> {
         : !ready
           ? ['the view never drew']
           : [...(acted ? [] : ['the action before the shot failed']), ...(await cdp.eval(CHECKS))];
+      if (!navigationError && revision && pageRevision !== revision) {
+        found.push(`Expected revision ${revision}; page reported ${pageRevision ?? 'none'}`);
+      }
       const filename = `${shot.name}--${sizeName}.png`;
       let file: string | null = null;
       if (!navigationError) {
@@ -556,7 +561,7 @@ async function main(): Promise<number> {
           file = filename;
         }
       }
-      rows.push({ name: shot.name, size: sizeName, file, found });
+      rows.push({ name: shot.name, size: sizeName, file, found, revision: pageRevision });
       console.log(
         `${found.length ? '!' : '✓'} ${filename}${found.map(f => `\n    ${f}`).join('')}`
       );
@@ -567,7 +572,8 @@ async function main(): Promise<number> {
   const flagged = rows.filter(r => r.found.length).length;
   writeFileSync(
     join(out, 'report.json'),
-    JSON.stringify({ target, flagged, shots: rows }, null, 2) + '\n'
+    JSON.stringify({ target, flagged, expectedRevision: revision ?? null, shots: rows }, null, 2) +
+      '\n'
   );
   const rel = relative(process.cwd(), sheet);
   console.log(
