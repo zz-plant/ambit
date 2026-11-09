@@ -77,7 +77,7 @@ export interface Sandbox {
  * replaces — mise prints four lines of error and exits — so the engine is
  * always invoked through `process.execPath`.
  */
-export function seedFixtureGraph(label = 'ambit-fixture'): Sandbox {
+export function seedFixtureGraph(label = 'ambit-fixture', baseEnv = process.env): Sandbox {
   const work = mkdtempSync(join(tmpdir(), `${label}-`));
   const home = join(work, 'home');
   const cfgDir = join(home, '.config', 'opencode');
@@ -87,10 +87,11 @@ export function seedFixtureGraph(label = 'ambit-fixture'): Sandbox {
   const dbPath = join(work, 'graph.db');
 
   const env: NodeJS.ProcessEnv = {
-    ...process.env,
+    ...baseEnv,
     HOME: home,
     AMBIT_DB: dbPath,
     OPENCODE_CONFIG: configPath,
+    AMBIT_OVERLAY_TECHTREE: join(work, 'no-overlay.json'),
     // Pointed at a file that does not exist on purpose: the scan must not probe
     // whatever infrastructure the generating machine happens to have.
     INFRA_MANIFEST: join(cfgDir, 'no-infrastructure.json'),
@@ -116,7 +117,13 @@ export function seedFixtureGraph(label = 'ambit-fixture'): Sandbox {
       { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
     );
 
-  engine(['seed']);
+  const cleanup = () => rmSync(work, { recursive: true, force: true });
+  try {
+    engine(['seed']);
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
 
   return {
     work,
@@ -124,7 +131,7 @@ export function seedFixtureGraph(label = 'ambit-fixture'): Sandbox {
     dbPath,
     env,
     engine,
-    cleanup: () => rmSync(work, { recursive: true, force: true }),
+    cleanup,
   };
 }
 
