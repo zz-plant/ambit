@@ -49,14 +49,16 @@ jobs:
       - run: npm ci
 
       - name: Build
+        env:
+          AMBIT_SITE_REVISION: ${{ github.sha }}
         run: npm run build
 
       - name: Publish to gh-pages
         run: |
           set -e
           # A worktree over the existing branch, rather than a force-push of a
-          # fresh history: the branch keeps its past deploys, and a build that
-          # changes nothing produces no commit.
+          # fresh history: the branch keeps its past deploys. The source SHA
+          # is stamped in the HTML so a browser check can identify the build.
           git fetch origin gh-pages
           git worktree add /tmp/pages origin/gh-pages
           # --ignore-times: a plain `-a` rsync can skip files its quick check

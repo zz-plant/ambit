@@ -18,7 +18,7 @@ You can also open the repository in [Codespaces](https://codespaces.new/zz-plant
 
 ## Iterate on the site
 
-From a fresh worktree, run `npm ci` and then `npm run dev:fixture`. Once Vite and the API have both printed their listening URLs, open [the fixture at localhost:3100/ambit/](http://localhost:3100/ambit/). Vite reloads client edits, and the API on port 3101 reads a temporary SQLite graph and OpenCode config. You can try the My Setup switches and discard the session with Ctrl+C. Set both `AMBIT_WEB_PORT` and `AMBIT_API_PORT` if another worktree uses those ports. Use `npm run dev` for your own setup.
+From a fresh worktree, run `npm ci` and then `npm run dev:fixture`. Open the URL Vite prints, normally [localhost:3100/ambit/](http://localhost:3100/ambit/). Vite waits for the API before listening and reloads client edits. The API on port 3101 reads a temporary SQLite graph and OpenCode config. You can try the My Setup switches and discard the session with Ctrl+C. Set both `AMBIT_WEB_PORT` and `AMBIT_API_PORT` if another worktree uses those ports. Use `npm run dev` for your own setup.
 
 The [fixture's Briefing](http://localhost:3100/ambit/?view=setup&tab=briefing&guide=off) shows what an agent receives when it connects. Briefing and Environment require the local API.
 
@@ -33,7 +33,7 @@ npm run shots -- --url http://localhost:3100/ambit/ --live --only live-setup --s
 npm run shots -- --url https://zz-plant.github.io/ambit/ --only map-rest --size phone --strict --out output/shots/prod
 ```
 
-Without `--url`, the runner makes and serves a temporary production build. With `--url`, it visits the running site as served. Open `index.html` in the output directory for the contact sheet or read `report.json` for the target and frame findings. `--strict` returns a failing exit code when a frame is flagged. A production check tests what Pages serves at that moment. After a merge, confirm the [Pages workflow](https://github.com/zz-plant/ambit/actions/workflows/pages.yml) has deployed it before checking.
+Without `--url`, the runner makes and serves a temporary production build. With `--url`, it visits the running site as served. Open `index.html` in the output directory for the contact sheet or read `report.json` for the target, frame findings, and each page's published revision when present. `--strict` fails when a frame is flagged. After the [Pages workflow](https://github.com/zz-plant/ambit/actions/workflows/pages.yml) completes, add `--expect-revision <full-commit-sha>` to fail if any page is still serving a different build or has no revision.
 
 ## The checks CI runs
 

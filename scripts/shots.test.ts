@@ -12,11 +12,12 @@ test('every shot is named once, is a page under the base, and is taken at a size
 
 test('the sheet marks a shot a check flagged, and says what it found', () => {
   const html = contactSheet([
-    { name: 'map-rest', size: 'desk', file: 'map-rest--desk.png', found: [] },
+    { name: 'map-rest', size: 'desk', file: 'map-rest--desk.png', found: [], revision: null },
     {
       name: 'map-rest',
       size: 'wide',
       file: 'map-rest--wide.png',
+      revision: null,
       found: ['the status pill wraps onto a second line'],
     },
   ]);
@@ -44,7 +45,13 @@ test('a running site can be checked at one size without building or taking offli
 
 test('the sheet reports navigation failures without linking to a missing PNG', () => {
   const html = contactSheet([
-    { name: 'map-rest', size: 'phone', file: null, found: ['net::ERR_CONNECTION_REFUSED'] },
+    {
+      name: 'map-rest',
+      size: 'phone',
+      file: null,
+      found: ['net::ERR_CONNECTION_REFUSED'],
+      revision: null,
+    },
   ]);
   expect(html).toContain('net::ERR_CONNECTION_REFUSED');
   expect(html).not.toContain('<img');
@@ -64,4 +71,10 @@ test('bad shot names, incompatible sizes and ambiguous URLs fail before starting
   expect(() => parseShotArgs(['--url', 'http://localhost:3000', '--home', '/tmp/fixture'])).toThrow(
     '--home'
   );
+});
+
+test('an expected revision is a full commit SHA and makes stale captures fail', () => {
+  const revision = 'a'.repeat(40);
+  expect(parseShotArgs(['--expect-revision', revision])).toMatchObject({ revision, strict: true });
+  expect(() => parseShotArgs(['--expect-revision', 'deadbeef'])).toThrow('commit SHA');
 });

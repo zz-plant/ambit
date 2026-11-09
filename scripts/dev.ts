@@ -29,13 +29,18 @@ if (useFixture) {
     // Prevent the Environment view from falling back to the machine's socket.
     DOCKER_HOST: `unix://${fixture.work}/no-docker.sock`,
   };
-  console.log(`Fixture: http://localhost:${webPort}/ambit/ (API on 127.0.0.1:${apiPort})`);
+  console.log(`Using a disposable fixture on web port ${webPort} and API port ${apiPort}`);
 }
 
 const { result } = concurrently(
   [
     { command: 'npm run server', name: 'api', prefixColor: 'cyan', env },
-    { command: 'vite', name: 'web', prefixColor: 'magenta', env },
+    {
+      command: 'vite',
+      name: 'web',
+      prefixColor: 'magenta',
+      env: { ...env, AMBIT_DEV_WAIT_FOR_API: '1' },
+    },
   ],
   { cwd: ROOT, prefix: 'name', killOthersOn: ['failure'] }
 );
