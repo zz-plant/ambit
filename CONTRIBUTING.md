@@ -20,6 +20,8 @@ You can also open the repository in [Codespaces](https://codespaces.new/zz-plant
 
 From a fresh worktree, run `npm ci` and then `npm run dev:fixture`. Once Vite and the API have both printed their listening URLs, open [the fixture at localhost:3100/ambit/](http://localhost:3100/ambit/). Vite reloads client edits, and the API on port 3101 reads a temporary SQLite graph and OpenCode config. You can try the My Setup switches and discard the session with Ctrl+C. Set both `AMBIT_WEB_PORT` and `AMBIT_API_PORT` if another worktree uses those ports. Use `npm run dev` for your own setup.
 
+The [fixture's Briefing](http://localhost:3100/ambit/?view=setup&tab=briefing&guide=off) shows what an agent receives when it connects. Briefing and Environment require the local API.
+
 The [hosted demo](https://zz-plant.github.io/ambit/?demo=1&view=map&guide=off) and [its plain-text index](https://zz-plant.github.io/ambit/llms.txt) work without a local server. For a local preview of the published docs, run `npm run build` and `npx vite preview`, then open `/ambit/docs/` on the URL Vite prints.
 
 Use the same screenshot cases at each stage. Chrome is found at the default macOS path or via `CHROME_PATH` pointing to the executable.

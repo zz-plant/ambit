@@ -65,7 +65,7 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 The direct view links use sample data and skip the first-run guide. Add `focus=<capability-id>` to a map link to open a node. The outage link starts a guided walkthrough.
 
 - [Map with Browser Automation selected](https://zz-plant.github.io/ambit/?demo=1&view=map&guide=off&focus=combo%3Abrowser-automation)
-- [My Setup and its Briefing](https://zz-plant.github.io/ambit/?demo=1&view=setup&tab=briefing&guide=off)
+- [My Setup](https://zz-plant.github.io/ambit/?demo=1&view=setup&guide=off)
 - [Time & cost](https://zz-plant.github.io/ambit/?demo=1&view=cost&guide=off)
 - [Audit](https://zz-plant.github.io/ambit/?demo=1&view=audit&guide=off)
 - [Proposals](https://zz-plant.github.io/ambit/?demo=1&view=proposals&guide=off)
