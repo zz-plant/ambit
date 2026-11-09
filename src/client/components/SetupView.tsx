@@ -10,7 +10,15 @@ import { canSwitchMcp, flipMcp } from '../utils/configSwitch';
 import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
-import { eraOf, isEntry, isFailing, isProven, isRecovering, nextSteps, recentRuns } from './civ/layout';
+import {
+  eraOf,
+  isEntry,
+  isFailing,
+  isProven,
+  isRecovering,
+  nextSteps,
+  recentRuns,
+} from './civ/layout';
 import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
@@ -247,37 +255,37 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
   const idle = placed
     ? live.filter(i => i.type === 'mcp-server' && (provides.get(i.id) || []).length === 0)
     : [];
-  const findings = (failingEntries.length > 0 || idle.length > 0 || bestNext) && tab === 'entries' && (
-    <ul className="setup-findings">
-      {failingEntries.length > 0 && (
-        <li className="setup-finding setup-finding--bad">
-          <strong>{nameList(failingEntries.map(i => i.name))}</strong>{' '}
-          {failingEntries.length === 1 ? 'provides' : 'provide'} something whose check is failing.
-        </li>
-      )}
-      {bestNext && (
-        <li className="setup-finding setup-finding--next">
-          <span>Next step:</span>{' '}
-          <strong>{bestNext.item.name}</strong>
-          {bestNext.cost && bestNext.cost !== 'unknown' ? ` (about ${bestNext.cost})` : ''} —{' '}
-          <button
-            type="button"
-            className="setup-chip"
-            onClick={() => onShow(bestNext.item.id)}
-            title={`Review setup plan for ${bestNext.item.name}`}
-          >
-            Review setup plan
-          </button>
-        </li>
-      )}
-      {idle.length > 0 && (
-        <li className="setup-finding setup-finding--warn">
-          <strong>{nameList(idle.map(i => i.name))}</strong> {idle.length === 1 ? 'is' : 'are'}{' '}
-          enabled but {idle.length === 1 ? 'provides' : 'provide'} nothing on the map.
-        </li>
-      )}
-    </ul>
-  );
+  const findings = (failingEntries.length > 0 || idle.length > 0 || bestNext) &&
+    tab === 'entries' && (
+      <ul className="setup-findings">
+        {failingEntries.length > 0 && (
+          <li className="setup-finding setup-finding--bad">
+            <strong>{nameList(failingEntries.map(i => i.name))}</strong>{' '}
+            {failingEntries.length === 1 ? 'provides' : 'provide'} something whose check is failing.
+          </li>
+        )}
+        {bestNext && (
+          <li className="setup-finding setup-finding--next">
+            <span>Next step:</span> <strong>{bestNext.item.name}</strong>
+            {bestNext.cost && bestNext.cost !== 'unknown' ? ` (about ${bestNext.cost})` : ''} —{' '}
+            <button
+              type="button"
+              className="setup-chip"
+              onClick={() => onShow(bestNext.item.id)}
+              title={`Review setup plan for ${bestNext.item.name}`}
+            >
+              Review setup plan
+            </button>
+          </li>
+        )}
+        {idle.length > 0 && (
+          <li className="setup-finding setup-finding--warn">
+            <strong>{nameList(idle.map(i => i.name))}</strong> {idle.length === 1 ? 'is' : 'are'}{' '}
+            enabled but {idle.length === 1 ? 'provides' : 'provide'} nothing on the map.
+          </li>
+        )}
+      </ul>
+    );
 
   return (
     <div className="setup">
@@ -517,8 +525,17 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                     const trail = trailOf(item, evidence?.failing ?? proves);
                     const failing = evidence?.tone === 'error';
                     const verifyCmd = verifyCommand(trail?.node ?? evidence?.failing?.[0] ?? item);
-                    const failureSignals = (evidence?.failing ?? (item.meta?.failures ? [item] : []))
-                      .flatMap(f => (f.meta?.failures ?? []) as { class: string; signal: string; times: number }[])
+                    const failureSignals = (
+                      evidence?.failing ?? (item.meta?.failures ? [item] : [])
+                    )
+                      .flatMap(
+                        f =>
+                          (f.meta?.failures ?? []) as {
+                            class: string;
+                            signal: string;
+                            times: number;
+                          }[]
+                      )
                       .slice(0, 2);
                     const carry = carryOf(item);
                     const provesNothing =
