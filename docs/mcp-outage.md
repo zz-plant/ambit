@@ -2,7 +2,7 @@
 
 An agent setup is a stack of dependencies nobody wrote down. A GitHub MCP server provides version control; version control is half of a review loop; the review loop is what lets an agent open a pull request on its own. When that server's token expires, the agent does not report a missing server. It reports that it cannot open a pull request, or it quietly does something else.
 
-The question to answer before that happens is what would stop if this one server, model or credential expired or was removed. Security teams call the same question blast radius, and the answer below is the same one.
+The question to answer before that happens is what would stop if this one server, model or credential expired or was removed. Security teams call that the blast radius.
 
 ## Three answers, not one
 
@@ -57,7 +57,7 @@ Each answer has its own fix:
 - **For providers behind one token or host**, declare the credential in a `credentials` block so the sharing is counted, then give one of them its own key or a different host.
 - **For what is already broken**, fix or remove it, and declare a check where you can so the next failure shows up before an agent finds it.
 
-Before removing a server or revoking a token on purpose, run `ambit impact` on it first. Its answer is as complete as the declarations behind it: a shared token nobody declared, or a server with no check, is invisible to it.
+Before removing a server or revoking a token on purpose, run `ambit impact` on it first. Its answer is as complete as the declarations behind it, so declare shared tokens and checks first.
 
 Every new capability rests on pieces that already exist, so knowing which ones carry the most is the guardrail half of widening what a setup can do.
 

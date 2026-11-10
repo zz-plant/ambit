@@ -41,10 +41,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
             <h2 id="proposals-title" className="sp-designation">
               Proposals
             </h2>
-            <div className="sp-class">
-              Changes an agent wants to make to your setup. Nothing is applied until you approve it,
-              and applying is a command you run.
-            </div>
+            <div className="sp-class">Changes an agent wants to make to your setup.</div>
           </div>
           <button type="button" className="sp-close" onClick={onClose} aria-label="Close proposals">
             ✕

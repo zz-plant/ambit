@@ -15,6 +15,7 @@ import type {
   ProposalRow,
 } from '../../shared/api';
 import { type OutageImpact, outageImpact, outageSplit } from '../components/civ/layout';
+import { toUtcEpoch } from '../../shared/format';
 import type { Connection, Item } from '../utils/configImporter';
 import { WEB_ACTOR } from '../utils/copy';
 import demoData from '../utils/demo-data.json';
@@ -30,8 +31,42 @@ interface Graph {
  * hero image is a picture of.
  */
 export function demoTreeGraph(): Graph {
-  return demoData.tree as unknown as Graph;
+  tree ??= onOneClock(demoData.tree as unknown as Graph);
+  return tree;
 }
+
+/** How long ago the sample's last check ran: the one that found Browser Automation failing. */
+const LAST_CHECK_AGO = 3 * 3_600_000;
+
+const stampOf = (epoch: number) => new Date(epoch).toISOString().slice(0, 19).replace('T', ' ');
+
+/**
+ * The sample's checks, dated from the day the page is opened.
+ *
+ * generate-demo-data.ts stamps every check on a fixed day, so the file is the
+ * same on every build, and the trail below is dated from now. Read as written,
+ * the two told one event twice: the trail said Browser Automation's check
+ * failed three hours ago, and its panel said the last check failed 45 days
+ * ago, a day more every day. The latest check in the file is moved to where
+ * the trail puts it and every other check keeps its distance from that one.
+ */
+function onOneClock(graph: Graph): Graph {
+  const checkedAt = (i: Item) =>
+    typeof i.meta?.lastChecked === 'string' ? toUtcEpoch(i.meta.lastChecked) : undefined;
+  const stamps = graph.items.flatMap(i => checkedAt(i) ?? []);
+  if (!stamps.length) return graph;
+  const shift = Date.now() - LAST_CHECK_AGO - Math.max(...stamps);
+  return {
+    ...graph,
+    items: graph.items.map(i => {
+      const at = checkedAt(i);
+      return at === undefined ? i : { ...i, meta: { ...i.meta, lastChecked: stampOf(at + shift) } };
+    }),
+  };
+}
+
+/** Shifted once a page load, so every reader of the tree holds the same list. */
+let tree: Graph | undefined;
 
 /**
  * The outage the demo opens on. A visitor who has read nothing yet should see
@@ -202,7 +237,7 @@ export function demoAudit(): AuditResponse {
     },
     {
       id: 'ambit:revision:demo',
-      at: ago(3 * hour - 1000),
+      at: ago(LAST_CHECK_AGO - 1000),
       actor: 'ambit',
       action: 'revision',
       target: 'combo:browser-automation/execute',
@@ -211,14 +246,14 @@ export function demoAudit(): AuditResponse {
     },
     {
       id: 'act:demo-failed',
-      at: ago(3 * hour),
+      at: ago(LAST_CHECK_AGO),
       action: 'failed',
       target: 'combo:browser-automation',
       outcome: { word: 'check failed', tone: 'bad' },
     },
     {
       id: 'act:demo-verified',
-      at: ago(3 * hour + 1000),
+      at: ago(LAST_CHECK_AGO + 1000),
       action: 'verified',
       target: 'combo:version-control',
       outcome: { word: 'check passed', tone: 'good' },

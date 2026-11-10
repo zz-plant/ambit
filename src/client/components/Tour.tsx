@@ -3,7 +3,7 @@ import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
-import { costOf, isEntry, mapFindings, outageRemedy, unlockCascade } from './civ/layout';
+import { costOf, mapFindings, outageRemedy, stepStanding } from './civ/layout';
 import { VIEW_ID } from './AppDeck';
 import ConfigIntake from './ConfigIntake';
 
@@ -33,6 +33,29 @@ const named = (list: Item[]) =>
         .slice(0, -1)
         .map(i => i.name)
         .join(', ')} and ${list[list.length - 1].name}`;
+
+/**
+ * The first card's sentences: where the sample stands, what one step makes
+ * that, and what the step lights. What is reached with the step and what only
+ * becomes a next step are said apart. Added together they read "would take it
+ * to 18" over a step that reaches one capability and opens two.
+ */
+export function nextStepBody(
+  name: string,
+  cost: string,
+  { reached, total, after, reaches, opens }: ReturnType<typeof stepStanding>
+): string {
+  const step = `Setting up ${name}${cost ? ` (about ${cost})` : ''} would bring that to ${after}`;
+  const withIt = reaches.length ? `, ${named(reaches)} coming with it` : '';
+  const lit = reaches.length ? '' : ', ringed in blue,';
+  const ahead = opens.length
+    ? `${withIt ? `${withIt},` : ''} and make ${named(opens)}${lit} next steps`
+    : withIt;
+  return (
+    `This sample setup reaches ${reached} of ${total} capabilities. ${step}${ahead}.` +
+    (reaches.length ? ' What it lights is ringed in blue.' : '')
+  );
+}
 
 /**
  * The way on from the first card, named for the card it opens. "What else it
@@ -109,36 +132,21 @@ export default function Tour({
     const broken = failing[0];
     const cost = best ? costOf(best.item) : '';
     // What lights, by name: "4 more" over four green circles left the reader
-    // to find and read them before the sentence meant anything.
+    // to find and read them before the sentence meant anything. The count
+    // before and after is the one the welcome screen gave, so the card a
+    // visitor lands on says what the button that brought them there said.
     const byId = new Map(items.map(i => [i.id, i]));
-    const opened = best
-      ? [...unlockCascade(items, connections, best.item.id)]
-          .flatMap(id => byId.get(id) ?? [])
-          .filter(i => !isEntry(i))
-      : [];
-    // The baseline the delta is a delta from, counted as the welcome screen
-    // counts it, so the card a visitor lands on says the same thing the
-    // button that brought them there said.
-    const tree = items.filter(i => !isEntry(i));
-    const reached = tree.filter(i => i.status === 'built').length;
+    const standing = best ? stepStanding(items, connections, best.item.id) : null;
 
     // Each body is a sentence or two: the map is doing the showing, and on a
     // phone a seventy-word card covered half of what it was describing.
     const list: Step[] = [];
-    if (best) {
+    if (best && standing) {
       list.push({
         key: 'next',
         intake: true,
         title: `One step would open ${best.reaches} more`,
-        body: (() => {
-          const opening =
-            `This sample setup reaches ${reached} of ${tree.length} capabilities. Setting up ` +
-            `${best.item.name}${cost ? ` (about ${cost})` : ''} would take it to ` +
-            `${reached + best.reaches}`;
-          return opened.length
-            ? `${opening} and unlock the ones ringed in blue: ${named(opened)}.`
-            : `${opening}.`;
-        })(),
+        body: nextStepBody(best.item.name, cost, standing),
         enter: () => {
           select(null);
           startAcquisition(best.item.id);
@@ -157,14 +165,21 @@ export default function Tour({
           stopped.length === 1 ? 'capability' : 'capabilities'
         } would stop`,
         // It ends on whether the setup would survive losing a provider, as
-        // every outage on the map does, in the banner's own sentence.
-        body: [
-          `${named(stopped)} would stop working.`,
-          cutOff.length ? 'The dashed outlines were never set up.' : '',
-          outageRemedy(items, COLD_OPEN_OUTAGE, byId.get(COLD_OPEN_OUTAGE)?.name) ?? '',
-        ]
-          .filter(Boolean)
-          .join(' '),
+        // every outage on the map does, in the banner's own sentence. The
+        // title says "MCP servers" and the map says Tool Protocol, so the
+        // sentence before it says they are one thing: the remedy used to
+        // open on a name the card had not used.
+        body: (() => {
+          const remedy = outageRemedy(items, COLD_OPEN_OUTAGE);
+          const root = byId.get(COLD_OPEN_OUTAGE)?.name;
+          return [
+            `${named(stopped)} would stop working.`,
+            cutOff.length ? 'The dashed outlines were never set up.' : '',
+            remedy && root ? `The map draws the servers as one node, ${root}. ${remedy}` : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+        })(),
         enter: () => {
           select(null);
           startOutage(COLD_OPEN_OUTAGE);
@@ -186,7 +201,7 @@ export default function Tour({
       key: 'approval',
       title: 'Nothing changes without you',
       body:
-        'Agents propose changes, each with its cost and how to undo it. ' +
+        'Agents propose changes, each with its cost and whether it can be undone. ' +
         'Only you can approve one, and every approval is signed.',
       proposal: true,
       enter: () => {
