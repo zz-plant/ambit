@@ -3,7 +3,7 @@ import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
-import { costOf, isEntry, mapFindings, unlockCascade } from './civ/layout';
+import { costOf, isEntry, mapFindings, outageRemedy, unlockCascade } from './civ/layout';
 import { VIEW_ID } from './AppDeck';
 import ConfigIntake from './ConfigIntake';
 
@@ -153,10 +153,18 @@ export default function Tour({
       const { stopped, cutOff } = outage;
       list.push({
         key: 'outage',
-        title: `And if ${COLD_OPEN_PLAIN} went down? ${stopped.length} things stop.`,
-        body:
-          `They would lose ${named(stopped)}.` +
-          (cutOff.length ? ' The dashed outlines were never set up.' : ''),
+        title: `If ${COLD_OPEN_PLAIN} went down, ${stopped.length} ${
+          stopped.length === 1 ? 'capability' : 'capabilities'
+        } would stop`,
+        // It ends on whether the setup would survive losing a provider, as
+        // every outage on the map does, in the banner's own sentence.
+        body: [
+          `${named(stopped)} would stop working.`,
+          cutOff.length ? 'The dashed outlines were never set up.' : '',
+          outageRemedy(items, COLD_OPEN_OUTAGE, byId.get(COLD_OPEN_OUTAGE)?.name) ?? '',
+        ]
+          .filter(Boolean)
+          .join(' '),
         enter: () => {
           select(null);
           startOutage(COLD_OPEN_OUTAGE);

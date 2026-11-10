@@ -49,7 +49,10 @@ import {
   visibleItems,
   wholeColumnFill,
   wholeColumns,
+  outageHops,
+  outageRemedy,
 } from './civ/layout.ts';
+import { useOutagePlayhead } from './civ/useOutagePlayhead.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
 import { hasHistory } from './civ/history.ts';
 import { ImageMenu, type ImageKind } from './civ/ImageMenu.tsx';
@@ -181,6 +184,37 @@ export default function CivTree({
       : requestedLens;
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
+  // An outage is stepped, not shown whole: the map draws what the playhead
+  // has reached, a hop at a time, and the banner's track moves it. The frame,
+  // the key and the banner's sentence keep to the whole cascade, so nothing
+  // moves under the reader while it plays.
+  const outageRoot = simulationMode === 'outage' ? simulatedNodeId : null;
+  const stepped = useMemo(
+    () =>
+      outageRoot
+        ? outageHops(items, connections, outageRoot, {
+            stops: simulatedCascadeIds,
+            weakened: simulatedWeakenedIds,
+          })
+        : null,
+    [items, connections, outageRoot, simulatedCascadeIds, simulatedWeakenedIds]
+  );
+  const playhead = useOutagePlayhead(outageRoot, stepped ? stepped.hops.length - 1 : 0);
+  const drawn = useMemo(() => {
+    if (!stepped) return simulation;
+    const reached = (ids: Set<string>) =>
+      new Set([...ids].filter(id => (stepped.depth.get(id) ?? 1) <= playhead.hop));
+    return {
+      ...simulation,
+      cascade: reached(simulatedCascadeIds),
+      weakened: reached(simulatedWeakenedIds),
+      paced: true,
+    };
+  }, [simulation, stepped, playhead.hop, simulatedCascadeIds, simulatedWeakenedIds]);
+  const remedy = useMemo(
+    () => (outageRoot ? outageRemedy(items, outageRoot, simulatedItem?.name) : null),
+    [items, outageRoot, simulatedItem?.name]
+  );
 
   const { downstream, upstream } = useMemo(() => buildAdjacency(connections, null), [connections]);
 
@@ -1296,6 +1330,7 @@ export default function CivTree({
           simulatedWeakenedIds={simulatedWeakenedIds}
           items={items}
           hiddenByFocus={hiddenBySimulation}
+          outage={stepped ? { hops: stepped.hops, ...playhead, remedy } : undefined}
           clearSimulation={clearSimulation}
           leftInset={leftInset}
           rightInset={rightInset}
@@ -1404,7 +1439,7 @@ export default function CivTree({
             positions={nodePositionMap}
             height={contentHeight}
             downstream={downstream}
-            simulation={simulation}
+            simulation={drawn}
             hazard={hazard}
             filters={filterPrefix}
             view={{
@@ -1461,7 +1496,7 @@ export default function CivTree({
 
               // What the node's evidence says, or what a running outage does
               // to it: the line that names a texture the map draws.
-              const role = outageRole(ni, simulation);
+              const role = outageRole(ni, drawn);
               const evidence = evidenceOf(ni);
               const said = role
                 ? {

@@ -8,7 +8,7 @@
  * is the map and not a second drawing of it that drifts.
  */
 import type React from 'react';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import type { ActiveLens } from '../../linkState';
 import type { Connection, Item } from '../../utils/configImporter';
 import { isRuntimeNode, nodeLabel } from '../../utils/labels';
@@ -430,9 +430,13 @@ export function MapScene({
     [attentionInterventions]
   );
   /** The stagger for a node the simulation reaches: the hop count, as a CSS variable. */
-  const hopStyle = (id: string): React.CSSProperties | undefined => {
+  const hopStyle = (id: string, edge = false): React.CSSProperties | undefined => {
     const hop = simDepth.get(id);
-    return hop === undefined || still ? undefined : ({ '--hop': hop } as React.CSSProperties);
+    if (hop === undefined || still) return undefined;
+    // Paced, whatever is lit was reached by the playhead just now: its edge
+    // lights at once and the node lands as the front crossing it arrives.
+    const at = simulation.paced ? (edge ? 0.5 : hop === 0 ? 0 : 1.4) : hop;
+    return { '--hop': at } as React.CSSProperties;
   };
   const largestColumn = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
   const isTreeView = colOrder.some(c => c.startsWith('era:'));
@@ -520,19 +524,31 @@ export function MapScene({
                 ? 'var(--text-muted)'
                 : 'var(--warn)';
 
+        const d = edgePath(fromPos.x, fromPos.y, toPos.x, toPos.y);
+        // The failure itself, crossing the edge toward what it stops: drawn
+        // only while an outage is stepped, and never toward what was not set
+        // up, which had nothing to lose.
+        const front =
+          isSimLine &&
+          !still &&
+          simulation.paced &&
+          conn.to !== simulatedNodeId &&
+          !notSetUp.has(conn.to);
         return (
-          <path
-            key={`c-${i}`}
-            className={isSimLine && !still ? 'civ-sim-edge' : undefined}
-            style={isSimLine ? hopStyle(conn.to) : undefined}
-            d={edgePath(fromPos.x, fromPos.y, toPos.x, toPos.y)}
-            fill="none"
-            stroke={strokeColor}
-            strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.25 : 1}
-            strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
-            strokeLinecap="round"
-            opacity={op}
-          />
+          <Fragment key={`c-${i}`}>
+            <path
+              className={isSimLine && !still ? 'civ-sim-edge' : undefined}
+              style={isSimLine ? hopStyle(conn.to, true) : undefined}
+              d={d}
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.25 : 1}
+              strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
+              strokeLinecap="round"
+              opacity={op}
+            />
+            {front && <path className="civ-sim-front" d={d} pathLength={1} />}
+          </Fragment>
         );
       })}
 

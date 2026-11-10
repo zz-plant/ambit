@@ -13,6 +13,7 @@ import {
   isProvision,
   isRecovering,
   outageImpact,
+  outageRemedy,
   outageSentence,
   outageSplit,
   readableSeconds,
@@ -440,6 +441,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           // An outage that stops nothing is a question worth asking, not an
           // alarm: the red button said danger under "nothing else would stop".
           const stops = impact?.stopped.length ?? 0;
+          const remedy = outageRemedy(items, item.id);
           const missing = gap ? [...gap.missing] : [];
           const route = missing.length > 1 ? routeTo(items, connections, item.id) : [];
           // The direct ones are named first: they are what to reach, the rest is
@@ -456,6 +458,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                   {outage?.before}
                   {outage?.count && <strong>{outage.count}</strong>}
                   {outage?.after}
+                  {/* Where something would stop, the sentence ends on whether
+                      this could survive losing a provider. */}
+                  {stops > 0 && remedy ? ` ${remedy}` : ''}
                 </p>
               ) : missing.length ? (
                 <>
