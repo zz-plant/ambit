@@ -13,7 +13,8 @@ RUN npm run build:cli
 FROM node:22-alpine
 WORKDIR /app
 
-COPY package.json ./
+COPY package*.json ./
+RUN npm ci --omit=dev
 COPY cli.js ./
 COPY --from=builder /app/dist-cli ./dist-cli
 
