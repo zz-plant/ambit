@@ -96,7 +96,9 @@ src/client/                React frontend
                            whole, at rest and in the standard lens, for a saved file, with no
                            control, tooltip or class in it
     civ/layout.ts          Column and row placement, the cascade walks (an outage, an unlock, a
-                           focus's neighbourhood), `routeTo` (the gap numbered in the order it
+                           focus's neighbourhood), `stepStanding` (what a setup reaches before
+                           and after one step, with what the step only makes a next step kept
+                           out of the count), `routeTo` (the gap numbered in the order it
                            closes), `unlockedSince` (what a rebuild reached, as the toast says
                            it, with `reachedQuote`, the tree's own line for one node), `eurekaOf`
                            (how full the asks draw a next step), the era ladder, label
@@ -162,8 +164,12 @@ src/client/                React frontend
     RunTimeline.tsx        One run in time, with a lane for the person who was asked, and each ask
                            as an exchange: the recorded request, and the answer or that none was
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
-  store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
+  store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt; the
+                           tree's checks are dated from the day the page opens, so a panel and
+                           the trail give one check one age
   vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym
+  demo-story.test.tsx      The sample tells one story: the front door, the tour, My Setup, Time &
+                           cost and the trail give one step, one count, one reason and one clock
   testing/elements.ts      `findAll`, how a component test with no DOM finds the element in a
                            hook-free view's drawing and calls the handler it carries
   testing/page.ts          `seed`, the store as a server render reads it, and `stubBrowser`, a
@@ -175,7 +181,8 @@ src/client/                React frontend
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
     placeInTab.ts          A config read in the tab placed on the curated tree, by the engine's
                            rule: whose file it is, what every runtime brings, and its model
-    demoSnapshot.ts        The hosted demo's LoopSnapshot — the shape /api/loop returns
+    demoSnapshot.ts        The hosted demo's LoopSnapshot — the shape /api/loop returns; why a
+                           step is next is read off the demo tree, never typed
     demoRun.ts             The hosted demo's sample runs
     checkHistory.ts        Which node's runs a My Setup row shows, and the one `ambit verify` command
                            the page copies and never runs

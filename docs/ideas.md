@@ -1,17 +1,17 @@
 # The ideas behind Ambit
 
-[Why Ambit](./why-ambit.md) gives the argument; [the affordance frontier](./affordance-frontier.md) develops the theory; [the reference](./deep-dive.md) describes the software.
-
 ## The claim
 
 What an agent setup can do is composed from pieces configured separately. A configured piece may fail, and technical reach differs from permission. Ambit models those distinctions for a person, their agents and their machines.
 
-## One object, four names
+## Four names you will meet
+
+They nest: the ambit is the reach, the frontier is its edge, the capability graph computes both, and the affordance frontier is the wider theory.
 
 | Name | Where you meet it | Meaning |
 | :--- | :--- | :--- |
 | Ambit | README and app | What you, your agents and machines can jointly do |
-| Frontier | Map, CLI and ledger | The edge of that reach, with next steps beyond it |
+| Frontier | Map, CLI and history | The edge of that reach, with next steps beyond it |
 | Capability graph | Reference | The nodes and dependencies used to compute reach |
 | Affordance frontier | Theory | The broader object, including physical, social, institutional and economic action |
 
@@ -55,3 +55,5 @@ Work runs and outcome records exist. Versioned scenarios with acceptance evidenc
 - Composition is authored in the curated tree, not discovered from behavior. A setup can extend it in `.ambit/techtree.json`.
 - Enforcement covers `apply`, routed control-plane execution and Claude Code with the gate hook installed. Other runtimes choose whether to consult it.
 - Reach and check results measure aspects of the assembled system, not model intelligence.
+
+To see these on a sample setup, [open the demo](https://zz-plant.github.io/ambit/?demo=1). [Why Ambit](./why-ambit.md) gives the argument, [the affordance frontier](./affordance-frontier.md) the theory, and [the reference](./deep-dive.md) the software.

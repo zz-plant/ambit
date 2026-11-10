@@ -6,7 +6,14 @@ import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { INSTALL } from '../utils/copy';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { BrandMark } from './BrandMark';
-import { bandSpan, COL_W, columnCentre, isEntry, mapFindings, unlockCascade } from './civ/layout';
+import {
+  bandSpan,
+  COL_W,
+  columnCentre,
+  mapFindings,
+  stepStanding,
+  unlockCascade,
+} from './civ/layout';
 import { MapStill, stillLayout } from './civ/MapScene';
 import ConfigIntake from './ConfigIntake';
 
@@ -51,8 +58,11 @@ const DOCS = `${import.meta.env.BASE_URL}docs/`;
  * walk the map draws, so the number here is the one the tour's first step
  * then shows. "More than what?" had no answer: a bare delta left the reader
  * to guess at a denominator, so the card carries the baseline it is a delta
- * from. With it, a still of the columns it lights, for a wide screen: the
- * front door was all words, and a screenshot of it showed no product.
+ * from. What the step reaches and what it only brings within a step are
+ * counted apart (`stepStanding`): added together, the card said 16 of 46
+ * became 18 on a step that reaches one capability. With it, a still of the
+ * columns it lights, for a wide screen: the front door was all words, and a
+ * screenshot of it showed no product.
  */
 function demoNextStep() {
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
@@ -62,7 +72,7 @@ function demoNextStep() {
     demoSnapshot().next.map(n => n.id)
   );
   if (!best) return null;
-  const tree = items.filter(i => !isEntry(i));
+  const standing = stepStanding(items, connections, best.item.id);
   const layout = stillLayout(items, connections);
   const cascade = unlockCascade(items, connections, best.item.id);
   const lit = [best.item.id, ...cascade].flatMap(id => layout.positions.get(id) ?? []);
@@ -74,8 +84,13 @@ function demoNextStep() {
     name: best.item.name,
     reaches: best.reaches,
     /** Reached, and the tree's size: the two halves of the baseline. */
-    reached: tree.filter(i => i.status === 'built').length,
-    total: tree.length,
+    reached: standing.reached,
+    total: standing.total,
+    /** Reached once the step is taken: itself, and what comes with it. */
+    after: standing.after,
+    /** How many come with it, and how many it only makes a next step. */
+    withIt: standing.reaches.length,
+    opens: standing.opens.length,
     still: {
       items,
       connections,
@@ -141,12 +156,12 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           What can you and your agents do, and what would one more step open up?
         </h1>
         <p className="app-welcome-lede">
-          Start with what you have. Ambit reads the MCP configs of {RUNTIMES_READ} AI coding agents
-          and MCP clients, including {RUNTIMES[0]}, {RUNTIMES[1]}, {RUNTIMES[2]} and {RUNTIMES[3]},
-          and reports three facts about every piece: configured, working, and whether it runs
-          without asking. Then it draws what they add up to as one map: which next step would open
-          the most, and what stops if a piece goes away. Run it again after any change. That reach
-          is your <em>ambit</em>.
+          Ambit reads the MCP configs of {RUNTIMES_READ} AI coding agents and MCP clients, including{' '}
+          {RUNTIMES[0]}, {RUNTIMES[1]}, {RUNTIMES[2]} and {RUNTIMES[3]}, and reports three facts
+          about every piece: configured, working, and whether it runs without asking. Then it draws
+          what the pieces add up to as one map of what your setup can reach, with which next step
+          would open the most and what stops if a piece goes away. That reach is your <em>ambit</em>
+          .
         </p>
 
         {owner && (
@@ -180,8 +195,10 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           <button type="button" className="app-welcome-fact" onClick={onExploreDemo}>
             <span className="app-welcome-fact-figure">{next.reaches}</span>
             <span className="app-welcome-fact-text">
-              more capabilities a sample developer&apos;s agents would reach once {next.name} is set
-              up: {next.reached} of {next.total} today, {next.reached + next.reaches} after.
+              more capabilities {next.withIt ? 'open up' : 'become next steps'} for a sample
+              developer&apos;s agents once {next.name} is set up. They reach {next.reached} of{' '}
+              {next.total} today, {next.after} after
+              {next.withIt && next.opens ? `, with ${next.opens} more as next steps` : ''}.
               <strong className="app-welcome-fact-go">Watch it open →</strong>
             </span>
           </button>

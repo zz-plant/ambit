@@ -11,10 +11,7 @@ export default function ProposalsView() {
       <div className="proposals-inner">
         <div className="proposals-head">
           <h1 className="setup-title">Proposals</h1>
-          <p className="setup-subtitle">
-            Changes an agent wants to make to your setup. Nothing is applied until you approve it,
-            and applying is a command you run.
-          </p>
+          <p className="setup-subtitle">Changes an agent wants to make to your setup.</p>
         </div>
         <ProposalsDesk />
       </div>

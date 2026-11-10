@@ -8,6 +8,7 @@ It does not choose your stack, review your code, or hold your secrets. Those lim
 
 ```bash
 npx ambit-cli goal "launch my saas"
+npm install -g ambit-cli   # keeps the ambit command the rest of this page uses
 ```
 
 The sentence is routed to **Launch Ready**, the launch infrastructure checklist, which is reached when six things are in place. The answer is a checklist in order: each step's setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again. An item is as strong as what detected or verified it: detection shows a tool is present, not that a restore has been tried.
@@ -21,7 +22,7 @@ The sentence is routed to **Launch Ready**, the launch infrastructure checklist,
 | Error Tracking | The stack trace a user hit, before they write in |
 | Uptime Monitoring | Something outside your laptop that notices when the site is down |
 
-Payments, user accounts, transactional email and product analytics are on the map beside them, in the same two columns of the map, the eras **Product** and **Operations**, and not required for launch, since not every product takes money on day one. Ask for any of them the same way: `ambit goal "take payments"`, `ambit goal "add login"`.
+Payments, user accounts, transactional email and product analytics are not required for launch, since not every product takes money on day one. On Ambit's map they sit beside the six steps, in the two columns, or eras, named **Product** and **Operations**. Ask for any of them the same way: `ambit goal "take payments"`, `ambit goal "add login"`.
 
 After each step, `ambit seed` reads the configs again and the list moves.
 
@@ -37,7 +38,7 @@ Each task is routed the way a sentence is, and the tools the plan names under Te
 
 ## What an agent may do without you
 
-Every capability in those two eras carries defaults a careful CTO would set. The agent may read freely, must ask before anything a customer would notice, and may not do the few things that cannot be undone.
+Every capability in the Product and Operations eras carries defaults a careful CTO would set. The agent may read freely, must ask before anything a customer would notice, and may not do the few things that cannot be undone.
 
 | Capability | Runs without asking | Asks first | Is refused |
 | :--- | :--- | :--- | :--- |
@@ -60,6 +61,8 @@ Claude Code sessions are the one spend recorded on their own: declare what a mod
 
 ## When something breaks
 
+Hearing about it first is what the Error Tracking and Uptime Monitoring steps above are for. Once you know, these say how far it goes:
+
 - `ambit impact mcp:stripe` names everything that stops if your Stripe server goes, before you find out by trying.
 - `ambit credentials` lists what each token is holding up, so rotating one is a decision and not a surprise.
 - `ambit verify` runs every declared check, and a capability whose check fails drops out of every plan and every grant until it passes again.
@@ -71,6 +74,6 @@ Claude Code sessions are the one spend recorded on their own: declare what a mod
 - **Review your code.** A passing check means a tool answers. It says nothing about whether your app is correct.
 - **Hold your secrets.** It reads which servers you have, never their keys, and sends nothing except what a command you typed sends.
 - **Stand in for a security review** before you take money or store personal data.
-- **Run on Windows**, where it does not read the agent configs yet.
+- **Do everything on Windows.** It installs from npm and reads the agent configs there, but `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, and a check written for `sh` stays unverified without Git Bash or another `sh` on the PATH.
 
 [The guide](../README.md) covers installing and every command; [from A to B: the seven steps](./loadout.md) is the longer walk through what Ambit makes possible.

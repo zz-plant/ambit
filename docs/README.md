@@ -1,6 +1,6 @@
 # Ambit documentation
 
-Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes. Run it once to see what you have, and again after any change: a token that expired or a server that moved shows up as failing.
+Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes. Run it once to see what you have, and again after any change: a piece whose check has stopped passing shows up as failing.
 
 - **Try it**: [the live demo](https://zz-plant.github.io/ambit/?demo=1), a sample setup, with nothing to install.
 - **Install it, or connect it to Claude Code or OpenCode**: [Get started](../README.md).
@@ -8,9 +8,8 @@ Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more a
 - **Audit what your agent already has**: [Auditing an MCP server setup](./audit-mcp-servers.md).
 - **Find the single points of failure**: [What breaks if a server goes](./mcp-outage.md).
 - **Compare it with a gateway**: [Ambit and MCP gateways](./compare.md).
-- **Understand why it exists**: [The ideas behind Ambit](./ideas.md).
 
-The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with [From A to B: the seven steps](./loadout.md). For the argument, [The ideas behind Ambit](./ideas.md) is the one-page version. The pages are grouped by the kind of claim each one makes, which a file listing cannot tell you.
+The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. [From A to B: the seven steps](./loadout.md) walks one setup through using it, and [The ideas behind Ambit](./ideas.md) is the argument on one page.
 
 ## What it reads and answers today
 
@@ -43,7 +42,7 @@ The claim underneath is that what an agent setup can do is not written in any co
 - [Changelog](../CHANGELOG.md) — what changed per release, and why.
 - [Incident trace](./incidents/INCIDENT_TRACE_001.md) — one blocked execution traced end to end, with the terminal recording of it.
 
-For that reason `scripts/check-prose.ts` excludes both paths.
+Both record what was said when it was written, so neither is revised afterwards.
 
 ## Changing it
 

@@ -1,6 +1,6 @@
 # FAQ
 
-Terms are defined in [the README](../README.md#the-words-ambit-uses), and `ambit help <term>` looks any of them up from the terminal.
+Ambit reads the MCP and agent configs on a machine into one local map: what the setup can do, which pieces work, and what one more step would open. Terms are defined in [the README](../README.md#the-words-ambit-uses), and `ambit help <term>` looks any of them up from the terminal.
 
 ## Is this for me
 
@@ -30,11 +30,11 @@ Three faults look the same from the agent's side: the server is not declared, it
 
 ### How much of my context window do my MCP tools use?
 
-Each MCP server's tool list is sent to the model every session, whether or not a tool is called. `ambit weigh` starts each local server your user-level configs declare, asks for its tools, and reports what the list costs in context, per runtime, plus which servers the ledger never saw called. It starts the servers once, so run it when you are willing to.
+Each MCP server's tool list is sent to the model every session, whether or not a tool is called. `ambit weigh` starts each local server your user-level configs declare, asks for its tools, and reports what the list costs in context, per runtime, plus which servers the session history, Ambit's local record of agent runs, never saw called. It starts the servers once, so run it when you are willing to.
 
 ### Does Ambit send my code or config anywhere?
 
-No. It reads the config files and writes one local SQLite file, whose path `ambit where` prints, and there is no telemetry. The commands that can open a socket are listed under [Does anything leave my machine?](#does-anything-leave-my-machine), each with what it sends and where.
+Not unless you type a command that does. [Does anything leave my machine?](#does-anything-leave-my-machine) lists each one, with what it sends and where.
 
 ### How do I get from here to a goal?
 
@@ -86,7 +86,7 @@ Names and structure. A credential is a node you declared in a `credentials` bloc
 
 ### Can an agent change my configuration through Ambit?
 
-Not on its own. An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Read the proposal the way you read a pull request: what the file will say, what it undoes, and who signed it. Approving is the review; `ambit apply` is the merge, and `ambit rollback` is the revert. Approving and applying are not MCP tools. They run from the terminal or the map, outside the MCP tool surface, and `ambit apply` writes a `.bak` beside any file it edits. The visualizer also has a direct editor for entries that already exist, such as the switch that turns an MCP server on or off, in the detail panel and in the My Setup list. It writes to the config on a person's click without a proposal, after copying the file it replaces to a `.bak`, and offers the switch only for a server your config names; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
+Not on its own. An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Read the proposal the way you read a pull request: what the file will say, what undoes it, and who signed it. Approving is the review; `ambit apply` is the merge, and `ambit rollback` is the revert. Approving and applying are not MCP tools. They run from the terminal or the map, outside the MCP tool surface, and `ambit apply` writes a `.bak` beside any file it edits. The visualizer also has a direct editor for entries that already exist, such as the switch that turns an MCP server on or off, in the detail panel and in the My Setup list. It writes to the config on a person's click without a proposal, after copying the file it replaces to a `.bak`, and offers the switch only for a server your config names; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
 
 ### Where do I report a security problem?
 

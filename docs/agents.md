@@ -1,6 +1,6 @@
 # For agents: before and after Ambit
 
-This page is for an agent deciding whether to suggest Ambit to the person it works with, and for one that has just connected to it. Each claim below is something you can check with one command once they agree to run it. The numbers are the hosted demo's, which anyone can [open](https://zz-plant.github.io/ambit/?demo=1).
+Ambit reads the MCP and agent configs on a machine into one local map: what works, what is failing, and what one more step would let you do. If you are an agent deciding whether to suggest it to the person you work with, or one that has just connected to it, each claim below is something you can check with one command once they agree to run it. The numbers are the hosted demo's, which anyone can [open](https://zz-plant.github.io/ambit/?demo=1).
 
 Your *ambit* is what you, the person you work with and their machines can do together. It belongs to neither of you alone, which is why widening it takes both of you. [The ideas behind Ambit](./ideas.md) has the longer version.
 
@@ -21,7 +21,7 @@ None of this is anyone's fault. The setup is spread across a config file per run
 
 With the person's go-ahead, `npx ambit-cli status` reads the agent configs on the machine and the token counts in the session logs agents keep. It writes one local file, `~/.local/share/ambit/graph.db`, changes no config and sends nothing. Deleting that file undoes it. It prints what is reached, how much of it is verified, what is failing, and the one command to type next.
 
-On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of those are verified. `ambit next` names Embeddings: it has blocked work four times, and reaching it also opens Vector Store.
+On the demo's setup, 15 of the 46 capabilities on the map are reached, 12 of them verified, and one more is configured with a failing check. `ambit next` names Embeddings: it has blocked work four times, and reaching it makes Vector Store and Local Embeddings next steps.
 
 ## After, session by session
 
@@ -31,7 +31,7 @@ On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of 
 
 **When something missing stops you.** `ambit_plan` says what would close the gap, and `ambit_propose` drafts the change, with `purpose` set to the work it is for. The person reads the proposal, signs it or not, and applies it. A check proves the result, and the next briefing says what you can now do. A tool that fails along the way goes to `ambit_record_failure`. In the demo, agents have asked for Vector Store this way.
 
-**Over weeks.** Grants are per action and per target. The person can set a bar once, such as ten passing checks, and a grant widens when the evidence reaches it. One failing check narrows it again with nobody asked. The prompts that remain are the ones that should reach a person. In the demo, 31 capabilities may act without asking, 12 ask first and 3 are forbidden.
+**Over weeks.** Grants are per action and per target. The person can set a bar once, such as ten passing checks, and a grant widens when the evidence reaches it. One failing check narrows it again with nobody asked. The prompts that remain are the ones that should reach a person. In the demo, 31 of the 43 actions on what is reached run without asking, 12 ask first and 3 more are forbidden.
 
 **When it is time to judge.** With the Claude Code or OpenCode plugin, Ambit's session history records each time the person stepped in so you could continue. A step taken is measured against the hours it was forecast to save, so both of you can tell whether it paid. The demo records 89 interventions and 41 hours a year saved.
 

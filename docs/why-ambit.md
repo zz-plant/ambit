@@ -6,7 +6,7 @@ I built Ambit because neither I nor the agents could keep my whole stack in our 
 
 Every component had configuration. Nothing described what the whole arrangement could do.
 
-I wanted to know which addition would open useful work, which providers actually worked, and whether repeated failures shared one cause. Exposing the graph over MCP lets agents ask those questions too, without reconstructing the setup every session.
+I wanted to know which addition would open useful work, which providers actually worked, and whether repeated failures shared one cause. Ambit reads those configs into one graph of what the arrangement can do. A person's *ambit* is what they, their agents and their machines can do together. Exposing that graph over MCP lets agents ask the same questions, without reconstructing the setup every session.
 
 ## Composition is the part that got interesting
 
@@ -22,19 +22,19 @@ A configured tool can fail. A working tool can lack permission. Even passing com
 
 ## What an agent could notice
 
-After repeated blocks, an agent should help investigate the cause and propose a reusable change. A classified missing dependency can justify acquisition; an unexplained recurrence still needs investigation.
+When the same missing piece stops an agent more than once, the agent should help find the cause and propose a change later sessions can reuse. A known missing dependency is grounds to add it. A block that recurs with no known cause needs investigating first.
 
 ![A recurring block leads to investigation and a proposed change. A person may approve or decline it. An approved change is applied and checked; a failed check returns to investigation, while a passing result is retained as evidence.](./assets/capability-change-loop.svg)
 
 The useful result is a capability future sessions can reuse, with its dependencies, authority and evidence recorded. If a later check fails, the graph excludes it from current plans.
 
-## Accounting, and then a ledger
+## Accounting, and then a history
 
 Ambit accounts for capacity to act. It records what is configured, what checks have passed, who must participate and what may run without asking.
 
 History makes changes inspectable: adding credentials or a scheduler can complete a modeled capability without adding a dedicated provider for it. Removing one shared dependency can contract several capabilities at once.
 
-Today's snapshots preserve states, kinds and verification health. They use current names and edges when displayed. Reconstructing every route and permission as it stood during an incident needs historical records Ambit does not keep yet.
+Each time Ambit reads the configs it saves a snapshot of every capability's state, kind and verification health, shown with today's names and edges. Reconstructing every route and permission as it stood during an incident needs historical records Ambit does not keep yet.
 
 ## Effective agency as a governed object
 

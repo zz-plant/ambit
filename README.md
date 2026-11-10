@@ -50,7 +50,7 @@ If it answers a question your config files could not, [a star](https://github.co
 | :--- | :--- |
 | **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code, Copilot CLI, Kiro or OpenCode, and it is placed on the map in the tab, uploading nothing, with what one more step would open for it. No file at hand? Tick the servers you run. |
 | **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. It ends on one thing to do, `npx ambit-cli web`: the same readout on the map, served on localhost. `npm install -g ambit-cli` puts `ambit` on your path. |
-| **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the map the pictures on this page show. |
+| **From a checkout** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the same map from source. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. The container holds none of your configs, so the map it shows has nothing of yours on it: a way to try the code, not to map your setup. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
@@ -65,7 +65,7 @@ npm installs the tagged release on macOS, Linux and Windows, and Homebrew on mac
 
 ## Where Ambit sits in the stack
 
-Ambit sits above the protocol layer and below workflow orchestration. Its CLI, MCP server and gate neither route an agent's calls nor run them. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself from a checkout, and only with its opt-in Docker adapter.
+Ambit sits above the protocol layer and below workflow orchestration. Its CLI and MCP server neither route an agent's calls nor run them. Its one hook on the call path, `ambit gate` for Claude Code, can only deny a call or ask about it. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself from a checkout, and only with its opt-in Docker adapter.
 
 | If you want to | Use | What Ambit adds |
 | :--- | :--- | :--- |
@@ -75,7 +75,7 @@ Ambit sits above the protocol layer and below workflow orchestration. Its CLI, M
 | Allow or refuse each call as it happens | [An MCP gateway](./docs/compare.md) | No place on the call path; Ambit's gate only answers Claude Code's hook, with deny or ask |
 | See what the whole setup can do, which pieces work, and what to add next | Ambit | |
 
-For the architectural foundation, economic loop, and comparison to prior work, see [The ideas behind Ambit](./docs/ideas.md), [From A to B: the seven steps](./docs/loadout.md), and [Building alone](./docs/solo.md).
+[The ideas behind Ambit](./docs/ideas.md) says what is new and where it comes from, [From A to B](./docs/loadout.md) walks one setup through seven steps, and [Building alone](./docs/solo.md) is the launch checklist for a one-person company.
 
 ---
 
@@ -90,8 +90,8 @@ For the architectural foundation, economic loop, and comparison to prior work, s
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
 | `ambit verify [id]` | Run a capability's declared check and record whether it passes |
-| `ambit weigh` | What each tool server's tool list costs in context every session, per runtime, and which ones the ledger never saw called |
-| `ambit history [since <when> [<until>]]` | How the frontier moved, separating what you acquired from what emerged |
+| `ambit weigh` | What each tool server's tool list costs in context every session, per runtime, and which ones no recorded session called |
+| `ambit history [since <when> [<until>]]` | How the frontier, the edge of what you reach, moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
 `ambit help` covers a first session. `ambit help plan`, or any of the five group names, lists what that group holds, one line a command; `ambit help goal` shows one command with its options, `ambit help frontier` explains one word, and `ambit help --all` is the full surface. `--help` after any command says what it does without running it.
@@ -194,7 +194,7 @@ Ambit also publishes `ambit://briefing`, a resource a client reads on connect: w
 }
 ```
 
-The `PreToolUse` hook puts Ambit's brake on Claude Code. Before each tool call, `ambit gate` identifies the capability exercised: forbidden actions are denied, actions requiring human confirmation prompt the user, and permitted or unmapped actions defer to Claude Code's standard permission flow. It is a brake and not a gate: it can only stop or ask, never allow. It adds about 130 ms per call (measured with 0.6.0 on an Apple M1 Max). Run `ambit gate` directly in a terminal to inspect its output.
+The `PreToolUse` hook puts Ambit's brake on Claude Code. Before each tool call, `ambit gate` identifies the capability exercised: forbidden actions are denied, actions requiring human confirmation prompt the user, and permitted or unmapped actions defer to Claude Code's standard permission flow. Despite the command's name it works as a brake: it can stop a call or ask, and never allows one. It adds about 130 ms per call (measured with 0.6.0 on an Apple M1 Max). Run `ambit gate` directly in a terminal to inspect its output.
 
 `ambit statusline` prints a segment for Claude Code's status bar, refreshed after each message: failing checks, pending proposals, and verified capability counts (e.g. `! 1 failing: Browser Automation · › 2 proposals to decide`). Inactive categories are omitted, so a healthy graph displays `12 verified`. It queries the database read-only, writes nothing, and returns in about 80 ms (measured with 0.6.0 on an Apple M1 Max). Because plugins cannot configure status lines automatically, `ambit connect claude-code --statusline` adds the entry to `~/.claude/settings.json`, backing up the existing file to `settings.json.bak` and never overwriting a status line you already have. To configure manually:
 
@@ -267,7 +267,7 @@ The server sends this instruction in the MCP handshake. For clients that do not 
 <br><sub>Filled nodes are reached · Bright rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
 </div>
 
-`./bootstrap.sh web` serves five views over the graph the CLI reads.
+`ambit web` serves five views over the graph the CLI reads (`./bootstrap.sh web` in a checkout).
 
 - **Map**: The curated tree with your reach drawn on it. The line on top names what the map found: a failing check, or else the next step that opens the most.
 - **My Setup**: The entries your configs declare, their check history, and the capabilities each provides, closing with what the agents used that no node on the map accounts for. The Briefing section displays the context payload provided to agents on connection, and the Environment section draws the repository and infrastructure scans. Each section is part of the address, so a link can open on it.
@@ -299,10 +299,10 @@ Discovered capabilities are placed in a curated tree of nine eras: seven for the
 
 ### Configured is not working
 
-Ambit keeps two properties apart:
+Of the three facts, Ambit stores the first two on each capability:
 
-- `state` is **structural**: is this thing configured, and what does it depend on. This is what the frontier ledger records.
-- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `degraded`, which means it is recovering: its last check passed after one that failed.
+- `state` is **structural**: is this thing configured, and what does it depend on. This is what `ambit history` records over time.
+- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `recovering`: its last check passed after one that failed.
 
 Availability is decided by lifecycle, not state, and a check can only take availability away: an unverified capability stays in plans, and one whose check fails is excluded from plans, simulations, goals, authority checks, and opportunity rankings. A single successful check restores a broken capability to unverified status, and it is marked as recovering until five consecutive checks pass. `ambit status` reports verified, unverified and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified, or recovering.
 
@@ -328,6 +328,8 @@ The terminal and the map use the same words.
 ---
 
 ## The control plane
+
+The control plane is an interceptor that can stand between an agent and the shell: a step routed through it runs only if the graph says it may.
 
 Ambit answers whether a step may run wherever it is asked, and the answer binds in three places: `ambit apply`, always; this interceptor, for execution routed through it; and Claude Code's tool calls, once the `ambit gate` hook is installed. Other runtimes choose whether to ask `ambit_can`.
 
