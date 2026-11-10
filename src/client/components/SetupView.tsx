@@ -625,9 +625,16 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                                   : undefined
                             }
                           >
-                            {/* The one word here a reader has not met elsewhere. */}
+                            {/* The one word here a reader has not met elsewhere.
+                                A pass beside its strip is not written: the
+                                strip ends green and says so to a screen
+                                reader, and "check passed" down most of the
+                                list hid the rows that differ. Without a strip
+                                the word is the only evidence, so it stays. */}
                             {evidence?.recovering ? (
                               <Term name="recovering">{evidence.text}</Term>
+                            ) : evidence?.tone === 'ok' && trail ? (
+                              ''
                             ) : (
                               (evidence?.text ?? '')
                             )}

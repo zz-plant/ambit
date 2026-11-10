@@ -110,7 +110,8 @@ test('My Setup leads with what is failing and what provides nothing', () => {
   expect(html).toContain('playwright provides something whose check is failing');
   expect(html).toContain('grafana and kubernetes are enabled but provide nothing on the map');
   expect(html).toContain('check failing');
-  expect(html).toContain('check passed');
+  // A pass with runs behind it is the strip's to say, not a word's.
+  expect(html).not.toContain('check passed');
 });
 
 test('Time & cost opens on the saving and the step the map and the council name', () => {

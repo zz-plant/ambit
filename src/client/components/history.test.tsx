@@ -72,6 +72,24 @@ test('a row with runs draws its strip, and a row with none draws none', () => {
   expect(rowOf(html, 'memory')).not.toContain('fig-history-bar');
 });
 
+test('a pass is written only where no strip shows it', () => {
+  // "check passed" down most of the list hid the rows that differ. The strip
+  // says it; a row with no runs to draw keeps the word, its only evidence.
+  const steady = node('steady', 'reliable', [run(1, true), run(2, true)]);
+  const told = node('told', 'reliable');
+  const git = entry('git');
+  const memory = entry('memory');
+  seed({
+    items: [git, memory, steady, told],
+    connections: [...provides(git, steady), ...provides(memory, told)],
+  });
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
+
+  expect(rowOf(html, 'git')).not.toContain('check passed');
+  expect(rowOf(html, 'git')).toContain('The latest passed.');
+  expect(rowOf(html, 'memory')).toContain('check passed');
+});
+
 test('the strip is a fixed window: runs at the new end, a faint tick for the rest', () => {
   const n = node('two-runs', 'degraded', [run(4, false), run(5, true)]);
   const git = entry('git');
