@@ -14,6 +14,7 @@
     "build": "npm run typecheck && vite build && npm run docs:build",
     "docs:build": "node --experimental-strip-types scripts/build-docs.ts",
     "test": "vitest run",
+    "check": "node --experimental-strip-types scripts/check.ts",
     "demo:incident": "python3 scripts/demo_incident_trace.py",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "typecheck:client": "tsc --noEmit -p tsconfig.json",

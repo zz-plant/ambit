@@ -345,7 +345,7 @@ Neither adapter deploys anything anywhere. Another one (Kubernetes, a deploy API
 
 ## Security invariants
 
-Ambit reads developer toolchains and writes to agent configs, so the properties below are fixed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [`AGENTS.md`](./AGENTS.md#security-posture) says where each is enforced.
+Ambit reads developer toolchains and writes to agent configs, so the properties below are fixed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [the servers guide](./src/server/AGENTS.md#security-posture) says where each is enforced.
 
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
 2. **Origin allowlist.** A request whose `Origin` is not Ambit's own page, a page on another localhost port included, is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
