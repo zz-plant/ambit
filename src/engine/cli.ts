@@ -131,7 +131,13 @@ import { listPortStatus, portServer } from './port.ts';
 import { toggleServer } from './toggle.ts';
 import { analyzeRepo } from './repo-inspect.ts';
 import { gateNote } from './wiring.ts';
-import { claudeHookOutput, claudeHookSnippet, decideCall, gateToolCall } from './gate.ts';
+import {
+  claudeHookOutput,
+  claudeHookSnippet,
+  decideCall,
+  gateToolCall,
+  throughEntry,
+} from './gate.ts';
 import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
@@ -703,7 +709,18 @@ async function runCommand(
         // The command that would answer yes next time, for the person to
         // type or not. The narrowest mode that permits: a person still asked.
         const scope = value('target') ? ` --scope=${shellQuote(value('target')!)}` : '';
-        decision.to_grant = `ambit authority grant ${shellQuote(String(decision.capability).replace(/^combo:/, ''))} confirm${scope}`;
+        // An entry that supplies capabilities is decided through them, so a
+        // grant on the entry is one no call would read. Name what the gate
+        // asks instead, and the question that gets the real answer.
+        const through = throughEntry(db, String(decision.capability)).filter(
+          id => id !== decision.capability
+        );
+        if (through.length) {
+          decision.gate_asks = through;
+          decision.try = `ambit can ${shellQuote(through[0].replace(/^combo:/, ''))}${scope ? ` --target=${shellQuote(value('target')!)}` : ''}`;
+        } else {
+          decision.to_grant = `ambit authority grant ${shellQuote(String(decision.capability).replace(/^combo:/, ''))} confirm${scope}`;
+        }
       }
       emit(decision);
       // --exit-code puts the decision where a shell can branch on it: 0 to go

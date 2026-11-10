@@ -273,7 +273,12 @@ test('ambit can takes a tool by the name the runtime gives it, and asks what the
   expect(cli('can', 'Read').verdict).toBe('yes');
   // The entry by its exact id is still a question about that node.
   expect(cli('can', 'tool:bash').capability).toBe('tool:bash');
-  expect(cli('can', 'tool:bash').asked_as).toBeUndefined();
+  const entry = cli('can', 'tool:bash');
+  expect(entry.asked_as).toBeUndefined();
+  // A grant on the entry is one the gate would not read, so none is suggested.
+  expect(entry.to_grant).toBeUndefined();
+  expect(entry.gate_asks).toEqual(['combo:shell-execution']);
+  expect(entry.try).toBe('ambit can shell-execution');
 
   // The form a permission rule takes carries the command, and the narrowest answer is given.
   cli('authority', 'grant', 'version-control', 'forbidden', '--by=kanav');

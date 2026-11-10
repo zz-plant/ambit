@@ -10,7 +10,7 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 `ambit can Bash` answered no. The name resolved to the entry `tool:bash`, which carries no grant, while the gate asks about the same call as Shell Execution and puts it to the person. An agent that asked first was refused a call the gate would only have asked about, and learned to stop asking.
 
-`ambit can`, and `ambit_can` over MCP, now take a tool by the name the runtime gives it: `Bash`, `mcp__github__create_issue`, or `Bash(git push origin main)`, the form a Claude Code permission rule takes. The call is asked about as the gate asks, every capability it exercises is listed under `asked_as`, and the narrowest answer is the one given. An exact id such as `tool:bash` is still a question about that node.
+`ambit can`, and `ambit_can` over MCP, now take a tool by the name the runtime gives it: `Bash`, `mcp__github__create_issue`, or `Bash(git push origin main)`, the form a Claude Code permission rule takes. The call is asked about as the gate asks, every capability it exercises is listed under `asked_as`, and the narrowest answer is the one given. An exact id such as `tool:bash` is still a question about that node, and where it has no grant the answer no longer suggests one on the entry, which no call would read: `gate_asks` names the capabilities a call through it is decided against.
 
 Two facts go beside the answer and change nothing in it. `runtime_rule` is the Claude Code permission rule that names the call, when one does, so the graph's answer and the runtime's sit side by side. `failed_recently` counts the failures a runtime reported against those capabilities in the last week.
 

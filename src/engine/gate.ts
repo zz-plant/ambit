@@ -57,6 +57,16 @@ const ORDER = { null: 0, ask: 1, deny: 2 } as const;
 export function capabilitiesFor(db: Db, tool: string): string[] {
   const named = attribute(db, tool);
   if (!named) return [];
+  return throughEntry(db, named);
+}
+
+/**
+ * The capabilities a call through this node is decided against: the node
+ * itself for a capability, and for an entry what it supplies. An entry that
+ * supplies something is never asked about in its own right, so a grant
+ * written on it is one the gate does not read.
+ */
+export function throughEntry(db: Db, named: string): string[] {
   if (named.startsWith('combo:')) return [named];
   const kinds = (PROVISION_EDGES as string[]).map(() => '?').join(', ');
   const supplied = db
