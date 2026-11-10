@@ -17,6 +17,7 @@
  * different capability under a different grant.
  */
 import type { Db } from './db.ts';
+import { routeSentence } from './goals.ts';
 import { nearest, squash } from '../shared/nearest.ts';
 
 type Resolution =
@@ -97,11 +98,20 @@ function resolveCapability(db: Db, given: unknown): Resolution {
     );
     for (const id of owners) if (!close.includes(id)) close.push(id);
   }
+  // A sentence is a task and no node's name: "run the test suite". The goal
+  // router names what its words cover, and those come first. Offered, and
+  // never chosen: the caller asks again with the id it meant.
+  const routed = /\s/.test(word)
+    ? routeSentence(word)
+        .ranked.map(r => r.id)
+        .filter(id => byId.has(id))
+        .slice(0, 3)
+    : [];
   return {
     ok: false,
     reason: 'unknown',
     error: `No capability "${word}" in this graph.`,
-    did_you_mean: close.slice(0, 5),
+    did_you_mean: [...new Set([...routed, ...close])].slice(0, 5),
   };
 }
 

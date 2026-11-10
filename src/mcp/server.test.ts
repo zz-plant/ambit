@@ -988,3 +988,57 @@ test('a proposal drafted over MCP records the runtime that drafted it, by the na
   // Reduced to a slug: the name is whatever the client sent.
   expect(row?.proposed_by).toBe('agent:opencode-2');
 });
+
+/**
+ * Three things an agent pays for on every question: a round trip per call it
+ * plans, the keys of an answer that say nothing, and a briefing about a whole
+ * environment when it has one task.
+ */
+test('ambit_can answers a plan in one question, without the fields that say nothing', () => {
+  const db = copyOfGraph('batch.db');
+  const before = digest(db);
+  const batch = call(
+    'ambit_can',
+    { capability: 'Bash(ls -la)\nBash(npm test)\nRead\nno-such-capability-zz' },
+    db
+  ).result.structuredContent;
+  expect(batch.answers.map((a: any) => a.asked)).toEqual([
+    'Bash(ls -la)',
+    'Bash(npm test)',
+    'Read',
+    'no-such-capability-zz',
+  ]);
+  expect(batch.answers[0]).toMatchObject({ verdict: 'yes', action: 'observe' });
+  expect(batch.answers[1]).toMatchObject({ verdict: 'ask', action: 'execute' });
+  expect(batch.answers[3].verdict).toBe('no');
+  // A question about a plan is not a wall that was hit: nothing is filed.
+  expect(digest(db)).toEqual(before);
+
+  const one = call('ambit_can', { capability: 'Bash(npm test)', record: false }, db).result
+    .structuredContent;
+  expect(one.verdict).toBe('ask');
+  const empty = (v: unknown): boolean =>
+    v === null ||
+    v === '' ||
+    (Array.isArray(v) ? v.length === 0 : typeof v === 'object' && Object.values(v).some(empty));
+  expect(empty(one)).toBe(false);
+});
+
+test('ambit_briefing with a task says only what the task touches, and moves no mark', () => {
+  const db = copyOfGraph('task.db');
+  const before = digest(db);
+  const brief = call('ambit_briefing', { task: 'commit and push with git' }, db).result
+    .structuredContent;
+  expect(brief.task).toBe('commit and push with git');
+  const vc = brief.touches.find((t: any) => t.id === 'combo:version-control');
+  expect(typeof vc.reached).toBe('boolean');
+  // What may be done is said of what is reached; the rest is a plan to ask for.
+  if (vc.reached) expect(['yes', 'ask', 'no']).toContain(vc.may);
+  else expect(vc.plan).toContain('combo:version-control');
+  expect(brief.environment).toBeUndefined();
+  expect(digest(db)).toEqual(before);
+
+  const none = call('ambit_briefing', { task: 'zzqx frobnicate' }, db).result.structuredContent;
+  expect(none.touches).toEqual([]);
+  expect(none.note).toContain('ambit_can');
+});

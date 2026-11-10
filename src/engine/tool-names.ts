@@ -212,6 +212,94 @@ export function commandExercises(command: string, depth = 0): Exercised[] {
   return [...found.values()];
 }
 
+/** Programs that only print what is already there, whatever their arguments. */
+const READERS = new Set([
+  'ls',
+  'pwd',
+  'cd',
+  'cat',
+  'head',
+  'tail',
+  'wc',
+  'cut',
+  'tr',
+  'nl',
+  'grep',
+  'egrep',
+  'fgrep',
+  'jq',
+  'diff',
+  'cmp',
+  'stat',
+  'file',
+  'du',
+  'df',
+  'ps',
+  'which',
+  'type',
+  'whoami',
+  'id',
+  'uname',
+  'basename',
+  'dirname',
+  'realpath',
+  'readlink',
+  'echo',
+  'printf',
+  'true',
+  'false',
+  'test',
+  '[',
+]);
+
+/** Words that open or close a block and run nothing themselves. */
+const STRUCTURE = new Set(['time', '!', '{', '}', 'if', 'then', 'else', 'elif', 'fi']);
+
+/** `find` actions that run a program or change the tree. */
+const FIND_ACTS = /^-(exec|execdir|ok|okdir|delete|fprint|fprint0|fprintf|fls)$/;
+
+/** Whether one simple command only reads, by its program and the few arguments that change that. */
+function readsOnly(words: string[]): boolean {
+  let i = 0;
+  while (i < words.length && STRUCTURE.has(words[i])) i++;
+  if (i >= words.length) return true;
+  const program = words[i];
+  const rest = words.slice(i + 1);
+  if (READERS.has(program)) return true;
+  if (program === 'rg') return !rest.some(w => w.startsWith('--pre'));
+  if (program === 'find') return !rest.some(w => FIND_ACTS.test(w));
+  if (program === 'date') return !rest.some(w => w === '-s' || w.startsWith('--set'));
+  if (program === 'git') {
+    // `-c alias.x=!cmd` and a pager set on the command line run a program, and
+    // `--output` writes a file.
+    const safe = !rest.some(w => w === '-c' || /^--(config-env|exec-path|output)\b/.test(w));
+    return safe && gitReads(rest);
+  }
+  if (program === 'gh') {
+    const [noun, verb] = rest.filter(w => !w.startsWith('-'));
+    return noun === 'status' || GH_READS.has(verb);
+  }
+  return false;
+}
+
+/**
+ * Whether a shell command only reads: every simple command in it is a program
+ * that prints what is already there. The gate asks about such a call as
+ * observing, as it asks about `Read`, so `ls` is not put to the person
+ * because `rm` would be.
+ *
+ * Unlike the rest of this file, a mistake here drops a question, so it says
+ * yes only for what it can read whole. A redirection, a here-document, a
+ * variable set for the command (`PAGER=x git log`), a program named by a path
+ * or a variable, `sudo`, `xargs`, an editor, an interpreter and any word it
+ * does not know are all acting. A substitution is read as the command it runs.
+ */
+export function commandReads(command: string): boolean {
+  if (/>|<</.test(command)) return false;
+  const commands = simpleCommands(command);
+  return commands.length > 0 && commands.every(readsOnly);
+}
+
 /** The first word after `from` that is not an option. */
 function operand(words: string[], from: number): number {
   let i = from;

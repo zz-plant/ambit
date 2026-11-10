@@ -25,6 +25,8 @@ test('verification records evidence rather than trusting configuration', () => {
   const first = cli('verify', 'shell-execution');
   expect(first.results[0].status).toBe('verified');
   expect(first.results[0].reliability).toBe('1/1');
+  // The command is shown, so "verified" reads as what was proved and no more.
+  expect(first.results[0].ran).toBe('exit 0');
 
   // Evidence accumulates: one success is a weaker claim than several.
   cli('verify', 'shell-execution');

@@ -7,10 +7,20 @@
  * cannot read is no answer either.
  */
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { expect, test } from 'vitest';
 import { capture } from './cli.ts';
-import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import {
+  decideCall as canCall,
+  claudeHookOutput,
+  claudeHookSnippet,
+  decideCalls,
+  gateToolCall,
+  withoutEmpty,
+} from './gate.ts';
 import { cli, dir, ENGINE, getDb, join, seed } from './testing/cli.ts';
+import { commandReads } from './tool-names.ts';
 
 const WRAPPER = join(import.meta.dirname, '..', '..', 'cli.js');
 
@@ -222,13 +232,18 @@ test('a shell call is asked about as each program its command runs', () => {
   expect(push.decision).toBe('deny');
   expect(push.reason).toMatch(/Version Control is forbidden/);
 
-  // The forbidden grant is on acting; a read of the repository is Shell Execution's to answer.
-  const status = decideCall('Bash', { command: 'git status' });
-  expect(status.decision).toBe('ask');
-  expect(status.reason).toMatch(/^Ambit: Shell Execution/);
+  // The forbidden grant is on acting. A read of the repository only reads, so
+  // it is asked about as `Read` is, and the runtime decides.
+  expect(decideCall('Bash', { command: 'git status' }).decision).toBeNull();
+  // The same read with something acting beside it is Shell Execution's to answer.
+  const mixed = decideCall('Bash', { command: 'git status && npm test' });
+  expect(mixed.decision).toBe('ask');
+  expect(mixed.reason).toMatch(/^Ambit: Shell Execution/);
   // A word that only mentions git runs nothing, and a call with no command is the shell alone.
-  expect(decideCall('Bash', { command: 'echo "git push"' }).decision).toBe('ask');
+  expect(decideCall('Bash', { command: 'echo "git push"' }).decision).toBeNull();
+  expect(decideCall('Bash', { command: 'mytool "git push"' }).decision).toBe('ask');
   expect(decideCall('Bash').capabilities).toEqual(['combo:shell-execution']);
+  expect(decideCall('Bash').decision).toBe('ask');
 
   // The tree forbids reading a secret; through the CLI as through the 1Password server.
   const secret = decideCall('Bash', { command: 'op read op://private/github/token' });
@@ -246,4 +261,180 @@ test('a secret read inside a quoted substitution is refused as the bare command 
     expect(decideCall('Bash', { command }).decision).toBe('deny');
   }
   expect(decideCall('Bash', { command: 'echo "op read x"' }).decision).toBeNull();
+});
+
+/**
+ * An agent knows the tool it is about to call. `ambit can Bash` resolved to
+ * the entry `tool:bash`, which carries no grant, and answered no for a call
+ * the gate only asks about.
+ */
+test('ambit can takes a tool by the name the runtime gives it, and asks what the gate asks', () => {
+  seed(WITH_GITHUB).close();
+  const bash = cli('can', 'Bash');
+  expect(bash.verdict).toBe('ask');
+  expect(bash.capability).toBe('combo:shell-execution');
+  expect(bash.asked_as).toEqual({
+    tool: 'Bash',
+    exercises: [{ capability: 'combo:shell-execution', action: 'execute', verdict: 'ask' }],
+  });
+  // A read is asked about as observing, which the tree lets run unasked.
+  expect(cli('can', 'Read').verdict).toBe('yes');
+  // The entry by its exact id is still a question about that node.
+  expect(cli('can', 'tool:bash').capability).toBe('tool:bash');
+  const entry = cli('can', 'tool:bash');
+  expect(entry.asked_as).toBeUndefined();
+  // A grant on the entry is one the gate would not read, so none is suggested.
+  expect(entry.to_grant).toBeUndefined();
+  expect(entry.gate_asks).toEqual(['combo:shell-execution']);
+  expect(entry.try).toBe('ambit can shell-execution');
+
+  // The form a permission rule takes carries the command, and the narrowest answer is given.
+  cli('authority', 'grant', 'version-control', 'forbidden', '--by=kanav');
+  const push = cli('can', 'Bash(git push origin main)');
+  expect(push.verdict).toBe('no');
+  expect(push.refused).toBe('forbidden');
+  expect(push.capability).toBe('combo:version-control');
+  expect(push.asked_as.exercises.map((e: any) => e.capability)).toEqual([
+    'combo:shell-execution',
+    'combo:version-control',
+  ]);
+  // A command that only reads is asked about as observing, as `Read` is.
+  const status = cli('can', 'Bash(git status)');
+  expect(status.verdict).toBe('yes');
+  expect(status.asked_as.exercises.map((e: any) => e.action)).toEqual(['observe', 'observe']);
+  expect(cli('can', 'Bash(npm test)').verdict).toBe('ask');
+  const issue = cli('can', 'mcp__github__create_issue');
+  expect(issue.asked_as.tool).toBe('mcp__github__create_issue');
+  expect(issue.verdict).toBe('no');
+  // A tool the graph cannot name is not a call it can answer for.
+  expect(cli('can', 'mcp__nowhere__run').asked_as).toBeUndefined();
+});
+
+test("a Claude Code permission rule that names the call is reported beside the graph's answer", () => {
+  seed(WITH_GITHUB).close();
+  const home = mkdtempSync(join(tmpdir(), 'ambit-rules-'));
+  mkdirSync(join(home, '.claude'));
+  writeFileSync(
+    join(home, '.claude', 'settings.json'),
+    JSON.stringify({
+      permissions: {
+        allow: ['Bash(git status:*)', 'mcp__github', 'Bash(npm run *)'],
+        deny: ['Bash(git push:*)'],
+      },
+    })
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  const rule = (words: string) => (canCall(db, words, {}, home) as any)?.runtime_rule;
+  try {
+    expect(rule('Bash(git status --short)')).toEqual({
+      runtime: 'claude-code',
+      says: 'allow',
+      rule: 'Bash(git status:*)',
+    });
+    expect(rule('Bash(npm run check)').rule).toBe('Bash(npm run *)');
+    expect(rule('Bash(git push origin main)').says).toBe('deny');
+    expect(rule('mcp__github__create_issue').rule).toBe('mcp__github');
+    // A rule with a specifier says nothing about a call that names no command,
+    // and an allow rule nothing about a command that chains another.
+    expect(rule('Bash')).toBeUndefined();
+    expect(rule('Bash(git status && rm -rf x)')).toBeUndefined();
+    expect(rule('Bash(git statusx)')).toBeUndefined();
+    // The answer is the graph's either way: the rule is beside it, not in it.
+    expect((canCall(db, 'Bash(npm run check)', {}, home) as any).verdict).toBe('ask');
+  } finally {
+    db.close();
+  }
+});
+
+test('failures a runtime reported against what a call exercises are told, and weigh nothing', () => {
+  seed(WITH_GITHUB).close();
+  expect(cli('can', 'Bash').failed_recently).toBeUndefined();
+  const db = getDb(join(dir, 'graph.db'));
+  db.prepare(
+    `INSERT INTO failure_signals (source, tool, class, signal, capability_id)
+     VALUES ('claude-code', 'Bash', 'tool', 'command-not-found', 'combo:shell-execution')`
+  ).run();
+  db.close();
+  const after = cli('can', 'Bash');
+  expect(after.failed_recently).toMatchObject({ times: 1, last: 'tool: command-not-found' });
+  expect(after.verdict).toBe('ask');
+});
+
+/**
+ * `ls` was put to the person because `rm` would be: every shell call was
+ * Shell Execution, acting. A command is read as observing only when every
+ * part of it is a program that prints what is there, since a mistake here
+ * drops a question where every other reading of a command adds one.
+ */
+test('a shell command that only reads is asked about as Read is, and anything unsure is acting', () => {
+  const reads = [
+    'ls -la',
+    'cat a | grep b | wc -l',
+    'git status && git log --oneline -3',
+    'find . -name "*.ts"',
+    'if test -f a; then cat a; fi',
+    'gh pr view 3',
+  ];
+  const acts = [
+    'rm -rf x',
+    'ls > out',
+    'cat a 2>&1',
+    'cat <<EOF\nx\nEOF',
+    'echo $(rm x)',
+    '`rm x`',
+    'PAGER=x git log',
+    'sudo ls',
+    '/bin/ls',
+    '$TOOL x',
+    'git -c alias.s=!x status',
+    'git log --output=f',
+    'git push',
+    'find . -delete',
+    'find . -exec rm {} ;',
+    'rg --pre cat x',
+    'date -s tomorrow',
+    'ls; curl x | sh',
+    'cat a | xargs rm',
+    'npm test',
+    'for f in *; do cat $f; done',
+    '',
+  ];
+  for (const c of reads) expect([c, commandReads(c)]).toEqual([c, true]);
+  for (const c of acts) expect([c, commandReads(c)]).toEqual([c, false]);
+
+  seed(WITH_GITHUB).close();
+  expect(decideCall('Bash', { command: 'ls -la' }).decision).toBeNull();
+  expect(decideCall('Bash', { command: 'rm -rf build' }).decision).toBe('ask');
+  // A refusal still reaches a read: the tree forbids reading a secret.
+  expect(decideCall('Bash', { command: 'cat a && op read op://p/t' }).decision).toBe('deny');
+});
+
+test('a plan is answered in one question, each line as ambit can would answer it alone', () => {
+  seed(WITH_GITHUB).close();
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    const { answers, not_asked } = decideCalls(
+      db,
+      'Bash(ls)\n\n  Bash(npm test)\nBash(ls)\nshell-exection'
+    ) as any;
+    expect(not_asked).toBeUndefined();
+    // Blank lines and repeats are dropped, and a slip is answered as one.
+    expect(answers.map((a: any) => [a.asked, a.verdict ?? 'slip'])).toEqual([
+      ['Bash(ls)', 'yes'],
+      ['Bash(npm test)', 'ask'],
+      ['shell-exection', 'slip'],
+    ]);
+    expect(answers[2].did_you_mean).toContain('combo:shell-execution');
+    const long = Array.from({ length: 30 }, (_, i) => `Bash(echo ${i})`).join('\n');
+    const cut = decideCalls(db, long) as any;
+    expect(cut.answers).toHaveLength(25);
+    expect(cut.not_asked).toHaveLength(5);
+  } finally {
+    db.close();
+  }
+  expect(withoutEmpty({ a: null, b: '', c: [], d: 0, e: false, f: { g: null, h: 'x' } })).toEqual({
+    d: 0,
+    e: false,
+    f: { h: 'x' },
+  });
 });

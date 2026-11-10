@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { Db } from './db.ts';
 import { FAILING_SQL, REACHED_SQL, graphCounts, reachPhrase } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
@@ -14,7 +14,10 @@ export interface DoctorRuntime {
   runtime: string;
   label: string;
   path: string;
+  /** Whether an entry here starts Ambit's server, and what it points at is there to start. */
   has_ambit: boolean;
+  /** An entry that starts Ambit from a path that is gone: the agent sees a server that never connects. */
+  ambit_unreachable?: { entry: string; missing: string };
 }
 
 export interface DoctorBloat {
@@ -44,20 +47,65 @@ export interface DoctorReport {
   recommendations: string[];
 }
 
-/** Check if a parsed JSON or TOML config already contains the ambit MCP server. */
-function hasAmbitServer(raw: string): boolean {
+/** Every string an entry starts a process with: its command, as a word or a list, and its args. */
+function wordsOf(entry: unknown): string[] {
+  if (!entry || typeof entry !== 'object') return [];
+  const e = entry as { command?: unknown; args?: unknown };
+  return [e.command, e.args].flat().filter((w): w is string => typeof w === 'string');
+}
+
+/**
+ * The entries that start Ambit's MCP server, under whatever name they were
+ * given, and for each the absolute path it names that is no longer there.
+ *
+ * Only the name `ambit` was looked for. An entry written by hand under another
+ * name, pointing at a checkout since moved, read as "not connected" and was
+ * answered with `ambit connect`, which adds a second entry and leaves the dead
+ * one failing at the start of every session.
+ */
+function ambitEntries(
+  servers: Record<string, unknown> | null | undefined
+): { name: string; missing?: string }[] {
+  const found: { name: string; missing?: string }[] = [];
+  for (const [name, entry] of Object.entries(servers ?? {})) {
+    const words = wordsOf(entry);
+    const runsMcp = words.includes('mcp');
+    const starts =
+      name === 'ambit' ||
+      (runsMcp && words.some(w => /(^|[\\/])(ambit(-cli)?|cli\.js)$/.test(w))) ||
+      (words.includes('--experimental-sqlite') &&
+        words.some(w => /src[\\/]mcp[\\/]server\.ts$/.test(w)));
+    if (!starts) continue;
+    const missing = words.find(w => isAbsolute(w) && !existsSync(w));
+    found.push(missing ? { name, missing } : { name });
+  }
+  return found;
+}
+
+/** What a runtime's entries say about Ambit: connected when one can start, and the first that cannot. */
+function ambitIn(servers: Record<string, unknown> | null | undefined) {
+  const entries = ambitEntries(servers);
+  const dead = entries.find(e => e.missing);
+  return {
+    has_ambit: entries.some(e => !e.missing),
+    ...(dead ? { ambit_unreachable: { entry: dead.name, missing: dead.missing as string } } : {}),
+  };
+}
+
+/** The server tables of a parsed JSON config, in each place a runtime keeps one. */
+function serverTables(raw: string): Record<string, unknown> | null {
   try {
     const parsed = parseJsonc(raw);
-    if (parsed?.mcpServers?.ambit) return true;
-    if (parsed?.mcp?.ambit) return true;
-    if (parsed?.mcp?.servers?.ambit) return true;
-    if (parsed?.context_servers?.ambit) return true;
-    if (parsed?.experimental?.modelContextProtocolServers?.ambit) return true;
+    return {
+      ...parsed?.mcpServers,
+      ...parsed?.mcp,
+      ...parsed?.mcp?.servers,
+      ...parsed?.context_servers,
+      ...parsed?.experimental?.modelContextProtocolServers,
+    };
   } catch {
-    // If not valid JSON, check for simple TOML table
-    if (/\[mcp_servers\.ambit\]/i.test(raw)) return true;
+    return null;
   }
-  return false;
 }
 
 /**
@@ -88,22 +136,26 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
   for (const c of own) {
     const p = c.paths.find(candidatePath => existsSync(candidatePath));
     if (!p) continue;
-    let hasAmbit = false;
+    let seen: ReturnType<typeof ambitIn> = { has_ambit: false };
     try {
-      hasAmbit = hasAmbitServer(readFileSync(p, 'utf8'));
+      const raw = readFileSync(p, 'utf8');
+      const tables = serverTables(raw);
+      // Not valid JSON: a TOML table by the one name is all that can be read.
+      seen = tables ? ambitIn(tables) : { has_ambit: /\[mcp_servers\.ambit\]/i.test(raw) };
     } catch {
       // unreadable file
     }
     // The plugin registers the server itself, in no file this reads.
-    if (c.runtime === 'claude-code' && claudePluginEnabled(home, 'ambit@ambit')) hasAmbit = true;
-    detected.push({ runtime: c.runtime, label: c.label, path: p, has_ambit: hasAmbit });
+    if (c.runtime === 'claude-code' && claudePluginEnabled(home, 'ambit@ambit'))
+      seen = { ...seen, has_ambit: true };
+    detected.push({ runtime: c.runtime, label: c.label, path: p, ...seen });
   }
   for (const c of clientConfigs(home)) {
     detected.push({
       runtime: c.runtime,
       label: c.label,
       path: c.path,
-      has_ambit: Boolean(c.servers && Object.hasOwn(c.servers, 'ambit')),
+      ...ambitIn(c.servers),
     });
   }
   return detected;
@@ -196,6 +248,13 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   // loop page (AGENTS.md rule 16).
 
   const recommendations: string[] = [];
+  // First, because nothing below reaches an agent whose server cannot start.
+  for (const r of runtimes) {
+    if (!r.ambit_unreachable) continue;
+    recommendations.push(
+      `${r.label} starts Ambit as "${r.ambit_unreachable.entry}" from ${r.ambit_unreachable.missing}, which is not there, so the server never connects and the agent has no briefing to read. Remove that entry from ${r.path}, then run "ambit connect"`
+    );
+  }
   if (counts.failing > 0) {
     recommendations.push(
       `Fix ${counts.failing} failing capabilities: run "ambit verify --failing" to re-run their declared checks`

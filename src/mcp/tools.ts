@@ -385,7 +385,7 @@ const BASE_TOOLS: ToolDef[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        capability: str('Capability ID or name'),
+        capability: str('Tool name (Bash, mcp__x__y) or capability; several, one per line'),
         action: str('Action to check'),
         actor: str('Requesting actor ID'),
         target: str('Target resource'),
@@ -561,7 +561,10 @@ const BASE_TOOLS: ToolDef[] = [
     description: 'Briefing: reached nodes, failing checks, proposals. Call at session start.',
     inputSchema: {
       type: 'object',
-      properties: { text: bool('Return prose format') },
+      properties: {
+        text: bool('Return prose format'),
+        task: str('Task sentence: brief only what it touches'),
+      },
     },
     annotations: WRITES,
   },

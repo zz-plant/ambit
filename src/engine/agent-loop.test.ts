@@ -13,7 +13,7 @@ import { classifySignal, captureFailure, signalReport } from './failures.ts';
 import { canExecute, deriveLifecycles, usable } from './assurance.ts';
 import { setPromotion, evaluatePromotions, promotionReport } from './assure/promote.ts';
 import { nextSteps } from './next.ts';
-import { briefing, briefingText } from './briefing.ts';
+import { briefing, briefingText, taskBriefing } from './briefing.ts';
 import { graphCounts } from './vocabulary.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { runVerification } from './assure/verify.ts';
@@ -412,6 +412,40 @@ describe('the session briefing', () => {
     expect(text).toContain('ambit_can');
     // 1,200 tokens at four characters each, the cap the roadmap states.
     expect(text.length).toBeLessThanOrEqual(1200 * 4);
+    db.close();
+  });
+
+  it('briefs one task: what it touches, whether it may be done, and what to reach for', () => {
+    const db = environment();
+    const brief = taskBriefing(db, 'commit and push with git') as any;
+    const vc = brief.touches.find((t: any) => t.id === 'combo:version-control');
+    expect(vc).toMatchObject({ reached: true, may: 'ask', use: ['mcp:git'] });
+    // A provider whose last check failed is not something to reach for.
+    db.prepare("UPDATE capabilities SET lifecycle = 'broken' WHERE id = 'mcp:git'").run();
+    const after = (taskBriefing(db, 'commit and push with git') as any).touches.find(
+      (t: any) => t.id === 'combo:version-control'
+    );
+    expect(after.use).toBeUndefined();
+    expect((taskBriefing(db, 'zzqx frobnicate') as any).touches).toEqual([]);
+    db.close();
+  });
+
+  it('says what is reached and never checked, until a check has run', () => {
+    const db = environment();
+    const line = () =>
+      briefingText(db)
+        .split('\n')
+        .find(l => l.startsWith('Unchecked:'));
+    expect(line()).toBeUndefined();
+    db.prepare(
+      "INSERT INTO declared_checks (capability_id, command) VALUES ('combo:version-control', 'true')"
+    ).run();
+    db.prepare(
+      "UPDATE capabilities SET lifecycle = 'configured' WHERE id = 'combo:version-control'"
+    ).run();
+    expect((briefing(db) as any).unchecked).toEqual({ count: 1, names: ['Version Control'] });
+    expect(line()).toContain('1 reached with a check that has not run, Version Control.');
+    expect(line()).toContain('ambit_verify');
     db.close();
   });
 

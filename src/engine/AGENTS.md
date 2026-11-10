@@ -71,7 +71,8 @@ src/engine/objects.ts      What may be done to what, and what is proved there
 src/engine/observed.ts     What a person actually approves, from approvals and refusals
 src/engine/reversibility.ts  What could be acquired without a person, and what could not
 src/engine/briefing.ts     What an agent knows before its first tool call — also the MCP
-                           resource ambit://briefing
+                           resource ambit://briefing. `taskBriefing` is the same for one task:
+                           what its sentence touches, whether that may be done, what to use
 src/engine/weight.ts       What a loadout carries: `ambit weigh` starts each local tool server the
                            user-level configs declare, asks for its tools over MCP and records
                            what the list costs in context (`tool_listings`); `carryById` is what
@@ -134,12 +135,20 @@ src/engine/wiring.ts       What is wired into each agent here: the MCP server, t
                            bare `ambit`, `status`, `doctor` and `connect` say is still missing
 src/engine/gate.ts         The gate on a runtime's tool call: the Claude Code PreToolUse hook
                            `ambit gate`, which maps a call to its capabilities and denies or asks,
-                           and never allows
+                           and never allows. `decideCall` is `ambit can` asked with a tool's own
+                           name (`Bash`, `mcp__github__create_issue`, `Bash(git push)`): the same
+                           questions, the narrowest answer, and beside it the Claude Code rule
+                           that names the call (`claudeRuleFor` in wiring.ts) and the failures
+                           the ledger holds against what it exercises; `decideCalls` answers
+                           several, one to a line, and files nothing
 src/engine/tool-names.ts   What a runtime's own tool is, by the name that runtime gives it
                            (Claude Code's `Write`, Codex's `apply_patch`), and whether the gate
                            asks about it as reading or acting; and what a shell command's
                            programs exercise (`git push`, `npx wrangler deploy`, `op read`),
-                           which the gate reads from the call and keeps nowhere
+                           which the gate reads from the call and keeps nowhere; and
+                           `commandReads`, whether a command only reads, which is the one
+                           reading here that drops a question and so says yes only for what
+                           it can read whole
 src/engine/statusline.ts   `ambit statusline`, the line Claude Code's status line shows after each
                            message: what fails its check, the proposals to decide, the verified
                            count. The graph opened read-only, nothing written; cli.js imports it
@@ -158,7 +167,8 @@ The distance to a capability, the projections every surface reads, and the dispa
 
 ```
 src/engine/planning.ts     The gap to a capability, and simulating closing it
-src/engine/resolve.ts      Which node an id means: normalises, and never guesses
+src/engine/resolve.ts      Which node an id means: normalises, and never guesses. A sentence is
+                           offered what the goal router says its words cover, as candidates
 src/engine/plan/           deficits.ts (what keeps stopping work, and whether it is structural)
                            propose.ts (what a change would buy, as something approvable)
                            route.ts (the order of the missing steps, and who each inconveniences)
@@ -225,4 +235,4 @@ src/engine/testing/        The shared test harness: a throwaway graph, driven in
 
 **Rule 18.** **Colour goes only to a terminal, and is never the only signal.** `colorOn` in `src/engine/cli/output.ts` allows escapes when stdout is a TTY and `NO_COLOR` is unset (an empty value counts as unset), so a pipe, a file and a CI log read what was written and not what was painted. A formatter takes a palette and returns lines, and the data sink and `--json` never see one. A row that wants a person carries a `›` that survives a pipe. Every surface follows this: `renderStatus`, the generic formatter, `seed`, `explain` and the first-run and unknown-command lines take their palette from `terminalPalette`, which asks stdout, or stderr for a line written there. `cli.js` is plain JavaScript and loads no engine module for the lines `ambit web` prints, so it transcribes `colorOn` for them, and the two must stay in step. The status line is the one surface painted on a pipe: Claude Code reads its stdout and renders ANSI there, so `statusPalette` in `src/engine/statusline.ts` paints a call that carries Claude Code's payload, `NO_COLOR` still wins, and `!` and `›` say the same with no colour. The same reader that sets a colour sets an exit code: a command whose answer is a top-level string `error` exits 1 (`raiseExitCode` in `output.ts`, never on the sink), an unknown command exits 2, and `--exit-code` on `can` and `verify` maps the decision or the check to a code.
 
-**Rule 20.** **The gate only narrows.** `ambit gate` answers a Claude Code PreToolUse hook with *deny* (forbidden, or over a budget), *ask* (asks first, no grant yet, or a last check that failed; a recovering capability is decided by its grant) or nothing (allowed, or a tool the graph cannot name), so Claude Code's own permission settings decide what remains. It never answers *allow*: that would let the graph widen what a person set in their runtime, and the runtime's own settings are the person's last word on what runs without asking. A call it cannot read, or a graph it cannot open, is no answer, and it exits 0 so a broken gate never blocks the person's work. It maps a tool to capabilities with `attribute` in `failures.ts`, the matching failures and the unmapped report use, so the three cannot disagree about what a tool is. A runtime's own tool is what `builtInTool` in `tool-names.ts` says it is, and is asked about as `observe` when it only reads, so `Read` stays no answer when `Write` asks. A shell call is also asked about as each program its command runs (`commandExercises`), so a grant on Version Control reaches `git push`. The command is read from the call and kept nowhere; the hooks write no tool's input, so the ledger records a shell call as Shell Execution alone. A program goes in that table only when the tree takes a stance on its node, because the gate asks about a capability with no grant.
+**Rule 20.** **The gate only narrows.** `ambit gate` answers a Claude Code PreToolUse hook with *deny* (forbidden, or over a budget), *ask* (asks first, no grant yet, or a last check that failed; a recovering capability is decided by its grant) or nothing (allowed, or a tool the graph cannot name), so Claude Code's own permission settings decide what remains. It never answers *allow*: that would let the graph widen what a person set in their runtime, and the runtime's own settings are the person's last word on what runs without asking. A call it cannot read, or a graph it cannot open, is no answer, and it exits 0 so a broken gate never blocks the person's work. It maps a tool to capabilities with `attribute` in `failures.ts`, the matching failures and the unmapped report use, so the three cannot disagree about what a tool is. A runtime's own tool is what `builtInTool` in `tool-names.ts` says it is, and is asked about as `observe` when it only reads, so `Read` stays no answer when `Write` asks. A shell call is also asked about as each program its command runs (`commandExercises`), so a grant on Version Control reaches `git push`. A shell call whose command only reads (`commandReads`) is asked about as `observe`, as `Read` is, so `ls` is no answer when `rm` asks; that reading says yes only for a command made wholly of programs that print what is there, since a mistake in it drops a question. The command is read from the call and kept nowhere; the hooks write no tool's input, so the ledger records a shell call as Shell Execution alone. A program goes in that table only when the tree takes a stance on its node, because the gate asks about a capability with no grant.

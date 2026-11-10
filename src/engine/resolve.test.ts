@@ -154,3 +154,28 @@ describe('capabilityToAsk puts the question to the right node, or answers a slip
     });
   });
 });
+
+describe('a sentence is a task, and is offered what its words cover', () => {
+  const tests = () =>
+    makeGraph({
+      capabilities: [{ id: 'combo:automated-tests', name: 'Automated Tests', category: 'combo' }],
+    });
+
+  test('the routed capability comes back as a candidate, never as the answer', () => {
+    const r = resolveCapability(tests(), 'run the test suite');
+    expect(r).toMatchObject({ ok: false, reason: 'unknown' });
+    expect(!r.ok && r.did_you_mean).toEqual(['combo:automated-tests']);
+    // So an agent's question is answered as a slip, and files no deficit.
+    expect(capabilityToAsk(tests(), 'run the test suite')).toEqual({
+      answer: {
+        error: 'No capability "run the test suite" in this graph.',
+        did_you_mean: ['combo:automated-tests'],
+      },
+    });
+  });
+
+  test('a routed capability this graph does not hold is not offered', () => {
+    const r = resolveCapability(graph(), 'run the test suite');
+    expect(!r.ok && r.did_you_mean).not.toContain('combo:automated-tests');
+  });
+});

@@ -6,6 +6,42 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.1...main)
 
+### An agent can ask in the words it has
+
+`ambit can Bash` answered no. The name resolved to the entry `tool:bash`, which carries no grant, while the gate asks about the same call as Shell Execution and puts it to the person. An agent that asked first was refused a call the gate would only have asked about, and learned to stop asking.
+
+`ambit can`, and `ambit_can` over MCP, now take a tool by the name the runtime gives it: `Bash`, `mcp__github__create_issue`, or `Bash(git push origin main)`, the form a Claude Code permission rule takes. The call is asked about as the gate asks, every capability it exercises is listed under `asked_as`, and the narrowest answer is the one given. An exact id such as `tool:bash` is still a question about that node, and where it has no grant the answer no longer suggests one on the entry, which no call would read: `gate_asks` names the capabilities a call through it is decided against.
+
+Two facts go beside the answer and change nothing in it. `runtime_rule` is the Claude Code permission rule that names the call, when one does, so the graph's answer and the runtime's sit side by side. `failed_recently` counts the failures a runtime reported against those capabilities in the last week.
+
+A sentence is offered what its words cover. `ambit can "run the test suite"` said no capability by that name exists; it now lists Automated Tests as a candidate, from the router `ambit goal` uses. It is offered and never chosen, and over MCP it is answered as a slip, so it files no deficit.
+
+### A shell command that only reads is not put to the person
+
+Every shell call was Shell Execution, acting, so with the gate on `ls` was put to the person because `rm` would be, and `ambit can` gave both the same answer. A command made only of programs that print what is already there (`ls`, `cat`, `grep`, `git status`, `gh pr view`) is now asked about as observing, as `Read` is, and the tree lets that run unasked.
+
+Every other reading of a command can only add a question, and this one drops one, so it says yes only for what it can read whole. A redirection, a here-document, a variable set for the command, a program named by a path or a variable, `sudo`, `xargs`, `find -exec`, `git -c` and any word it does not know are acting. A refusal still reaches a read: `cat a && op read …` is denied as before.
+
+### One question for a plan, a smaller answer, and a briefing for a task
+
+`ambit_can` takes several calls in its `capability` argument, one to a line, and answers each as it would alone, cut down to the verdict, what it was decided against and why. A batch is a question about a plan, so it files no deficit. Over MCP an answer no longer carries keys that say nothing: a grant with no holder, scope, note, expiry or condition sent five of them every time.
+
+`ambit_briefing` takes a `task`, and `ambit briefing --task="…"` the same: for the capabilities the goal router says the sentence touches, whether each is reached, what its last check said, whether acting on it is allowed, and which providers to reach for. It moves no mark.
+
+`ambit goal` names those providers too. A capability already reached said so and stopped; it now lists what supplies it here under `use`, those a check has passed first, leaving out any whose last check failed.
+
+### A check says what it ran
+
+`ambit verify` reports the command beside the result, as `ran`. "Verified" for Version Control means `git --version` exited 0, and the word alone read as more than that.
+
+### The briefing says what was never checked
+
+The first line counted what is verified. On a graph where no check has run it now adds how many reached capabilities carry a check, names three, and points at `ambit_verify`, since an agent reads reached as working.
+
+### A dead connection is named
+
+`ambit doctor` looked for a server entry called `ambit`. One written by hand under another name, pointing at a checkout since moved, read as not connected, and the advice was `ambit connect`, which adds a second entry and leaves the dead one failing at the start of every session. It now finds an entry that starts Ambit under any name, says which path is gone, and counts a runtime as connected only when an entry there can start.
+
 ## [0.7.1](https://github.com/zz-plant/ambit/releases/tag/v0.7.1) — 2026-11-10
 
 Ambit on Windows, and a container image that starts.

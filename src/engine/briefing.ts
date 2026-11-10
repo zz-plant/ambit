@@ -17,6 +17,10 @@
 import type { Db } from './db.ts';
 import { evaluatePromotions } from './assure/promote.ts';
 import { recovering } from './assure/lifecycle.ts';
+import { checkableNames } from './assure/verify.ts';
+import { canExecute } from './assure/decide.ts';
+import { routeSentence } from './goals.ts';
+import { workingProviders } from './graph/fragility.ts';
 import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
 import { andList, nextSteps } from './next.ts';
@@ -28,6 +32,7 @@ import {
   FAILING_SQL,
   REACHED_SQL,
   graphCounts,
+  isReached,
   notSeeded,
   reachPhrase,
 } from './vocabulary.ts';
@@ -105,6 +110,11 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
 
   const back = recovering(db).slice(0, 5);
 
+  // Reached and never checked. An agent reads "reached" as "works", and the
+  // count beside it said how many were verified without saying that the rest
+  // could be: these carry a check one call would run.
+  const provable = checkableNames(db);
+
   // A threshold a person set earlier takes effect here. The alternative is a
   // promotion that waits for someone to run a command, which is the
   // confirmation prompt it was meant to replace.
@@ -151,6 +161,9 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
     // Usable, and counted as such above. Named, so an agent that meets a
     // failure from one knows its record was already mixed.
     recovering: back.length ? back : undefined,
+    unchecked: provable.length
+      ? { count: provable.length, names: provable.slice(0, 3) }
+      : undefined,
     waiting_on_a_person: waiting.length
       ? waiting.slice(0, 3).map(p => ({ id: p.id, goal: p.goal, status: p.status }))
       : undefined,
@@ -171,7 +184,7 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
     authority_changed:
       authority.promoted.length || authority.demoted.length ? authority : undefined,
     before_acting:
-      'Call ambit_can with the capability before running a tool you have not used this session. yes: act. ask: put it to the person. no: it records the deficit, so do not retry it under another name.',
+      "Call ambit_can with the tool's own name or a capability before running a tool you have not used this session. yes: act. ask: put it to the person. no: it records the deficit, so do not retry it under another name.",
   };
 }
 
@@ -240,6 +253,12 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
         .concat(' — usable, their last check passed after a failure')
     ),
     line(
+      'Unchecked',
+      b.unchecked
+        ? `${b.unchecked.count} reached with a check that has not run, ${b.unchecked.names.join(', ')}${b.unchecked.count > b.unchecked.names.length ? ' among them' : ''}. Configured is not working: ambit_verify runs one`
+        : null
+    ),
+    line(
       'Waiting on a person',
       b.waiting_on_a_person?.map((p: any) => `${p.goal} [${p.id}, ${p.status}]`).join('; ')
     ),
@@ -303,4 +322,42 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
   return text;
 }
 
-export { briefing, briefingText, lastBriefingAt, TOKEN_BUDGET };
+/**
+ * The briefing for one task: what its sentence touches, and for each of those
+ * whether it is reached, what its last check said, whether acting on it is
+ * allowed, and which providers to reach for.
+ *
+ * The session briefing answers "what is this environment like", most of which
+ * a given task never meets. This answers the three questions an agent has at
+ * the start of one, for the few capabilities the goal router names, and moves
+ * no mark: it is a question, and the session briefing is still unread.
+ */
+function taskBriefing(db: Db, task: string) {
+  const held = db.prepare('SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?');
+  const touches = routeSentence(task)
+    .ranked.map(r => held.get<{ id: string; name: string; state: string; lifecycle: string }>(r.id))
+    .filter(row => row !== undefined)
+    .slice(0, 3)
+    .map(row => {
+      const reached = isReached(row.state);
+      const may = canExecute(db, { capability: row.id }) as { verdict: string; reason: string };
+      const { ids, of } = workingProviders(db, row.id);
+      return {
+        id: row.id,
+        name: row.name,
+        reached,
+        ...(reached ? { check: row.lifecycle, may: may.verdict, why: may.reason } : {}),
+        ...(ids.length ? { use: ids, ...(of > ids.length ? { use_of: of } : {}) } : {}),
+        ...(reached ? {} : { plan: `ambit_plan with ${row.id}` }),
+      };
+    });
+  return touches.length
+    ? { task, touches }
+    : {
+        task,
+        touches,
+        note: 'No capability in the model has words that cover this task. ambit_can with the tool you mean to call answers for that call.',
+      };
+}
+
+export { briefing, briefingText, lastBriefingAt, taskBriefing, TOKEN_BUDGET };

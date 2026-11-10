@@ -30,8 +30,9 @@ import { canExecute } from './assurance.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { type Act, builtInTool, commandExercises } from './tool-names.ts';
-import { gateHookEntry } from './wiring.ts';
+import { capabilityToAsk, resolveCapability } from './resolve.ts';
+import { type Act, builtInTool, commandExercises, commandReads } from './tool-names.ts';
+import { claudeRuleFor, gateHookEntry } from './wiring.ts';
 
 export interface ToolCall {
   tool_name?: string;
@@ -56,6 +57,16 @@ const ORDER = { null: 0, ask: 1, deny: 2 } as const;
 export function capabilitiesFor(db: Db, tool: string): string[] {
   const named = attribute(db, tool);
   if (!named) return [];
+  return throughEntry(db, named);
+}
+
+/**
+ * The capabilities a call through this node is decided against: the node
+ * itself for a capability, and for an entry what it supplies. An entry that
+ * supplies something is never asked about in its own right, so a grant
+ * written on it is one the gate does not read.
+ */
+export function throughEntry(db: Db, named: string): string[] {
   if (named.startsWith('combo:')) return [named];
   const kinds = (PROVISION_EDGES as string[]).map(() => '?').join(', ');
   const supplied = db
@@ -77,10 +88,16 @@ function questionsFor(db: Db, call: ToolCall): Array<{ capability: string; actio
   const tool = typeof call.tool_name === 'string' ? call.tool_name : '';
   if (!tool) return [];
   const own = builtInTool(tool);
-  const action = own ? own.act : 'execute';
-  const asked = action ? capabilitiesFor(db, tool).map(capability => ({ capability, action })) : [];
   const command = (call.tool_input as { command?: unknown } | null | undefined)?.command;
-  if (own?.means === 'tool:bash' && typeof command === 'string') {
+  const shell = own?.means === 'tool:bash' && typeof command === 'string';
+  // A shell call whose command only reads is asked about as `Read` is.
+  const action: Act | undefined = own
+    ? shell && commandReads(command as string)
+      ? 'observe'
+      : own.act
+    : 'execute';
+  const asked = action ? capabilitiesFor(db, tool).map(capability => ({ capability, action })) : [];
+  if (shell && typeof command === 'string') {
     const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?');
     for (const e of commandExercises(command)) {
       if (exists.get(e.means)) asked.push({ capability: e.means, action: e.act });
@@ -116,6 +133,185 @@ export function gateToolCall(db: Db, call: ToolCall): GateAnswer {
     }
   }
   return answer;
+}
+
+/**
+ * A tool call, from the words an agent has for one: `Bash`,
+ * `mcp__github__create_issue`, or `Bash(git push origin main)`, the form a
+ * Claude Code permission rule takes. Null for anything else, which is a
+ * capability's name and the resolver's to read.
+ */
+export function callFromWords(given: string): ToolCall | null {
+  const word = given.trim();
+  const form = /^([A-Za-z_][\w-]*)\(([\s\S]*)\)$/.exec(word);
+  const name = form ? form[1] : word;
+  if (!/^mcp__\w/.test(name) && !builtInTool(name)) return null;
+  return {
+    tool_name: name,
+    tool_input: form ? { command: form[2].replace(/:\*$/, '') } : {},
+  };
+}
+
+/**
+ * What the ledger holds against the capabilities a call exercises: failures a
+ * runtime reported in the last week, counted, with the latest signal. Told to
+ * the agent about to make the same call, and weighed by nothing: a failed run
+ * is not evidence a capability fails (rule 10), so the verdict beside it is
+ * the grant's and the check's alone. Undefined when there are none.
+ */
+function recentFailures(db: Db, tool: string, capabilities: string[]) {
+  const ids = [...new Set([attribute(db, tool), ...capabilities])].filter((id): id is string =>
+    Boolean(id)
+  );
+  if (!ids.length) return undefined;
+  try {
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS times, MAX(timestamp) AS last_at FROM failure_signals
+         WHERE source != 'can' AND timestamp >= datetime('now', '-7 days')
+           AND capability_id IN (${ids.map(() => '?').join(', ')})`
+      )
+      .get<{ times: number; last_at: string | null }>(...ids);
+    if (!row?.times) return undefined;
+    const last = db
+      .prepare(
+        `SELECT class, signal FROM failure_signals
+         WHERE source != 'can' AND capability_id IN (${ids.map(() => '?').join(', ')})
+         ORDER BY id DESC LIMIT 1`
+      )
+      .get<{ class: string; signal: string }>(...ids);
+    return {
+      times: row.times,
+      days: 7,
+      last_at: row.last_at,
+      last: last && `${last.class}: ${last.signal}`,
+    };
+  } catch {
+    // a graph from before failure_signals has nothing to say
+    return undefined;
+  }
+}
+
+const VERDICT_ORDER: Record<string, number> = { yes: 0, ask: 1, no: 2 };
+
+/**
+ * `ambit can` asked with a tool's name in place of a capability's.
+ *
+ * An agent knows the tool it is about to call, not the node the tree files it
+ * under, and `ambit can Bash` used to resolve to the entry `tool:bash`, which
+ * carries no grant, and answer no for a call the gate only asks about. This
+ * asks what the gate asks: each capability the call exercises, with the
+ * narrowest answer given and every question listed beside it. The answer
+ * keeps `canExecute`'s words, so no grant yet is still a no here. Beside it
+ * goes the Claude Code permission rule that names the call, when one does.
+ *
+ * Null when the words are not a call, when they are a node's exact id, which
+ * is a question about that node, or when the graph names nothing the call
+ * exercises.
+ */
+export function decideCall(
+  db: Db,
+  given: string,
+  input: { actor?: string; target?: string; spendCents?: number } = {},
+  home = process.env.HOME || '/'
+) {
+  const call = callFromWords(given);
+  if (!call) return null;
+  const exact = resolveCapability(db, given);
+  if (exact.ok && exact.via !== 'name') return null;
+  const answers = questionsFor(db, call).map(q => ({
+    ...q,
+    decision: canExecute(db, { ...input, ...q }) as { verdict: string; [key: string]: unknown },
+  }));
+  if (!answers.length) return null;
+  const narrowest = answers.reduce((a, b) =>
+    VERDICT_ORDER[b.decision.verdict] > VERDICT_ORDER[a.decision.verdict] ? b : a
+  );
+  return {
+    ...narrowest.decision,
+    asked_as: {
+      tool: call.tool_name,
+      exercises: answers.map(a => ({
+        capability: a.capability,
+        action: a.action,
+        verdict: a.decision.verdict,
+      })),
+    },
+    // What the runtime's own settings say about the same call, beside the
+    // graph's answer: the two are separate facts, and the narrower one holds.
+    runtime_rule: claudeRuleFor(home, call),
+    failed_recently: recentFailures(
+      db,
+      call.tool_name as string,
+      answers.map(a => a.capability)
+    ),
+  };
+}
+
+/** How many questions one batch answers; a plan longer than this is asked in parts. */
+const BATCH_LIMIT = 25;
+
+/**
+ * Several questions in one: the calls a plan will make, one to a line, each a
+ * tool's own name or a capability. Each line is answered as `ambit can` would
+ * answer it alone, cut down to the verdict, what it was decided against and
+ * why. A batch is a question about a plan and not a wall that was hit, so it
+ * files no deficit.
+ */
+export function decideCalls(
+  db: Db,
+  lines: string,
+  input: { actor?: string; target?: string; spendCents?: number } = {},
+  home?: string
+) {
+  const asked = [
+    ...new Set(
+      lines
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+    ),
+  ];
+  const answers = asked.slice(0, BATCH_LIMIT).map(words => {
+    let d: any = decideCall(db, words, input, home);
+    if (!d) {
+      const to = capabilityToAsk(db, words);
+      d = 'answer' in to ? to.answer : canExecute(db, { ...input, capability: to.ask });
+    }
+    if (d.error) return { asked: words, ...d };
+    return {
+      asked: words,
+      verdict: d.verdict,
+      capability: d.capability,
+      action: d.action,
+      ...(d.refused ? { refused: d.refused } : {}),
+      reason: d.reason,
+      ...(d.asked_as ? { exercises: d.asked_as.exercises } : {}),
+      ...(d.runtime_rule ? { runtime_rule: d.runtime_rule } : {}),
+      ...(d.failed_recently ? { failed_recently: d.failed_recently } : {}),
+    };
+  });
+  return {
+    answers,
+    ...(asked.length > BATCH_LIMIT ? { not_asked: asked.slice(BATCH_LIMIT) } : {}),
+  };
+}
+
+/**
+ * An answer without the fields that say nothing: null, an empty string, an
+ * empty list. A grant with no holder, scope, note, expiry or condition sent
+ * five such keys with every answer, and an agent pays for each in context.
+ */
+export function withoutEmpty<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withoutEmpty) as T;
+  if (value === null || typeof value !== 'object') return value;
+  const kept: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (v === null || v === undefined || v === '') continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    kept[key] = withoutEmpty(v);
+  }
+  return kept as T;
 }
 
 /** What a Claude Code PreToolUse hook prints: the decision, or nothing at all. */

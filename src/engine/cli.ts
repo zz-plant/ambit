@@ -65,7 +65,7 @@ import { setBudget, budgetReport, clearBudget, parseAmount } from './budgets.ts'
 import { reversibilityReport } from './reversibility.ts';
 import { observedReport } from './observed.ts';
 import { objectReport } from './objects.ts';
-import { briefing, briefingText } from './briefing.ts';
+import { briefing, briefingText, taskBriefing } from './briefing.ts';
 import { nextSteps } from './next.ts';
 import { council } from './council.ts';
 import { recordRefusal, signalReport } from './failures.ts';
@@ -131,7 +131,13 @@ import { listPortStatus, portServer } from './port.ts';
 import { toggleServer } from './toggle.ts';
 import { analyzeRepo } from './repo-inspect.ts';
 import { gateNote } from './wiring.ts';
-import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import {
+  claudeHookOutput,
+  claudeHookSnippet,
+  decideCall,
+  gateToolCall,
+  throughEntry,
+} from './gate.ts';
 import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
@@ -204,7 +210,9 @@ async function runCommand(
     // because that is what gets pasted into a system prompt; --json for the
     // runtime hooks that compose it into something else.
     case 'briefing': {
-      if (flags.has('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
+      // `--task="deploy the worker"`: only what that task touches, and no mark moved.
+      if (value('task')) emit(taskBriefing(db, value('task') as string));
+      else if (flags.has('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
       else emitText(briefingText(db, { mark: !flags.has('--peek') }));
       break;
     }
@@ -677,24 +685,25 @@ async function runCommand(
       // whom a tool nothing supplies is a wall worth filing. A person who
       // typed it is told the graph holds no such capability, and the exit
       // code says so.
-      const asked = capabilityToAsk(db, arg);
-      if ('answer' in asked) {
-        emit(asked.answer);
-        break;
-      }
-      if (!record) {
-        const known = named(arg);
-        if (!('id' in known)) {
-          emit(known);
+      const how = { actor: value('actor'), target: value('target'), spendCents };
+      // A tool's own name (`Bash`, `mcp__github__create_issue`) is asked as
+      // the gate asks about the call; see `decideCall`.
+      let decision: any = decideCall(db, arg, how);
+      if (!decision) {
+        const asked = capabilityToAsk(db, arg);
+        if ('answer' in asked) {
+          emit(asked.answer);
           break;
         }
+        if (!record) {
+          const known = named(arg);
+          if (!('id' in known)) {
+            emit(known);
+            break;
+          }
+        }
+        decision = canExecute(db, { ...how, capability: asked.ask });
       }
-      const decision: any = canExecute(db, {
-        actor: value('actor'),
-        capability: asked.ask,
-        target: value('target'),
-        spendCents,
-      });
       if (record) {
         const recorded = recordRefusal(db, decision, value('tool'));
         if (recorded !== undefined) decision.recorded_deficit = recorded;
@@ -702,7 +711,18 @@ async function runCommand(
         // The command that would answer yes next time, for the person to
         // type or not. The narrowest mode that permits: a person still asked.
         const scope = value('target') ? ` --scope=${shellQuote(value('target')!)}` : '';
-        decision.to_grant = `ambit authority grant ${shellQuote(asked.ask.replace(/^combo:/, ''))} confirm${scope}`;
+        // An entry that supplies capabilities is decided through them, so a
+        // grant on the entry is one no call would read. Name what the gate
+        // asks instead, and the question that gets the real answer.
+        const through = throughEntry(db, String(decision.capability)).filter(
+          id => id !== decision.capability
+        );
+        if (through.length) {
+          decision.gate_asks = through;
+          decision.try = `ambit can ${shellQuote(through[0].replace(/^combo:/, ''))}${scope ? ` --target=${shellQuote(value('target')!)}` : ''}`;
+        } else {
+          decision.to_grant = `ambit authority grant ${shellQuote(String(decision.capability).replace(/^combo:/, ''))} confirm${scope}`;
+        }
       }
       emit(decision);
       // --exit-code puts the decision where a shell can branch on it: 0 to go
