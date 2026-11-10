@@ -45,7 +45,7 @@ export function demoTreeGraph(): Graph {
 export const COLD_OPEN_OUTAGE = 'combo:tool-protocol';
 
 /** The cold open's root in words a visitor uses. The node's own name is the tree's. */
-export const COLD_OPEN_PLAIN = 'their MCP servers';
+export const COLD_OPEN_PLAIN = "this setup's MCP servers";
 
 /**
  * What the cold open takes down, split the way `outageImpact` splits every

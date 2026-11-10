@@ -90,6 +90,12 @@ export interface Showing {
   rootId: string | null;
   cascade: Set<string>;
   weakened?: Set<string>;
+  /**
+   * The page is stepping an outage hop by hop and passes only what the
+   * playhead has reached, so whatever is lit arrives now, not after a delay
+   * counted from the outage's start.
+   */
+  paced?: boolean;
 }
 
 /**

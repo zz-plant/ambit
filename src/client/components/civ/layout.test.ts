@@ -49,6 +49,9 @@ import {
   jointMark,
   outageCascade,
   outageImpact,
+  hopSentence,
+  outageHops,
+  outageRemedy,
   outageSentence,
   outageSplit,
   recentRuns,
@@ -370,6 +373,71 @@ test('an unlock claims only what depends on it, not what another step already al
   // anywhere: `gap` claimed `elsewhere` and what follows it, which it has
   // nothing to do with.
   expect([...unlockCascade(items, deps, 'gap')]).toEqual(['after-gap']);
+});
+
+test('an outage ends on whether the capability could survive losing a provider', () => {
+  const items = [
+    item('one', { providers: ['mcp:memory'] }),
+    item('many', { providers: ['mcp:a', 'mcp:b'] }),
+    item('tied', { providers: ['mcp:c', 'mcp:d'] }),
+    { ...item('mcp:c', { credentials: ['cred:token'] }), name: 'c' },
+    { ...item('mcp:d', { credentials: ['cred:token', 'cred:other'] }), name: 'd' },
+    { ...item('cred:token'), name: 'API token' },
+    item('by-runtime', { providers: ['runtime:opencode'] }),
+    item('unstated'),
+    item('failing', { providers: ['mcp:a'], lifecycle: 'broken' }),
+  ];
+  // One provider is the finding and a second is the remedy; a provider the
+  // graph does not hold is named by its id, without the prefix.
+  expect(outageRemedy(items, 'one')).toBe(
+    'It has one provider, memory. A second would keep it working if that one failed.'
+  );
+  expect(outageRemedy(items, 'many', 'Many')).toBe(
+    'Many has 2 providers, so losing any one of them would not do this.'
+  );
+  // Two providers on one credential are not redundancy, as the engine counts it.
+  expect(outageRemedy(items, 'tied', 'Tied')).toBe(
+    "Tied's 2 providers all present one credential, API token. A provider on another credential would keep it working if that one were revoked."
+  );
+  // Nothing to state: supplied by a runtime by construction, no provider
+  // recorded, or already failing its check.
+  expect(outageRemedy(items, 'by-runtime')).toBeNull();
+  expect(outageRemedy(items, 'unstated')).toBeNull();
+  expect(outageRemedy(items, 'failing')).toBeNull();
+});
+
+test('an outage is stepped in the order it spreads, and the hops add up to the sentence', () => {
+  const items = [
+    item('root'),
+    item('near'),
+    item('far'),
+    item('spare', { providers: ['near', 'other'] }),
+    { ...item('never'), status: 'specified' as const },
+    item('down', { lifecycle: 'broken' }),
+  ];
+  const edges = [
+    { from: 'root', to: 'near', type: 'hard-dep' as const },
+    { from: 'root', to: 'down', type: 'hard-dep' as const },
+    { from: 'near', to: 'far', type: 'hard-dep' as const },
+    { from: 'near', to: 'spare', type: 'soft-dep' as const, kind: 'provides' },
+    { from: 'far', to: 'never', type: 'hard-dep' as const },
+  ];
+  const split = outageSplit(items, edges, 'root');
+  const { hops, depth } = outageHops(items, edges, 'root', split);
+  expect(hops.map(h => h.stopped.map(i => i.id))).toEqual([[], ['near'], ['far'], []]);
+  expect(hops[2].thinned.map(i => i.id)).toEqual(['spare']);
+  expect(hops[3].cutOff.map(i => i.id)).toEqual(['never']);
+  expect(depth.get('far')).toBe(2);
+  // What was already failing is in no hop, as it is in no count of what stops.
+  const impact = outageImpact(items, split);
+  expect(hops.flatMap(h => h.stopped)).toEqual(impact.stopped);
+  expect(hops.flatMap(h => h.cutOff)).toEqual(impact.cutOff);
+
+  expect(hopSentence('Root', hops[0], 0)).toBe('Root goes down');
+  expect(hopSentence('Root', hops[2], 2)).toBe('far stops; spare loses a provider');
+  expect(hopSentence('Root', hops[3], 3)).toBe('1 not set up yet is cut off');
+  const five = { stopped: ['a', 'b', 'c', 'd', 'e'].map(id => item(id)), thinned: [], cutOff: [] };
+  expect(hopSentence('Root', five, 1)).toBe('a, b and 3 more stop');
 });
 
 test('an outage stops only what was working; the rest is cut off or already failing', () => {

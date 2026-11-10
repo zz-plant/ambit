@@ -388,7 +388,12 @@ src/client/                React frontend
                            textures, each over one half of a node: a ring that slips off its fill
                            for what is recovering, and a fill eaten through for what an outage stops.
                            `mapKeys` is each key entry, which the key, the strip and the specimens read
-    civ/SimulationBanner.tsx  The outage / unlock simulation banner
+    civ/SimulationBanner.tsx  The outage / unlock simulation banner. An outage's has a track: play,
+                           drag or step the cascade a hop at a time, with what each hop takes
+                           named beside it, and the sentence ends on `outageRemedy`
+    civ/useOutagePlayhead.ts  Which hop of an outage the map has drawn up to, and whether it is
+                           playing. An outage already running when the map mounts is drawn whole,
+                           and under reduced motion nothing plays
     civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step. On
                            the demo the next step leads and the failing check is the line under it
     NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, the ladder its grant

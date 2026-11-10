@@ -277,7 +277,9 @@ test('with nothing selected the map is whole, even with the collapse on', () => 
 // ── A simulation ignores the collapse, and says so ───────────────────────────
 
 const banner = (html: string) =>
-  html.match(/civ-sim-banner[^>]*>.*?<span>(.*?)<\/span>/)?.[1].replace(/<[^>]+>/g, '') ?? '';
+  html
+    .match(/civ-sim-banner[^>]*>.*?<span role="status">(.*?)<\/span>/)?.[1]
+    .replace(/<[^>]+>/g, '') ?? '';
 
 test('a simulation counts the whole cascade and says how much of it the collapse hides', () => {
   const { stops, weakened } = outageSplit(items, connections, ROOT);

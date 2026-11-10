@@ -1200,6 +1200,111 @@ export function outageSentence(
 }
 
 /**
+ * What an outage's sentence ends on: whether the capability that went down
+ * could survive losing a provider, by the rule the engine's fragility report
+ * counts with. One provider is the finding, and a second is the remedy.
+ * Several are redundancy only when they do not all present one credential.
+ * A capability with no recorded provider, one a runtime supplies by
+ * construction, or one already failing its check gets no sentence: there is
+ * nothing here to state. `subject` is the capability's name where the sentence
+ * follows others about other things, and "It" where the panel is about it.
+ */
+export function outageRemedy(items: Item[], rootId: string, subject = 'It'): string | null {
+  const its = subject === 'It' ? 'Its' : `${subject}'s`;
+  const byId = new Map(items.map(i => [i.id, i]));
+  const root = byId.get(rootId);
+  const providers = root?.meta?.providers;
+  if (!root || isFailing(root) || !Array.isArray(providers) || !providers.length) return null;
+  const ids = providers as string[];
+  const nameOf = (id: string) => byId.get(id)?.name ?? id.slice(id.indexOf(':') + 1);
+  if (ids.length === 1) {
+    if (ids[0].startsWith('runtime:')) return null;
+    return `${subject} has one provider, ${nameOf(ids[0])}. A second would keep it working if that one failed.`;
+  }
+  const held = ids.map(id => byId.get(id)?.meta?.credentials);
+  const shared = held.every(Array.isArray)
+    ? (held[0] as string[]).find(c => held.every(list => (list as string[]).includes(c)))
+    : undefined;
+  if (shared) {
+    return `${its} ${ids.length} providers all present one credential, ${nameOf(shared)}. A provider on another credential would keep it working if that one were revoked.`;
+  }
+  return `${subject} has ${ids.length} providers, so losing any one of them would not do this.`;
+}
+
+/** What one hop of an outage takes, split the way the sentence splits the whole. */
+export interface OutageHop {
+  stopped: Item[];
+  thinned: Item[];
+  cutOff: Item[];
+}
+
+/**
+ * An outage in the order it spreads: entry 0 is the capability that went down,
+ * and each entry after it is what the failure reaches one hop further out. The
+ * map plays these one after another and the banner's track steps through
+ * them. A node the walk cannot place is counted at the first hop, so every
+ * node of the cascade is in exactly one entry and the entries add up to the
+ * sentence's counts. What was already failing is left out, as the sentence
+ * leaves it out of what stops.
+ */
+export function outageHops(
+  items: Item[],
+  connections: Connection[],
+  rootId: string,
+  split: { stops: Set<string>; weakened?: Set<string> }
+): { hops: OutageHop[]; depth: Map<string, number> } {
+  const within = new Set([rootId, ...split.stops, ...(split.weakened ?? [])]);
+  const walked = cascadeDepths(connections, rootId, within);
+  const depth = new Map([...within].map(id => [id, id === rootId ? 0 : (walked.get(id) ?? 1)]));
+  const last = Math.max(0, ...depth.values());
+  const hops: OutageHop[] = Array.from({ length: last + 1 }, () => ({
+    stopped: [],
+    thinned: [],
+    cutOff: [],
+  }));
+  for (const item of items) {
+    const at = depth.get(item.id);
+    if (!at) continue;
+    if (split.stops.has(item.id)) {
+      if (item.status !== 'built') hops[at].cutOff.push(item);
+      else if (!isFailing(item)) hops[at].stopped.push(item);
+    } else if (item.status === 'built') {
+      hops[at].thinned.push(item);
+    }
+  }
+  return { hops, depth };
+}
+
+/** "A, B and C", and "A, B and 3 more" past three names. */
+const listed = (list: Item[]): string => {
+  const names = list.slice(0, list.length > 3 ? 2 : 3).map(i => i.name);
+  if (list.length > 3) names.push(`${list.length - 2} more`);
+  return names.length <= 1
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+};
+
+/**
+ * One hop said aloud: the track's readout, and what a screen reader hears as
+ * the playhead moves. The first stop is the outage itself.
+ */
+export function hopSentence(root: string, hop: OutageHop, index: number): string {
+  if (index === 0) return `${root} goes down`;
+  const said = [
+    hop.stopped.length
+      ? `${listed(hop.stopped)} ${hop.stopped.length === 1 ? 'stops' : 'stop'}`
+      : '',
+    hop.thinned.length
+      ? `${listed(hop.thinned)} ${hop.thinned.length === 1 ? 'loses' : 'lose'} a provider`
+      : '',
+    hop.cutOff.length
+      ? `${hop.cutOff.length} not set up yet ${hop.cutOff.length === 1 ? 'is' : 'are'} cut off`
+      : '',
+  ].filter(Boolean);
+  return said.length ? said.join('; ') : 'Nothing that works stops here';
+}
+
+/**
  * What a reached node may do without asking, as the authority lens paints it.
  * `ungranted` is reached with no execute grant at all: the gate refuses it
  * ("No grant covers ...") until someone grants one, which is a different

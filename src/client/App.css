@@ -2224,13 +2224,43 @@ button.app-sample-tag:hover {
   }
 }
 
+/* The failure crossing an edge while an outage is stepped: a short red dash
+   that leaves the node that fell and is gone when it reaches the next. The
+   path is one unit long (pathLength), so the dash is a fraction of any edge. */
+.civ-sim-front {
+  fill: none;
+  stroke: var(--error);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 0.16 2;
+  stroke-dashoffset: 0.16;
+  opacity: 0;
+  pointer-events: none;
+  animation: civ-sim-front 0.34s cubic-bezier(0.3, 0, 0.15, 1) both;
+}
+
+@keyframes civ-sim-front {
+  0% {
+    stroke-dashoffset: 0.16;
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -0.86;
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .civ-sim-hit,
   .civ-sim-edge {
     animation: none;
   }
 
-  .civ-sim-ripple {
+  .civ-sim-ripple,
+  .civ-sim-front {
     display: none;
   }
 }
@@ -2251,6 +2281,104 @@ button.app-sample-tag:hover {
 .civ-sim-banner--outage {
   border: 1px solid var(--error-line);
   color: var(--error);
+}
+
+/* The sentence, its icon and the way out: the row the banner always was. */
+.civ-sim-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* An outage that can be stepped is two rows, so it is a plate, not a pill. */
+.civ-sim-banner--tracked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 14px 6px;
+  border-radius: var(--radius-lg);
+}
+
+/* What would let it survive is not a failure: it is said in the text's own
+   colour, and lit only when the play has reached the end it follows from. */
+.civ-sim-remedy {
+  color: var(--text-secondary);
+  opacity: 0.35;
+  transition: opacity 0.3s ease-out, color 0.3s ease-out;
+}
+
+.civ-sim-remedy.is-on {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.civ-sim-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.civ-sim-track .civ-timeline-play {
+  margin-top: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.civ-sim-scrub {
+  flex: none;
+  width: 132px;
+  margin-top: 0;
+}
+
+/* A hop the failure has reached, on the track as on the map. */
+.civ-sim-tick {
+  height: 14px;
+  background: var(--error);
+}
+
+.civ-sim-readout {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.civ-sim-step {
+  margin-right: 8px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civ-sim-remedy {
+    transition-duration: 0s;
+  }
+}
+
+/* On a phone the readout takes a row of its own under the track, whole: cut
+   to one line beside it, it named nothing. */
+@media (max-width: 768px) {
+  .civ-sim-track {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .civ-sim-scrub {
+    flex: 1 1 0;
+    width: auto;
+  }
+
+  .civ-sim-readout {
+    order: 1;
+    flex-basis: 100%;
+    white-space: normal;
+  }
 }
 
 .civ-sim-banner--acquisition {
