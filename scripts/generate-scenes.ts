@@ -158,8 +158,9 @@ function wrap(text: string, width: number, max: number): string[] {
 type Node = { x: number; y: number; r: number; down?: boolean; lost?: boolean; frontier?: boolean };
 
 /**
- * Hand-placed, in loose columns with uneven rows: a map is irregular and it
- * runs off the edges of its frame. The failed node sits where the eye lands
+ * Hand-placed, in loose columns with uneven rows: a map is irregular, and on
+ * the doc cards it runs off the edges of its frame (the social card scales it
+ * inside, see `SOCIAL_GRAPH_BOX`). The failed node sits where the eye lands
  * first on the right half, and what it takes with it fans out to its right.
  */
 const NODES: Record<string, Node> = {
@@ -261,11 +262,36 @@ const GROUND = `<defs>
 const BRAND = `<g transform="translate(80, 62) scale(0.62)">${plated(14)}</g>
     <text x="134" y="96" font-family="${FONT}" font-size="36" font-weight="700" fill="${INK}" letter-spacing="-0.8">Ambit</text>`;
 
+/**
+ * The box the social card's graph is scaled into, inside the card's safe
+ * frame: 64px from the sides and 48px from the top and bottom, with room left
+ * above for the label and to the left for the headline.
+ *
+ * The graph used to run to 1279 across and 630 down, which reads as cut off
+ * once an unfurl trims the card. Slack, LinkedIn and iMessage take about 30px
+ * off each side of a 2:1 image. The doc
+ * cards keep the full-bleed graph, faint behind their text, where a cut node
+ * reads as background.
+ */
+const SOCIAL_GRAPH_BOX = { right: 1200, top: 128, bottom: 584 };
+
+/** A transform that fits every node of the graph, stroke included, into `box`. */
+function fitGraph(box: typeof SOCIAL_GRAPH_BOX): string {
+  const nodes = Object.values(NODES);
+  const pad = 2; // half the widest node stroke
+  const minY = Math.min(...nodes.map(n => n.y - n.r - pad));
+  const maxY = Math.max(...nodes.map(n => n.y + n.r + pad));
+  const maxX = Math.max(...nodes.map(n => n.x + n.r + pad));
+  const s = (box.bottom - box.top) / (maxY - minY);
+  const round = (v: number) => Math.round(v * 100) / 100;
+  return `translate(${round(box.right - maxX * s)} ${round(box.top - minY * s)}) scale(${round(s * 1000) / 1000})`;
+}
+
 function socialCard(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
     ${GROUND}
-    ${graph()}
-    <text x="1236" y="70" font-family="${FONT}" font-size="30" font-weight="700" fill="${OK}" text-anchor="end">1 step, ${Object.values(NODES).filter(n => n.lost).length} more open</text>
+    <g transform="${fitGraph(SOCIAL_GRAPH_BOX)}">${graph()}</g>
+    <text x="${SOCIAL_GRAPH_BOX.right}" y="96" font-family="${FONT}" font-size="30" font-weight="700" fill="${OK}" text-anchor="end">1 step, ${Object.values(NODES).filter(n => n.lost).length} more open</text>
 
     ${BRAND}
 
@@ -280,9 +306,9 @@ function socialCard(): string {
       <tspan x="80" y="464">what to set up next, what breaks if it goes.</tspan>
     </text>
 
-    <rect x="80" y="548" width="352" height="56" rx="28" fill="${ACCENT}"/>
-    <text x="256" y="585" font-family="${FONT}" font-size="26" font-weight="650" fill="${CANVAS}" text-anchor="middle">Try the live demo →</text>
-    <text x="456" y="585" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">open source, runs locally</text>
+    <rect x="80" y="532" width="352" height="56" rx="28" fill="${ACCENT}"/>
+    <text x="256" y="569" font-family="${FONT}" font-size="26" font-weight="650" fill="${CANVAS}" text-anchor="middle">Try the live demo →</text>
+    <text x="456" y="569" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">open source, runs locally</text>
   </svg>`;
 }
 
