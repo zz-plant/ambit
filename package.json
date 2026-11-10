@@ -1,6 +1,6 @@
 {
   "name": "ambit-cli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": false,
   "description": "MCP server inventory and capability map for Claude Code, Cursor, Codex and 13 more agents: what each server adds, which ones work, and what to add next.",
   "mcpName": "io.github.zz-plant/ambit",

@@ -4,7 +4,15 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 An entry that refers to the previous entry therefore points down the page, not up.
 
-## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.0...main)
+## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.1...main)
+
+## [0.7.1](https://github.com/zz-plant/ambit/releases/tag/v0.7.1) — 2026-11-10
+
+Ambit on Windows, and a container image that starts.
+
+### The container image starts
+
+The image's last stage copied the compiled CLI without its dependencies, so `node cli.js mcp` stopped at once with `Cannot find package '@modelcontextprotocol/sdk'`. The stage now installs the production dependencies.
 
 ### Windows
 
