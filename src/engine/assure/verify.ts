@@ -79,9 +79,19 @@ function verifyCheck(
   name: string;
   status: string;
   detail?: string;
+  /** The check as it was run, so "verified" reads as what was proved and no more. */
+  ran?: string;
   ms: number;
 } {
   const started = Date.now();
+  // `git --version` proves git is installed, and not that a push would
+  // succeed. The word "verified" said neither; the command says which.
+  const ran = Array.isArray(verify?.command)
+    ? (verify.command[0] === 'sh' && verify.command[1] === '-c'
+        ? String(verify.command[2] ?? '')
+        : verify.command.join(' ')
+      ).slice(0, 160)
+    : undefined;
   let status: 'verified' | 'failed' | 'unverifiable' = 'unverifiable';
   let detail: string | undefined;
 
@@ -127,7 +137,7 @@ function verifyCheck(
       );
     }
   }
-  return { id, name, status, detail, ms };
+  return { id, name, status, detail, ...(ran ? { ran } : {}), ms };
 }
 
 /** Verifies a capability node using its own declared check. */

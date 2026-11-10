@@ -18,6 +18,9 @@ import type { Db } from './db.ts';
 import { evaluatePromotions } from './assure/promote.ts';
 import { recovering } from './assure/lifecycle.ts';
 import { checkableNames } from './assure/verify.ts';
+import { canExecute } from './assure/decide.ts';
+import { routeSentence } from './goals.ts';
+import { workingProviders } from './graph/fragility.ts';
 import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
 import { andList, nextSteps } from './next.ts';
@@ -29,6 +32,7 @@ import {
   FAILING_SQL,
   REACHED_SQL,
   graphCounts,
+  isReached,
   notSeeded,
   reachPhrase,
 } from './vocabulary.ts';
@@ -318,4 +322,42 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
   return text;
 }
 
-export { briefing, briefingText, lastBriefingAt, TOKEN_BUDGET };
+/**
+ * The briefing for one task: what its sentence touches, and for each of those
+ * whether it is reached, what its last check said, whether acting on it is
+ * allowed, and which providers to reach for.
+ *
+ * The session briefing answers "what is this environment like", most of which
+ * a given task never meets. This answers the three questions an agent has at
+ * the start of one, for the few capabilities the goal router names, and moves
+ * no mark: it is a question, and the session briefing is still unread.
+ */
+function taskBriefing(db: Db, task: string) {
+  const held = db.prepare('SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?');
+  const touches = routeSentence(task)
+    .ranked.map(r => held.get<{ id: string; name: string; state: string; lifecycle: string }>(r.id))
+    .filter(row => row !== undefined)
+    .slice(0, 3)
+    .map(row => {
+      const reached = isReached(row.state);
+      const may = canExecute(db, { capability: row.id }) as { verdict: string; reason: string };
+      const { ids, of } = workingProviders(db, row.id);
+      return {
+        id: row.id,
+        name: row.name,
+        reached,
+        ...(reached ? { check: row.lifecycle, may: may.verdict, why: may.reason } : {}),
+        ...(ids.length ? { use: ids, ...(of > ids.length ? { use_of: of } : {}) } : {}),
+        ...(reached ? {} : { plan: `ambit_plan with ${row.id}` }),
+      };
+    });
+  return touches.length
+    ? { task, touches }
+    : {
+        task,
+        touches,
+        note: 'No capability in the model has words that cover this task. ambit_can with the tool you mean to call answers for that call.',
+      };
+}
+
+export { briefing, briefingText, lastBriefingAt, taskBriefing, TOKEN_BUDGET };

@@ -30,8 +30,8 @@ import { canExecute } from './assurance.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { resolveCapability } from './resolve.ts';
-import { type Act, builtInTool, commandExercises } from './tool-names.ts';
+import { capabilityToAsk, resolveCapability } from './resolve.ts';
+import { type Act, builtInTool, commandExercises, commandReads } from './tool-names.ts';
 import { claudeRuleFor, gateHookEntry } from './wiring.ts';
 
 export interface ToolCall {
@@ -88,10 +88,16 @@ function questionsFor(db: Db, call: ToolCall): Array<{ capability: string; actio
   const tool = typeof call.tool_name === 'string' ? call.tool_name : '';
   if (!tool) return [];
   const own = builtInTool(tool);
-  const action = own ? own.act : 'execute';
-  const asked = action ? capabilitiesFor(db, tool).map(capability => ({ capability, action })) : [];
   const command = (call.tool_input as { command?: unknown } | null | undefined)?.command;
-  if (own?.means === 'tool:bash' && typeof command === 'string') {
+  const shell = own?.means === 'tool:bash' && typeof command === 'string';
+  // A shell call whose command only reads is asked about as `Read` is.
+  const action: Act | undefined = own
+    ? shell && commandReads(command as string)
+      ? 'observe'
+      : own.act
+    : 'execute';
+  const asked = action ? capabilitiesFor(db, tool).map(capability => ({ capability, action })) : [];
+  if (shell && typeof command === 'string') {
     const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?');
     for (const e of commandExercises(command)) {
       if (exists.get(e.means)) asked.push({ capability: e.means, action: e.act });
@@ -240,6 +246,72 @@ export function decideCall(
       answers.map(a => a.capability)
     ),
   };
+}
+
+/** How many questions one batch answers; a plan longer than this is asked in parts. */
+const BATCH_LIMIT = 25;
+
+/**
+ * Several questions in one: the calls a plan will make, one to a line, each a
+ * tool's own name or a capability. Each line is answered as `ambit can` would
+ * answer it alone, cut down to the verdict, what it was decided against and
+ * why. A batch is a question about a plan and not a wall that was hit, so it
+ * files no deficit.
+ */
+export function decideCalls(
+  db: Db,
+  lines: string,
+  input: { actor?: string; target?: string; spendCents?: number } = {},
+  home?: string
+) {
+  const asked = [
+    ...new Set(
+      lines
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+    ),
+  ];
+  const answers = asked.slice(0, BATCH_LIMIT).map(words => {
+    let d: any = decideCall(db, words, input, home);
+    if (!d) {
+      const to = capabilityToAsk(db, words);
+      d = 'answer' in to ? to.answer : canExecute(db, { ...input, capability: to.ask });
+    }
+    if (d.error) return { asked: words, ...d };
+    return {
+      asked: words,
+      verdict: d.verdict,
+      capability: d.capability,
+      action: d.action,
+      ...(d.refused ? { refused: d.refused } : {}),
+      reason: d.reason,
+      ...(d.asked_as ? { exercises: d.asked_as.exercises } : {}),
+      ...(d.runtime_rule ? { runtime_rule: d.runtime_rule } : {}),
+      ...(d.failed_recently ? { failed_recently: d.failed_recently } : {}),
+    };
+  });
+  return {
+    answers,
+    ...(asked.length > BATCH_LIMIT ? { not_asked: asked.slice(BATCH_LIMIT) } : {}),
+  };
+}
+
+/**
+ * An answer without the fields that say nothing: null, an empty string, an
+ * empty list. A grant with no holder, scope, note, expiry or condition sent
+ * five such keys with every answer, and an agent pays for each in context.
+ */
+export function withoutEmpty<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withoutEmpty) as T;
+  if (value === null || typeof value !== 'object') return value;
+  const kept: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (v === null || v === undefined || v === '') continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    kept[key] = withoutEmpty(v);
+  }
+  return kept as T;
 }
 
 /** What a Claude Code PreToolUse hook prints: the decision, or nothing at all. */

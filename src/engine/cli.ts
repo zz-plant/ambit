@@ -65,7 +65,7 @@ import { setBudget, budgetReport, clearBudget, parseAmount } from './budgets.ts'
 import { reversibilityReport } from './reversibility.ts';
 import { observedReport } from './observed.ts';
 import { objectReport } from './objects.ts';
-import { briefing, briefingText } from './briefing.ts';
+import { briefing, briefingText, taskBriefing } from './briefing.ts';
 import { nextSteps } from './next.ts';
 import { council } from './council.ts';
 import { recordRefusal, signalReport } from './failures.ts';
@@ -210,7 +210,9 @@ async function runCommand(
     // because that is what gets pasted into a system prompt; --json for the
     // runtime hooks that compose it into something else.
     case 'briefing': {
-      if (flags.has('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
+      // `--task="deploy the worker"`: only what that task touches, and no mark moved.
+      if (value('task')) emit(taskBriefing(db, value('task') as string));
+      else if (flags.has('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
       else emitText(briefingText(db, { mark: !flags.has('--peek') }));
       break;
     }

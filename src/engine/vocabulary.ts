@@ -361,6 +361,7 @@ export {
   PROVEN,
   CONFIGURED,
   REACHED_SQL,
+  PROVEN_SQL,
   isReached,
   FAILING_SQL,
   RECOVERING_SQL,

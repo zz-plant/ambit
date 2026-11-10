@@ -15,9 +15,12 @@ import {
   decideCall as canCall,
   claudeHookOutput,
   claudeHookSnippet,
+  decideCalls,
   gateToolCall,
+  withoutEmpty,
 } from './gate.ts';
 import { cli, dir, ENGINE, getDb, join, seed } from './testing/cli.ts';
+import { commandReads } from './tool-names.ts';
 
 const WRAPPER = join(import.meta.dirname, '..', '..', 'cli.js');
 
@@ -229,13 +232,18 @@ test('a shell call is asked about as each program its command runs', () => {
   expect(push.decision).toBe('deny');
   expect(push.reason).toMatch(/Version Control is forbidden/);
 
-  // The forbidden grant is on acting; a read of the repository is Shell Execution's to answer.
-  const status = decideCall('Bash', { command: 'git status' });
-  expect(status.decision).toBe('ask');
-  expect(status.reason).toMatch(/^Ambit: Shell Execution/);
+  // The forbidden grant is on acting. A read of the repository only reads, so
+  // it is asked about as `Read` is, and the runtime decides.
+  expect(decideCall('Bash', { command: 'git status' }).decision).toBeNull();
+  // The same read with something acting beside it is Shell Execution's to answer.
+  const mixed = decideCall('Bash', { command: 'git status && npm test' });
+  expect(mixed.decision).toBe('ask');
+  expect(mixed.reason).toMatch(/^Ambit: Shell Execution/);
   // A word that only mentions git runs nothing, and a call with no command is the shell alone.
-  expect(decideCall('Bash', { command: 'echo "git push"' }).decision).toBe('ask');
+  expect(decideCall('Bash', { command: 'echo "git push"' }).decision).toBeNull();
+  expect(decideCall('Bash', { command: 'mytool "git push"' }).decision).toBe('ask');
   expect(decideCall('Bash').capabilities).toEqual(['combo:shell-execution']);
+  expect(decideCall('Bash').decision).toBe('ask');
 
   // The tree forbids reading a secret; through the CLI as through the 1Password server.
   const secret = decideCall('Bash', { command: 'op read op://private/github/token' });
@@ -290,7 +298,11 @@ test('ambit can takes a tool by the name the runtime gives it, and asks what the
     'combo:shell-execution',
     'combo:version-control',
   ]);
-  expect(cli('can', 'Bash(git status)').verdict).toBe('ask');
+  // A command that only reads is asked about as observing, as `Read` is.
+  const status = cli('can', 'Bash(git status)');
+  expect(status.verdict).toBe('yes');
+  expect(status.asked_as.exercises.map((e: any) => e.action)).toEqual(['observe', 'observe']);
+  expect(cli('can', 'Bash(npm test)').verdict).toBe('ask');
   const issue = cli('can', 'mcp__github__create_issue');
   expect(issue.asked_as.tool).toBe('mcp__github__create_issue');
   expect(issue.verdict).toBe('no');
@@ -328,7 +340,7 @@ test("a Claude Code permission rule that names the call is reported beside the g
     expect(rule('Bash(git status && rm -rf x)')).toBeUndefined();
     expect(rule('Bash(git statusx)')).toBeUndefined();
     // The answer is the graph's either way: the rule is beside it, not in it.
-    expect((canCall(db, 'Bash(git status)', {}, home) as any).verdict).toBe('ask');
+    expect((canCall(db, 'Bash(npm run check)', {}, home) as any).verdict).toBe('ask');
   } finally {
     db.close();
   }
@@ -346,4 +358,83 @@ test('failures a runtime reported against what a call exercises are told, and we
   const after = cli('can', 'Bash');
   expect(after.failed_recently).toMatchObject({ times: 1, last: 'tool: command-not-found' });
   expect(after.verdict).toBe('ask');
+});
+
+/**
+ * `ls` was put to the person because `rm` would be: every shell call was
+ * Shell Execution, acting. A command is read as observing only when every
+ * part of it is a program that prints what is there, since a mistake here
+ * drops a question where every other reading of a command adds one.
+ */
+test('a shell command that only reads is asked about as Read is, and anything unsure is acting', () => {
+  const reads = [
+    'ls -la',
+    'cat a | grep b | wc -l',
+    'git status && git log --oneline -3',
+    'find . -name "*.ts"',
+    'if test -f a; then cat a; fi',
+    'gh pr view 3',
+  ];
+  const acts = [
+    'rm -rf x',
+    'ls > out',
+    'cat a 2>&1',
+    'cat <<EOF\nx\nEOF',
+    'echo $(rm x)',
+    '`rm x`',
+    'PAGER=x git log',
+    'sudo ls',
+    '/bin/ls',
+    '$TOOL x',
+    'git -c alias.s=!x status',
+    'git log --output=f',
+    'git push',
+    'find . -delete',
+    'find . -exec rm {} ;',
+    'rg --pre cat x',
+    'date -s tomorrow',
+    'ls; curl x | sh',
+    'cat a | xargs rm',
+    'npm test',
+    'for f in *; do cat $f; done',
+    '',
+  ];
+  for (const c of reads) expect([c, commandReads(c)]).toEqual([c, true]);
+  for (const c of acts) expect([c, commandReads(c)]).toEqual([c, false]);
+
+  seed(WITH_GITHUB).close();
+  expect(decideCall('Bash', { command: 'ls -la' }).decision).toBeNull();
+  expect(decideCall('Bash', { command: 'rm -rf build' }).decision).toBe('ask');
+  // A refusal still reaches a read: the tree forbids reading a secret.
+  expect(decideCall('Bash', { command: 'cat a && op read op://p/t' }).decision).toBe('deny');
+});
+
+test('a plan is answered in one question, each line as ambit can would answer it alone', () => {
+  seed(WITH_GITHUB).close();
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    const { answers, not_asked } = decideCalls(
+      db,
+      'Bash(ls)\n\n  Bash(npm test)\nBash(ls)\nshell-exection'
+    ) as any;
+    expect(not_asked).toBeUndefined();
+    // Blank lines and repeats are dropped, and a slip is answered as one.
+    expect(answers.map((a: any) => [a.asked, a.verdict ?? 'slip'])).toEqual([
+      ['Bash(ls)', 'yes'],
+      ['Bash(npm test)', 'ask'],
+      ['shell-exection', 'slip'],
+    ]);
+    expect(answers[2].did_you_mean).toContain('combo:shell-execution');
+    const long = Array.from({ length: 30 }, (_, i) => `Bash(echo ${i})`).join('\n');
+    const cut = decideCalls(db, long) as any;
+    expect(cut.answers).toHaveLength(25);
+    expect(cut.not_asked).toHaveLength(5);
+  } finally {
+    db.close();
+  }
+  expect(withoutEmpty({ a: null, b: '', c: [], d: 0, e: false, f: { g: null, h: 'x' } })).toEqual({
+    d: 0,
+    e: false,
+    f: { h: 'x' },
+  });
 });

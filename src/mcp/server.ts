@@ -23,7 +23,7 @@ import {
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
 import { checkArguments, signature } from './validate.ts';
 import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
-import { decideCall } from '../engine/gate.ts';
+import { decideCall, decideCalls, withoutEmpty } from '../engine/gate.ts';
 import { getDb, migrate, type Db } from '../engine/db.ts';
 import {
   computeDecay,
@@ -71,7 +71,7 @@ import { budgetReport } from '../engine/budgets.ts';
 import { reversibilityReport } from '../engine/reversibility.ts';
 import { observedReport } from '../engine/observed.ts';
 import { objectReport } from '../engine/objects.ts';
-import { briefing, briefingText } from '../engine/briefing.ts';
+import { briefing, briefingText, taskBriefing } from '../engine/briefing.ts';
 import { nextSteps } from '../engine/next.ts';
 import { captureFailure, recordRefusal, signalReport } from '../engine/failures.ts';
 import { registerSkill, registeredSkills } from '../engine/skills.ts';
@@ -455,6 +455,10 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
       case 'tt_can':
         res = tt(db => {
           // A slip is answered as one and files nothing; see the helper.
+          // A plan's calls, one to a line, answered together; nothing is filed.
+          if (typeof capId === 'string' && capId.trim().includes('\n')) {
+            return withoutEmpty(decideCalls(db, capId, args));
+          }
           // A tool's own name is asked as the gate asks about the call.
           let decision: any =
             typeof args.capability === 'string' ? decideCall(db, args.capability, args) : null;
@@ -471,13 +475,15 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
             const recorded = recordRefusal(db, decision, args.tool);
             if (recorded !== undefined) decision.recorded_deficit = recorded;
           }
-          return decision;
+          return withoutEmpty(decision);
         });
         break;
       case 'tt_briefing':
-        res = args?.text
-          ? { briefing: tt(db => briefingText(db, { mark: true })) }
-          : tt(db => briefing(db, { mark: true }));
+        res = args?.task
+          ? tt(db => taskBriefing(db, args.task))
+          : args?.text
+            ? { briefing: tt(db => briefingText(db, { mark: true })) }
+            : tt(db => briefing(db, { mark: true }));
         break;
       case 'tt_next':
         res = tt(db => nextSteps(db, args?.limit));

@@ -1,6 +1,7 @@
 import { loadTechTree } from './paths.ts';
 import type { Db } from './db.ts';
 import { planFor, simulateFrontier } from './planning.ts';
+import { workingProviders } from './graph/fragility.ts';
 
 /**
  * Routes a free-form goal into the graph, and compares the paths that close it.
@@ -230,6 +231,8 @@ function goalFor(db: Db, sentence?: string) {
       requires_person: plan.error ? undefined : plan.requires_person,
       degraded: plan.error ? undefined : plan.degraded,
       note: plan.error ? undefined : plan.note,
+      // Reached already: what supplies it here, so the answer names a tool.
+      ...(plan.error || plan.steps !== 0 ? {} : usingProviders(db, m.id)),
     };
   });
 
@@ -241,6 +244,12 @@ function goalFor(db: Db, sentence?: string) {
       ? "ranked by how much of the goal the model's own vocabulary covers — a shortlist, not an interpretation"
       : 'weak match: the sentence shares only an incidental word with these. Listed, not recommended — try ambit graph combos and name a capability directly.',
   };
+}
+
+/** `use`, and `use_of` when the list was cut short, or nothing when no provider is working. */
+function usingProviders(db: Db, capability: string) {
+  const { ids, of } = workingProviders(db, capability);
+  return ids.length ? { use: ids, ...(of > ids.length ? { use_of: of } : {}) } : {};
 }
 
 /**

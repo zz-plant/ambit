@@ -8,6 +8,7 @@
 import type { Db } from '../db.ts';
 import { PROVISION_EDGES } from '../ontology.ts';
 import { usable } from '../assurance.ts';
+import { PROVEN_SQL, REACHED_SQL } from '../vocabulary.ts';
 import type { CapabilityRow } from '../rows.ts';
 
 /** The columns the fragility reports read off a node. */
@@ -41,6 +42,28 @@ function providersOf(db: Db): Map<string, string[]> {
     if (!map.get(r.t)!.includes(r.f)) map.get(r.t)!.push(r.f);
   }
   return map;
+}
+
+/**
+ * What to reach for: the providers of a capability that are configured and
+ * not failing their check, those a check has passed first, with how many
+ * there are in all.
+ *
+ * "Already reached" told an agent the capability exists and not which of its
+ * six providers to call. Availability is `usable`, as everywhere (rule 6).
+ */
+function workingProviders(db: Db, capability: string, limit = 5) {
+  const rows = db
+    .prepare(
+      `SELECT id, lifecycle, ${PROVEN_SQL} AS proven FROM capabilities
+       WHERE ${REACHED_SQL} AND id IN (
+         SELECT from_capability FROM dependencies
+         WHERE to_capability = ? AND kind IN (${PROVISION_EDGES.map(() => '?').join(', ')}))
+       ORDER BY proven DESC, id`
+    )
+    .all<{ id: string; lifecycle: string; proven: number }>(capability, ...PROVISION_EDGES)
+    .filter(r => usable(r.lifecycle));
+  return { ids: rows.slice(0, limit).map(r => r.id), of: rows.length };
 }
 
 /**
@@ -422,6 +445,7 @@ function credentialReport(db: Db) {
 
 export {
   providersOf,
+  workingProviders,
   sharedCredentials,
   outageCascade,
   analyzeImpact,
