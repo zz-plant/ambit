@@ -6,6 +6,28 @@ Capability graph engine, an SVG map of the curated tree in era columns, MCP serv
 
 This file is short on purpose: it is loaded on every turn. It holds the commands, the check that says a change is done, and each rule in one line. The map of the code and the full text of each rule are in one guide per area, listed under [Where to read next](#where-to-read-next).
 
+## Maintenance mode (since 2026-11-10)
+
+Ambit is in maintenance: the owner decided on 2026-11-10 to keep it working and stop developing it. Until this section is removed, it overrides the roadmap and any other document that names work to do next.
+
+Take:
+
+- a fix for something broken: a failing build or check, a page error, a dead link or source, a deploy that stopped;
+- security updates and the monthly dependency pull request;
+- a fix for something that breaks the owner's own setup, or a bug an outside user reports;
+- keeping the config readers working when a supported agent changes its config format. That is a fix;
+- a release only to ship fixes.
+
+It stays a personal tool unless outside users start asking for it. This overrides [docs/roadmap.md](docs/roadmap.md).
+
+Decline the rest, and say in your reply that the repository is in maintenance:
+
+- new features, pages, tools, datasets or integrations;
+- redesigns, copy passes, and refactors that fix nothing broken;
+- new automation, services, secrets, paid APIs or scheduled jobs.
+
+The owner can still ask for any of these. Do one only when the request says it overrides this section.
+
 ## Running it
 
 ```bash

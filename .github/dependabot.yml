@@ -3,10 +3,11 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    # One pull request a week for every version and minor bump, instead of
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    # One pull request a month for every patch and minor bump, instead of
     # one per package: five landed on one day for patch releases alone.
+    # Monthly since 2026-11-10, when Ambit went into maintenance (AGENTS.md).
     # A major version still comes on its own, since it is the one to read.
     groups:
       npm-minor-and-patch:
@@ -15,8 +16,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 3
     groups:
       actions:
         patterns: ["*"]
