@@ -42,7 +42,7 @@
       "@type": "SoftwareApplication",
       "name": "Ambit",
       "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "macOS, Linux",
+      "operatingSystem": "macOS, Linux, Windows",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -51,7 +51,7 @@
       "description": "Ambit reads the MCP configs of Claude Code, Cursor, Codex and 13 more agents into one local capability graph: every server, which ones work, what one more step would open, and what breaks if a piece goes. Ask from the terminal or over MCP.",
       "featureList": [
         "Lists every MCP server each agent has, and which ones work",
-        "Reads MCP configs from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed and VS Code",
+        "Reads MCP configs from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro",
         "What to set up next, ranked by what it opens and the attention it saves",
         "Compound capabilities, including the ones one prerequisite away",
         "Blast radius: what stops and what only weakens if a server, model or credential goes away",
@@ -74,11 +74,11 @@
       "sameAs": ["https://github.com/zz-plant/ambit"]
     }
     </script>
-    <script type="module" crossorigin src="/ambit/assets/index-BtXK2MnK.js"></script>
-    <link rel="modulepreload" crossorigin href="/ambit/assets/layout-PPrxLLxV.js">
-    <link rel="modulepreload" crossorigin href="/ambit/assets/react-DhWuqCNu.js">
+    <script type="module" crossorigin src="/ambit/assets/index-C_plfSs1.js"></script>
+    <link rel="modulepreload" crossorigin href="/ambit/assets/layout-DckOofNO.js">
+    <link rel="modulepreload" crossorigin href="/ambit/assets/react-BMIOiqOv.js">
     <link rel="stylesheet" crossorigin href="/ambit/assets/index-D2G6qWSj.css">
-    <meta name="ambit-revision" content="b8b0d477ae2bf9ab19aadd4e0665c3be365ffbcb">
+    <meta name="ambit-revision" content="28039964694d1b968b2d50a6493d69f54a1a074d">
   </head>
   <body>
     <!-- What a reader without JavaScript, and a crawler that does not run it,
@@ -89,19 +89,17 @@
     <div id="root">
       <main class="static-intro" style="max-width: 720px; margin: 0 auto; padding: 32px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; background: #0f1013; color: #e8e8ea;">
         <h1>Ambit: every MCP server your AI agents have, and what to add next</h1>
-        <p>What you, your agents and your machines can jointly do is your <em>ambit</em>. It is spread across LLM providers, MCP servers, local CLI tools, skills, credentials and more than one machine. Ambit reads the MCP configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed and VS Code, and draws what they add up to as one map: every server, which ones work, and how to widen what you can do.</p>
+        <p>Ambit reads the MCP configs of Claude Code, Cursor, Codex CLI and 13 more agents on your machine and draws what they add up to as one local map: every server, which ones work, and what one more step would open. What you, your agents and your machines can jointly do is your <em>ambit</em>, and the map shows where it ends and how to widen it.</p>
         <h2>What it answers</h2>
         <ul>
-          <li>Every MCP server each agent has, which of them pass their checks, and what may run without asking.</li>
           <li>What is worth setting up next, ranked by what it would open and the attention it would save.</li>
-          <li>Which pieces pass their checks, and what is one dependency away.</li>
           <li>What compound abilities emerge when two tools are combined.</li>
+          <li>Every MCP server each agent has, which of them pass their checks, and what may run without asking.</li>
           <li>What is configured but failing, and what breaks downstream if a model, MCP server, tool or credential goes away.</li>
         </ul>
         <p>You ask from the terminal. Your agents ask over MCP: Ambit is itself an MCP server, with a small profile for an agent's context and the full roster behind it. An agent can propose a configuration change; applying one takes an approval, made outside MCP. Everything stays in a local SQLite file.</p>
-        <p>To run it on your own configs: <code>npx ambit-cli</code>, with Node 22.18 or newer. The interactive map needs JavaScript. Read about it instead:</p>
+        <p>To run it on your own configs: <code>npx ambit-cli</code>, with Node 22.18 or newer. The interactive map and <a href="?demo=1" style="color: #7aa2f7;">the live demo</a> need JavaScript. These pages say what it does without it:</p>
         <ul>
-          <li><a href="?demo=1" style="color: #7aa2f7;">Live demo</a>, the map on example data</li>
           <li><a href="docs/guide/" style="color: #7aa2f7;">Guide</a>: install, the CLI, and connecting it to Claude Code or OpenCode</li>
           <li><a href="docs/faq/" style="color: #7aa2f7;">FAQ</a>: what it reads, and what leaves your machine</li>
           <li><a href="docs/mcp-config-locations/" style="color: #7aa2f7;">Where each AI agent keeps its MCP config</a>: Claude Code, Cursor, Codex CLI, Goose, Kiro and more</li>

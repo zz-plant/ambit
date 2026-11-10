@@ -4,12 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>The ideas behind Ambit: what is new, and where it comes from</title>
-<meta name="description" content="An agent setup's reach is composed, may not work, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim." />
+<meta name="description" content="What an agent setup can do is composed from separately configured pieces, and working is not the same as permitted. What is new in Ambit, and what is not." />
 <link rel="canonical" href="https://zz-plant.github.io/ambit/docs/ideas/" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://zz-plant.github.io/ambit/docs/ideas/" />
 <meta property="og:title" content="The ideas behind Ambit: what is new, and where it comes from" />
-<meta property="og:description" content="An agent setup's reach is composed, may not work, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim." />
+<meta property="og:description" content="What an agent setup can do is composed from separately configured pieces, and working is not the same as permitted. What is new in Ambit, and what is not." />
 <meta property="og:image" content="https://zz-plant.github.io/ambit/og/ideas.png" />
 <meta property="og:image:width" content="1280" />
 <meta property="og:image:height" content="640" />
@@ -17,11 +17,11 @@
 <meta property="og:site_name" content="Ambit" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="The ideas behind Ambit: what is new, and where it comes from" />
-<meta name="twitter:description" content="An agent setup's reach is composed, may not work, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim." />
+<meta name="twitter:description" content="What an agent setup can do is composed from separately configured pieces, and working is not the same as permitted. What is new in Ambit, and what is not." />
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/ideas.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"The ideas behind Ambit: what is new, and where it comes from","description":"An agent setup's reach is composed, may not work, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim.","url":"https://zz-plant.github.io/ambit/docs/ideas/","dateModified":"2026-10-30","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"The ideas behind Ambit: what is new, and where it comes from","item":"https://zz-plant.github.io/ambit/docs/ideas/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"The ideas behind Ambit: what is new, and where it comes from","description":"What an agent setup can do is composed from separately configured pieces, and working is not the same as permitted. What is new in Ambit, and what is not.","url":"https://zz-plant.github.io/ambit/docs/ideas/","dateModified":"2026-11-10","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"The ideas behind Ambit: what is new, and where it comes from","item":"https://zz-plant.github.io/ambit/docs/ideas/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -49,10 +49,10 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/docs/guide/">Get started</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a><a class="cta" href="/ambit/?demo=1">Live demo</a></header>
 <main>
 <h1 id="the-ideas-behind-ambit"><a class="anchor" href="#the-ideas-behind-ambit" aria-hidden="true" tabindex="-1">#</a>The ideas behind Ambit</h1>
-<p><a href="/ambit/docs/why-ambit/">Why Ambit</a> gives the argument; <a href="/ambit/docs/affordance-frontier/">the affordance frontier</a> develops the theory; <a href="/ambit/docs/deep-dive/">the reference</a> describes the software.</p>
 <h2 id="the-claim"><a class="anchor" href="#the-claim" aria-hidden="true" tabindex="-1">#</a>The claim</h2>
 <p>What an agent setup can do is composed from pieces configured separately. A configured piece may fail, and technical reach differs from permission. Ambit models those distinctions for a person, their agents and their machines.</p>
-<h2 id="one-object-four-names"><a class="anchor" href="#one-object-four-names" aria-hidden="true" tabindex="-1">#</a>One object, four names</h2>
+<h2 id="four-names-you-will-meet"><a class="anchor" href="#four-names-you-will-meet" aria-hidden="true" tabindex="-1">#</a>Four names you will meet</h2>
+<p>They nest: the ambit is the reach, the frontier is its edge, the capability graph computes both, and the affordance frontier is the wider theory.</p>
 <table>
 <thead>
 <tr>
@@ -68,7 +68,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left">Frontier</td>
-<td align="left">Map, CLI and ledger</td>
+<td align="left">Map, CLI and history</td>
 <td align="left">The edge of that reach, with next steps beyond it</td>
 </tr>
 <tr>
@@ -118,6 +118,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <li>Enforcement covers <code>apply</code>, routed control-plane execution and Claude Code with the gate hook installed. Other runtimes choose whether to consult it.</li>
 <li>Reach and check results measure aspects of the assembled system, not model intelligence.</li>
 </ul>
+<p>To see these on a sample setup, <a href="https://zz-plant.github.io/ambit/?demo=1">open the demo</a>. <a href="/ambit/docs/why-ambit/">Why Ambit</a> gives the argument, <a href="/ambit/docs/affordance-frontier/">the affordance frontier</a> the theory, and <a href="/ambit/docs/deep-dive/">the reference</a> the software.</p>
 
 <section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="/ambit/?demo=1" tabindex="-1" aria-hidden="true"><img src="/ambit/docs/assets/screenshot-tree.png" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>

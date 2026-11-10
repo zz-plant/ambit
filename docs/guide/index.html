@@ -90,8 +90,8 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><code>npx ambit-cli</code> (Node 22.18 or newer), or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, reads your real agent configs, names what it found, and shows what one more step would open. It ends on one thing to do, <code>npx ambit-cli web</code>: the same readout on the map, served on localhost. <code>npm install -g ambit-cli</code> puts <code>ambit</code> on your path.</td>
 </tr>
 <tr>
-<td align="left"><strong>With the map</strong></td>
-<td align="left"><code>git clone https://github.com/zz-plant/ambit.git &amp;&amp; cd ambit &amp;&amp; ./bootstrap.sh web</code> builds the graph from your own configs and serves the map the pictures on this page show.</td>
+<td align="left"><strong>From a checkout</strong></td>
+<td align="left"><code>git clone https://github.com/zz-plant/ambit.git &amp;&amp; cd ambit &amp;&amp; ./bootstrap.sh web</code> builds the graph from your own configs and serves the same map from source.</td>
 </tr>
 <tr>
 <td align="left"><strong>In a cloud IDE</strong></td>
@@ -108,7 +108,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <br><sub>My Setup lists every server, agent, and model found on the machine: whether it is on, what its check said, and which capabilities on the map it provides</sub>
 </div><hr>
 <h2 id="where-ambit-sits-in-the-stack"><a class="anchor" href="#where-ambit-sits-in-the-stack" aria-hidden="true" tabindex="-1">#</a>Where Ambit sits in the stack</h2>
-<p>Ambit sits above the protocol layer and below workflow orchestration. Its CLI, MCP server and gate neither route an agent&#39;s calls nor run them. The one part that can run an agent&#39;s step is <a href="#the-control-plane">the control plane</a>, which you start yourself from a checkout, and only with its opt-in Docker adapter.</p>
+<p>Ambit sits above the protocol layer and below workflow orchestration. Its CLI and MCP server neither route an agent&#39;s calls nor run them. Its one hook on the call path, <code>ambit gate</code> for Claude Code, can only deny a call or ask about it. The one part that can run an agent&#39;s step is <a href="#the-control-plane">the control plane</a>, which you start yourself from a checkout, and only with its opt-in Docker adapter.</p>
 <table>
 <thead>
 <tr>
@@ -143,7 +143,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"></td>
 </tr>
 </tbody></table>
-<p>For the architectural foundation, economic loop, and comparison to prior work, see <a href="/ambit/docs/ideas/">The ideas behind Ambit</a>, <a href="/ambit/docs/loadout/">From A to B: the seven steps</a>, and <a href="/ambit/docs/solo/">Building alone</a>.</p>
+<p><a href="/ambit/docs/ideas/">The ideas behind Ambit</a> says what is new and where it comes from, <a href="/ambit/docs/loadout/">From A to B</a> walks one setup through seven steps, and <a href="/ambit/docs/solo/">Building alone</a> is the launch checklist for a one-person company.</p>
 <hr>
 <h2 id="ask-from-the-terminal"><a class="anchor" href="#ask-from-the-terminal" aria-hidden="true" tabindex="-1">#</a>Ask from the terminal</h2>
 <table>
@@ -183,11 +183,11 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left"><code>ambit weigh</code></td>
-<td align="left">What each tool server&#39;s tool list costs in context every session, per runtime, and which ones the ledger never saw called</td>
+<td align="left">What each tool server&#39;s tool list costs in context every session, per runtime, and which ones no recorded session called</td>
 </tr>
 <tr>
 <td align="left"><code>ambit history [since &lt;when&gt; [&lt;until&gt;]]</code></td>
-<td align="left">How the frontier moved, separating what you acquired from what emerged</td>
+<td align="left">How the frontier, the edge of what you reach, moved, separating what you acquired from what emerged</td>
 </tr>
 <tr>
 <td align="left"><code>ambit share</code></td>
@@ -259,7 +259,7 @@ claude plugin install ambit@ambit
   }
 }
 </code></pre>
-<p>The <code>PreToolUse</code> hook puts Ambit&#39;s brake on Claude Code. Before each tool call, <code>ambit gate</code> identifies the capability exercised: forbidden actions are denied, actions requiring human confirmation prompt the user, and permitted or unmapped actions defer to Claude Code&#39;s standard permission flow. It is a brake and not a gate: it can only stop or ask, never allow. It adds about 130 ms per call (measured with 0.6.0 on an Apple M1 Max). Run <code>ambit gate</code> directly in a terminal to inspect its output.</p>
+<p>The <code>PreToolUse</code> hook puts Ambit&#39;s brake on Claude Code. Before each tool call, <code>ambit gate</code> identifies the capability exercised: forbidden actions are denied, actions requiring human confirmation prompt the user, and permitted or unmapped actions defer to Claude Code&#39;s standard permission flow. Despite the command&#39;s name it works as a brake: it can stop a call or ask, and never allows one. It adds about 130 ms per call (measured with 0.6.0 on an Apple M1 Max). Run <code>ambit gate</code> directly in a terminal to inspect its output.</p>
 <p><code>ambit statusline</code> prints a segment for Claude Code&#39;s status bar, refreshed after each message: failing checks, pending proposals, and verified capability counts (e.g. <code>! 1 failing: Browser Automation · › 2 proposals to decide</code>). Inactive categories are omitted, so a healthy graph displays <code>12 verified</code>. It queries the database read-only, writes nothing, and returns in about 80 ms (measured with 0.6.0 on an Apple M1 Max). Because plugins cannot configure status lines automatically, <code>ambit connect claude-code --statusline</code> adds the entry to <code>~/.claude/settings.json</code>, backing up the existing file to <code>settings.json.bak</code> and never overwriting a status line you already have. To configure manually:</p>
 <pre><code class="language-json">{ &quot;statusLine&quot;: { &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;ambit statusline&quot; } }
 </code></pre>
@@ -308,7 +308,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 <div align="center">
 <img src="/ambit/docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
 <br><sub>Filled nodes are reached · Bright rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
-</div><p><code>./bootstrap.sh web</code> serves five views over the graph the CLI reads.</p>
+</div><p><code>ambit web</code> serves five views over the graph the CLI reads (<code>./bootstrap.sh web</code> in a checkout).</p>
 <ul>
 <li><strong>Map</strong>: The curated tree with your reach drawn on it. The line on top names what the map found: a failing check, or else the next step that opens the most.</li>
 <li><strong>My Setup</strong>: The entries your configs declare, their check history, and the capabilities each provides, closing with what the agents used that no node on the map accounts for. The Briefing section displays the context payload provided to agents on connection, and the Environment section draws the repository and infrastructure scans. Each section is part of the address, so a link can open on it.</li>
@@ -328,10 +328,10 @@ already recorded the deficit, so do not retry it under another name.</p>
 <p>Each client is read from its own standard config path, and every server stays attributed to the client that listed it. If two runtimes reference the same server, Ambit models it as a single capability with two providers, so one binary listed twice is not counted as redundancy. Local models are found in the folders Ollama and LM Studio keep on disk, so neither server has to be running. Each is filed under a <code>local</code> provider, keeping it separate from hosted inference costs.</p>
 <p>Discovered capabilities are placed in a curated tree of nine eras: seven for the agent setup, from <strong>Foundation</strong> and <strong>Model Access</strong> through <strong>Tool Use</strong>, <strong>Memory</strong>, <strong>Autonomy</strong> and <strong>Assurance</strong> to <strong>Sovereignty</strong>, and two for the product it builds, <strong>Product</strong> (hosting, a production database, accounts, payments, email) and <strong>Operations</strong> (error tracking, analytics, uptime, backups, and <strong>Launch Ready</strong>, reached when the launch checklist is done). Each capability names its prerequisites, so what is reached is computed from them, not taken from what a config claims.</p>
 <h3 id="configured-is-not-working"><a class="anchor" href="#configured-is-not-working" aria-hidden="true" tabindex="-1">#</a>Configured is not working</h3>
-<p>Ambit keeps two properties apart:</p>
+<p>Of the three facts, Ambit stores the first two on each capability:</p>
 <ul>
-<li><code>state</code> is <strong>structural</strong>: is this thing configured, and what does it depend on. This is what the frontier ledger records.</li>
-<li><code>lifecycle</code> is <strong>health</strong>: did its declared verification command actually pass. A capability can be fully configured and still <code>broken</code>, or <code>degraded</code>, which means it is recovering: its last check passed after one that failed.</li>
+<li><code>state</code> is <strong>structural</strong>: is this thing configured, and what does it depend on. This is what <code>ambit history</code> records over time.</li>
+<li><code>lifecycle</code> is <strong>health</strong>: did its declared verification command actually pass. A capability can be fully configured and still <code>broken</code>, or <code>recovering</code>: its last check passed after one that failed.</li>
 </ul>
 <p>Availability is decided by lifecycle, not state, and a check can only take availability away: an unverified capability stays in plans, and one whose check fails is excluded from plans, simulations, goals, authority checks, and opportunity rankings. A single successful check restores a broken capability to unverified status, and it is marked as recovering until five consecutive checks pass. <code>ambit status</code> reports verified, unverified and failing counts, and the map badges each reached node: <code>✓</code> for a passing check, <code>!</code> for a failing one, nothing for configured but never verified, or recovering.</p>
 <h3 id="fragility-is-computed-not-guessed"><a class="anchor" href="#fragility-is-computed-not-guessed" aria-hidden="true" tabindex="-1">#</a>Fragility is computed, not guessed</h3>
@@ -353,6 +353,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 </ul>
 <hr>
 <h2 id="the-control-plane"><a class="anchor" href="#the-control-plane" aria-hidden="true" tabindex="-1">#</a>The control plane</h2>
+<p>The control plane is an interceptor that can stand between an agent and the shell: a step routed through it runs only if the graph says it may.</p>
 <p>Ambit answers whether a step may run wherever it is asked, and the answer binds in three places: <code>ambit apply</code>, always; this interceptor, for execution routed through it; and Claude Code&#39;s tool calls, once the <code>ambit gate</code> hook is installed. Other runtimes choose whether to ask <code>ambit_can</code>.</p>
 <p><strong>It runs from a checkout.</strong> The interceptor is a reference implementation and not part of the <code>ambit</code> command, so npm and Homebrew do not install it. In a clone, <code>npm run demo:incident</code> replays the walkthrough at the end of this section on a throwaway graph, and <code>node --experimental-sqlite src/control_plane/cli.ts --help</code> lists its commands. <code>exec &lt;envDir&gt; &lt;dbPath&gt; &#39;&lt;request&gt;&#39;</code> routes one step through the gate against the graph at <code>dbPath</code>. The others serve the walkthrough: <code>setup-env</code> writes its fixture actors and capabilities into the graph it is given, replacing any row with the same id, and <code>verify-node</code> sets a lifecycle with no check run, so point both at a new file and never at the graph <code>ambit where</code> prints.</p>
 <p>Host-level agent tooling is a real attack surface, so the interceptor can stand between an agent and the shell. Before a tool call routed through it reaches your machine, the proxy in <code>src/control_plane/proxy.ts</code> verifies three conditions: prerequisite capabilities are present, the capability is verified and functioning, and the caller has explicit authorization. A call that fails any condition is refused (<code>AMBIT_BLOCKED_UNAUTHORIZED</code>, exit code <code>2</code>) and leaves system state unchanged. Blocked calls generate a draft proposal and an HMAC challenge; <code>ambit approve &lt;proposal-id&gt; --by=&lt;person&gt;</code> creates a signed authorization artifact verified by the executor, which expires or invalidates if the proposal is modified. Spans record each evaluation, challenge, and receipt.</p>
