@@ -384,6 +384,8 @@ test('an outage ends on whether the capability could survive losing a provider',
     { ...item('mcp:d', { credentials: ['cred:token', 'cred:other'] }), name: 'd' },
     { ...item('cred:token'), name: 'API token' },
     item('by-runtime', { providers: ['runtime:opencode'] }),
+    { ...item('built-in', { providers: ['command:shell'] }), name: 'Shell Execution' },
+    { ...item('command:shell'), name: 'Shell Execution' },
     item('unstated'),
     item('failing', { providers: ['mcp:a'], lifecycle: 'broken' }),
   ];
@@ -402,6 +404,7 @@ test('an outage ends on whether the capability could survive losing a provider',
   // Nothing to state: supplied by a runtime by construction, no provider
   // recorded, or already failing its check.
   expect(outageRemedy(items, 'by-runtime')).toBeNull();
+  expect(outageRemedy(items, 'built-in')).toBeNull();
   expect(outageRemedy(items, 'unstated')).toBeNull();
   expect(outageRemedy(items, 'failing')).toBeNull();
 });

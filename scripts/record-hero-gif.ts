@@ -53,6 +53,9 @@ const HEIGHT = 800;
 const GIF_WIDTH = 920;
 const FPS = 8;
 
+/** The next steps the unlock beat tries, in order: the first the fixture has is the one it plays. */
+const NEXT_STEPS = ['Embeddings', 'Model Routing', 'Local Tool Calling', 'Skill Library'];
+
 /** Canvas zoom for the map beats. Node labels are 11.5px at 1:1. */
 const SCENE_ZOOM = 1.4;
 
@@ -487,6 +490,19 @@ async function main() {
   const park = () =>
     cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: WIDTH - 4, y: HEIGHT - 4 });
 
+  // The region is the one the next beat works in. A zoom about the middle of
+  // the fitted map used to leave a next step in frame; when the zoom's anchor
+  // changed it left them all under the toolbar or off the top, so the frame is
+  // put on the first of them, with the row above it clear of the toolbar.
+  await cdp.eval(`(() => {
+    const nodes = [...document.querySelectorAll('g[role="button"][aria-label]')];
+    const first = ${JSON.stringify(NEXT_STEPS)}
+      .map(w => nodes.find(x => x.getAttribute('aria-label').startsWith(w)))
+      .find(Boolean);
+    if (!first) throw new Error('no next-step node to frame');
+    first.scrollIntoView({ block: 'center', inline: 'center' });
+    return true;
+  })()`);
   await sleep(400);
   await hold(2.0, 'a region of the map');
 
@@ -496,12 +512,19 @@ async function main() {
   // unlock simulation lights what it would make reachable.
   const next = await cdp.clickWhere(`(() => {
     const nodes = [...document.querySelectorAll('g[role="button"][aria-label]')];
-    const want = ['Embeddings', 'Model Routing', 'Local Tool Calling', 'Skill Library'];
+    const want = ${JSON.stringify(NEXT_STEPS)};
+    // One a reader could press: a node whose middle lies under the map's
+    // toolbar takes no click, and the click toggled the toolbar instead.
+    const open = n => {
+      const r = n.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return Boolean(at && n.contains(at));
+    };
     for (const w of want) {
-      const n = nodes.find(x => x.getAttribute('aria-label').startsWith(w));
+      const n = nodes.find(x => x.getAttribute('aria-label').startsWith(w) && open(x));
       if (n) return n;
     }
-    throw new Error('no next-step node. present: ' +
+    throw new Error('no next-step node in the open. present: ' +
       nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
   })()`);
   console.log(`  selected ${next}`);

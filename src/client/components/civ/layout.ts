@@ -1204,8 +1204,8 @@ export function outageSentence(
  * could survive losing a provider, by the rule the engine's fragility report
  * counts with. One provider is the finding, and a second is the remedy.
  * Several are redundancy only when they do not all present one credential.
- * A capability with no recorded provider, one a runtime supplies by
- * construction, or one already failing its check gets no sentence: there is
+ * A capability with no recorded provider, one a runtime or an entry of its
+ * own name supplies, or one already failing its check gets no sentence: there is
  * nothing here to state. `subject` is the capability's name where the sentence
  * follows others about other things, and "It" where the panel is about it.
  */
@@ -1218,7 +1218,11 @@ export function outageRemedy(items: Item[], rootId: string, subject = 'It'): str
   const ids = providers as string[];
   const nameOf = (id: string) => byId.get(id)?.name ?? id.slice(id.indexOf(':') + 1);
   if (ids.length === 1) {
-    if (ids[0].startsWith('runtime:')) return null;
+    // A runtime supplies what it reads by construction, and a built-in is
+    // supplied by an entry of its own name: neither is a provider a person
+    // could add a second of, and "Shell Execution has one provider, Shell
+    // Execution" names nothing.
+    if (ids[0].startsWith('runtime:') || nameOf(ids[0]) === root.name) return null;
     return `${subject} has one provider, ${nameOf(ids[0])}. A second would keep it working if that one failed.`;
   }
   const held = ids.map(id => byId.get(id)?.meta?.credentials);
