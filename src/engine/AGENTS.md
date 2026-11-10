@@ -134,7 +134,11 @@ src/engine/wiring.ts       What is wired into each agent here: the MCP server, t
                            bare `ambit`, `status`, `doctor` and `connect` say is still missing
 src/engine/gate.ts         The gate on a runtime's tool call: the Claude Code PreToolUse hook
                            `ambit gate`, which maps a call to its capabilities and denies or asks,
-                           and never allows
+                           and never allows. `decideCall` is `ambit can` asked with a tool's own
+                           name (`Bash`, `mcp__github__create_issue`, `Bash(git push)`): the same
+                           questions, the narrowest answer, and beside it the Claude Code rule
+                           that names the call (`claudeRuleFor` in wiring.ts) and the failures
+                           the ledger holds against what it exercises
 src/engine/tool-names.ts   What a runtime's own tool is, by the name that runtime gives it
                            (Claude Code's `Write`, Codex's `apply_patch`), and whether the gate
                            asks about it as reading or acting; and what a shell command's
@@ -158,7 +162,8 @@ The distance to a capability, the projections every surface reads, and the dispa
 
 ```
 src/engine/planning.ts     The gap to a capability, and simulating closing it
-src/engine/resolve.ts      Which node an id means: normalises, and never guesses
+src/engine/resolve.ts      Which node an id means: normalises, and never guesses. A sentence is
+                           offered what the goal router says its words cover, as candidates
 src/engine/plan/           deficits.ts (what keeps stopping work, and whether it is structural)
                            propose.ts (what a change would buy, as something approvable)
                            route.ts (the order of the missing steps, and who each inconveniences)

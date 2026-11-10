@@ -23,6 +23,7 @@ import {
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
 import { checkArguments, signature } from './validate.ts';
 import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
+import { decideCall } from '../engine/gate.ts';
 import { getDb, migrate, type Db } from '../engine/db.ts';
 import {
   computeDecay,
@@ -131,7 +132,7 @@ const PROFILE = chosenProfile();
 const INSTRUCTIONS = [
   'Ambit is the map of what this machine, its agents and its tools can do together, and what may be done without asking.',
   '',
-  '- Before running a tool you have not used this session, call ambit_can with the capability. yes: act. ask: put it to the person. no: it has recorded the deficit, so do not retry it under another name.',
+  "- Before running a tool you have not used this session, call ambit_can with the tool's own name (Bash, mcp__github__create_issue) or a capability. yes: act. ask: put it to the person. no: it has recorded the deficit, so do not retry it under another name.",
   '- Call ambit_briefing once at the start of a session, or read ambit://briefing.',
   '- When a tool fails, report it with ambit_record_failure. When something missing blocks you, ambit_plan says what closes it and ambit_propose drafts the change for a person to approve.',
   '- You can ask and propose. You can never grant or approve.',
@@ -454,9 +455,14 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
       case 'tt_can':
         res = tt(db => {
           // A slip is answered as one and files nothing; see the helper.
-          const asked = capabilityToAsk(db, capId);
-          if ('answer' in asked) return asked.answer;
-          const decision: any = canExecute(db, { ...args, capability: asked.ask });
+          // A tool's own name is asked as the gate asks about the call.
+          let decision: any =
+            typeof args.capability === 'string' ? decideCall(db, args.capability, args) : null;
+          if (!decision) {
+            const asked = capabilityToAsk(db, capId);
+            if ('answer' in asked) return asked.answer;
+            decision = canExecute(db, { ...args, capability: asked.ask });
+          }
           // The point of asking before acting is that a refusal costs
           // nothing to record. Doing it here rather than asking the
           // agent to make a second call is what keeps the habit cheap:

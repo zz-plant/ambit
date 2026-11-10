@@ -415,6 +415,25 @@ describe('the session briefing', () => {
     db.close();
   });
 
+  it('says what is reached and never checked, until a check has run', () => {
+    const db = environment();
+    const line = () =>
+      briefingText(db)
+        .split('\n')
+        .find(l => l.startsWith('Unchecked:'));
+    expect(line()).toBeUndefined();
+    db.prepare(
+      "INSERT INTO declared_checks (capability_id, command) VALUES ('combo:version-control', 'true')"
+    ).run();
+    db.prepare(
+      "UPDATE capabilities SET lifecycle = 'configured' WHERE id = 'combo:version-control'"
+    ).run();
+    expect((briefing(db) as any).unchecked).toEqual({ count: 1, names: ['Version Control'] });
+    expect(line()).toContain('1 reached with a check that has not run, Version Control.');
+    expect(line()).toContain('ambit_verify');
+    db.close();
+  });
+
   it('counts failing capabilities the way status and stats do, and counts a failing action after them', () => {
     // The line said "4 failing" beside "37/58 capabilities", where one of the
     // four was an action that is in neither number, so it disagreed with

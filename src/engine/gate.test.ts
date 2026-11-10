@@ -7,9 +7,16 @@
  * cannot read is no answer either.
  */
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { expect, test } from 'vitest';
 import { capture } from './cli.ts';
-import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import {
+  decideCall as canCall,
+  claudeHookOutput,
+  claudeHookSnippet,
+  gateToolCall,
+} from './gate.ts';
 import { cli, dir, ENGINE, getDb, join, seed } from './testing/cli.ts';
 
 const WRAPPER = join(import.meta.dirname, '..', '..', 'cli.js');
@@ -246,4 +253,92 @@ test('a secret read inside a quoted substitution is refused as the bare command 
     expect(decideCall('Bash', { command }).decision).toBe('deny');
   }
   expect(decideCall('Bash', { command: 'echo "op read x"' }).decision).toBeNull();
+});
+
+/**
+ * An agent knows the tool it is about to call. `ambit can Bash` resolved to
+ * the entry `tool:bash`, which carries no grant, and answered no for a call
+ * the gate only asks about.
+ */
+test('ambit can takes a tool by the name the runtime gives it, and asks what the gate asks', () => {
+  seed(WITH_GITHUB).close();
+  const bash = cli('can', 'Bash');
+  expect(bash.verdict).toBe('ask');
+  expect(bash.capability).toBe('combo:shell-execution');
+  expect(bash.asked_as).toEqual({
+    tool: 'Bash',
+    exercises: [{ capability: 'combo:shell-execution', action: 'execute', verdict: 'ask' }],
+  });
+  // A read is asked about as observing, which the tree lets run unasked.
+  expect(cli('can', 'Read').verdict).toBe('yes');
+  // The entry by its exact id is still a question about that node.
+  expect(cli('can', 'tool:bash').capability).toBe('tool:bash');
+  expect(cli('can', 'tool:bash').asked_as).toBeUndefined();
+
+  // The form a permission rule takes carries the command, and the narrowest answer is given.
+  cli('authority', 'grant', 'version-control', 'forbidden', '--by=kanav');
+  const push = cli('can', 'Bash(git push origin main)');
+  expect(push.verdict).toBe('no');
+  expect(push.refused).toBe('forbidden');
+  expect(push.capability).toBe('combo:version-control');
+  expect(push.asked_as.exercises.map((e: any) => e.capability)).toEqual([
+    'combo:shell-execution',
+    'combo:version-control',
+  ]);
+  expect(cli('can', 'Bash(git status)').verdict).toBe('ask');
+  const issue = cli('can', 'mcp__github__create_issue');
+  expect(issue.asked_as.tool).toBe('mcp__github__create_issue');
+  expect(issue.verdict).toBe('no');
+  // A tool the graph cannot name is not a call it can answer for.
+  expect(cli('can', 'mcp__nowhere__run').asked_as).toBeUndefined();
+});
+
+test("a Claude Code permission rule that names the call is reported beside the graph's answer", () => {
+  seed(WITH_GITHUB).close();
+  const home = mkdtempSync(join(tmpdir(), 'ambit-rules-'));
+  mkdirSync(join(home, '.claude'));
+  writeFileSync(
+    join(home, '.claude', 'settings.json'),
+    JSON.stringify({
+      permissions: {
+        allow: ['Bash(git status:*)', 'mcp__github', 'Bash(npm run *)'],
+        deny: ['Bash(git push:*)'],
+      },
+    })
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  const rule = (words: string) => (canCall(db, words, {}, home) as any)?.runtime_rule;
+  try {
+    expect(rule('Bash(git status --short)')).toEqual({
+      runtime: 'claude-code',
+      says: 'allow',
+      rule: 'Bash(git status:*)',
+    });
+    expect(rule('Bash(npm run check)').rule).toBe('Bash(npm run *)');
+    expect(rule('Bash(git push origin main)').says).toBe('deny');
+    expect(rule('mcp__github__create_issue').rule).toBe('mcp__github');
+    // A rule with a specifier says nothing about a call that names no command,
+    // and an allow rule nothing about a command that chains another.
+    expect(rule('Bash')).toBeUndefined();
+    expect(rule('Bash(git status && rm -rf x)')).toBeUndefined();
+    expect(rule('Bash(git statusx)')).toBeUndefined();
+    // The answer is the graph's either way: the rule is beside it, not in it.
+    expect((canCall(db, 'Bash(git status)', {}, home) as any).verdict).toBe('ask');
+  } finally {
+    db.close();
+  }
+});
+
+test('failures a runtime reported against what a call exercises are told, and weigh nothing', () => {
+  seed(WITH_GITHUB).close();
+  expect(cli('can', 'Bash').failed_recently).toBeUndefined();
+  const db = getDb(join(dir, 'graph.db'));
+  db.prepare(
+    `INSERT INTO failure_signals (source, tool, class, signal, capability_id)
+     VALUES ('claude-code', 'Bash', 'tool', 'command-not-found', 'combo:shell-execution')`
+  ).run();
+  db.close();
+  const after = cli('can', 'Bash');
+  expect(after.failed_recently).toMatchObject({ times: 1, last: 'tool: command-not-found' });
+  expect(after.verdict).toBe('ask');
 });

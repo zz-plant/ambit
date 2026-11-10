@@ -45,6 +45,63 @@ export function claudePluginEnabled(home: string, plugin: string): boolean {
   return claudeSettings(home).some(s => s.enabledPlugins?.[plugin] === true);
 }
 
+/** What one of Claude Code's own permission rules says about a call, and the rule that said it. */
+export interface RuntimeRule {
+  runtime: 'claude-code';
+  says: 'deny' | 'ask' | 'allow';
+  rule: string;
+}
+
+/** Whether one permission rule covers a call. A rule with a specifier needs the command to compare. */
+function ruleCovers(rule: string, tool: string, command?: string): boolean {
+  const form = /^([^()]+)\(([\s\S]*)\)$/.exec(rule.trim());
+  if (!form) {
+    const name = rule.trim().replace(/__\*$/, '');
+    return name === tool || (name.startsWith('mcp__') && tool.startsWith(`${name}__`));
+  }
+  if (form[1] !== tool || command === undefined) return false;
+  const spec = form[2];
+  if (spec.endsWith(':*')) {
+    const prefix = spec.slice(0, -2);
+    return command === prefix || command.startsWith(`${prefix} `);
+  }
+  if (!spec.includes('*')) return command === spec;
+  const pattern = spec.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[\\s\\S]*');
+  return new RegExp(`^${pattern}$`).test(command);
+}
+
+/**
+ * What Claude Code's user-level permission rules say about a tool call, when
+ * one of them names it: deny first, then ask, then allow, the order Claude
+ * Code reads them in. Reported beside Ambit's answer and never folded into it,
+ * since a rule in the runtime is the person's word about the runtime and a
+ * grant is their word about the graph (rule 20). Undefined when no rule names
+ * the call: the session's permission mode decides then, and no file holds it.
+ * An allow rule is not matched against a command that chains others, because
+ * Claude Code asks about each part.
+ */
+export function claudeRuleFor(
+  home: string,
+  call: { tool_name?: string; tool_input?: unknown }
+): RuntimeRule | undefined {
+  const tool = typeof call.tool_name === 'string' ? call.tool_name : '';
+  if (!tool) return undefined;
+  const given = (call.tool_input as { command?: unknown } | null | undefined)?.command;
+  const command = typeof given === 'string' ? given.trim() : undefined;
+  const chained = command !== undefined && /[;&|`]|\$\(/.test(command);
+  const settings = claudeSettings(home);
+  for (const says of ['deny', 'ask', 'allow'] as const) {
+    if (says === 'allow' && chained) continue;
+    for (const s of settings) {
+      const rules: unknown = s.permissions?.[says];
+      if (!Array.isArray(rules)) continue;
+      const rule = rules.find(r => typeof r === 'string' && ruleCovers(r, tool, command));
+      if (rule) return { runtime: 'claude-code', says, rule };
+    }
+  }
+  return undefined;
+}
+
 /** Whether a hook's command runs Ambit's gate, by name or from a checkout's cli.js. */
 function runsGate(command: unknown): boolean {
   return typeof command === 'string' && /\b(ambit(-cli)?|cli\.js)\b.*\bgate\b/.test(command);

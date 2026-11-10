@@ -6,6 +6,24 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.1...main)
 
+### An agent can ask in the words it has
+
+`ambit can Bash` answered no. The name resolved to the entry `tool:bash`, which carries no grant, while the gate asks about the same call as Shell Execution and puts it to the person. An agent that asked first was refused a call the gate would only have asked about, and learned to stop asking.
+
+`ambit can`, and `ambit_can` over MCP, now take a tool by the name the runtime gives it: `Bash`, `mcp__github__create_issue`, or `Bash(git push origin main)`, the form a Claude Code permission rule takes. The call is asked about as the gate asks, every capability it exercises is listed under `asked_as`, and the narrowest answer is the one given. An exact id such as `tool:bash` is still a question about that node.
+
+Two facts go beside the answer and change nothing in it. `runtime_rule` is the Claude Code permission rule that names the call, when one does, so the graph's answer and the runtime's sit side by side. `failed_recently` counts the failures a runtime reported against those capabilities in the last week.
+
+A sentence is offered what its words cover. `ambit can "run the test suite"` said no capability by that name exists; it now lists Automated Tests as a candidate, from the router `ambit goal` uses. It is offered and never chosen, and over MCP it is answered as a slip, so it files no deficit.
+
+### The briefing says what was never checked
+
+The first line counted what is verified. On a graph where no check has run it now adds how many reached capabilities carry a check, names three, and points at `ambit_verify`, since an agent reads reached as working.
+
+### A dead connection is named
+
+`ambit doctor` looked for a server entry called `ambit`. One written by hand under another name, pointing at a checkout since moved, read as not connected, and the advice was `ambit connect`, which adds a second entry and leaves the dead one failing at the start of every session. It now finds an entry that starts Ambit under any name, says which path is gone, and counts a runtime as connected only when an entry there can start.
+
 ## [0.7.1](https://github.com/zz-plant/ambit/releases/tag/v0.7.1) — 2026-11-10
 
 Ambit on Windows, and a container image that starts.

@@ -248,10 +248,10 @@ Both clients assume `ambit` is on your PATH. Homebrew and `npm install -g ambit-
 ### The one habit worth teaching
 
 > Before running a tool you have not used this session, call `ambit_can` with
-> the capability. On `yes`, act. On `ask`, put it to the person. On `no`, it has
+> the tool's own name or the capability. On `yes`, act. On `ask`, put it to the person. On `no`, it has
 > already recorded the deficit, so do not retry it under another name.
 
-The server sends this instruction in the MCP handshake. For clients that do not expose server instructions to the model context, `ambit init-rules` writes the guidance into `CLAUDE.md`, `AGENTS.md`, or `.cursorrules`. Agents with shell access but no MCP connection can check permissions using `ambit can <capability> --exit-code --record`. With `--record` a refusal is recorded as a deficit in the session history, and a deficit that recurs moves up the ranking of what to set up next; a person typing `ambit can` records nothing.
+The server sends this instruction in the MCP handshake. For clients that do not expose server instructions to the model context, `ambit init-rules` writes the guidance into `CLAUDE.md`, `AGENTS.md`, or `.cursorrules`. Agents with shell access but no MCP connection can check permissions using `ambit can <capability> --exit-code --record`. Either way the question can name the tool as the runtime does (`Bash`, `mcp__github__create_issue`, or `Bash(git push origin main)`), and the answer lists each capability the call exercises, with the Claude Code permission rule that names it when one does. With `--record` a refusal is recorded as a deficit in the session history, and a deficit that recurs moves up the ranking of what to set up next; a person typing `ambit can` records nothing.
 
 <div align="center">
 <img src="docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">

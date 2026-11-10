@@ -275,3 +275,33 @@ describe('how they read', () => {
     expect(text.indexOf('Still missing')).toBeGreaterThan(text.indexOf('not found here'));
   });
 });
+
+describe('an Ambit entry that cannot start', () => {
+  const dead = '/nowhere/toolchain-visualizer/src/mcp/server.ts';
+
+  test('is found under whatever name it was given, and does not count as connected', () => {
+    write('.claude.json', {
+      mcpServers: {
+        'tech-tree': { command: 'node', args: ['--experimental-sqlite', dead] },
+        other: { command: 'node', args: ['/nowhere/else/server.js'] },
+      },
+    });
+    const claude = detectRuntimes(home).find(r => r.runtime === 'claude-code');
+    expect(claude).toMatchObject({
+      has_ambit: false,
+      ambit_unreachable: { entry: 'tech-tree', missing: dead },
+    });
+    const said = runDoctor(makeGraph({ capabilities: [] }), home).recommendations[0];
+    expect(said).toContain('"tech-tree"');
+    expect(said).toContain(dead);
+  });
+
+  test('an entry under another name that can start is connected', () => {
+    write('.claude.json', {
+      mcpServers: { tree: { command: 'ambit', args: ['mcp', '--profile=agent'] } },
+    });
+    const claude = detectRuntimes(home).find(r => r.runtime === 'claude-code');
+    expect(claude?.has_ambit).toBe(true);
+    expect(claude?.ambit_unreachable).toBeUndefined();
+  });
+});

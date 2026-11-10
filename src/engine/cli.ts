@@ -131,7 +131,7 @@ import { listPortStatus, portServer } from './port.ts';
 import { toggleServer } from './toggle.ts';
 import { analyzeRepo } from './repo-inspect.ts';
 import { gateNote } from './wiring.ts';
-import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import { claudeHookOutput, claudeHookSnippet, decideCall, gateToolCall } from './gate.ts';
 import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
@@ -677,24 +677,25 @@ async function runCommand(
       // whom a tool nothing supplies is a wall worth filing. A person who
       // typed it is told the graph holds no such capability, and the exit
       // code says so.
-      const asked = capabilityToAsk(db, arg);
-      if ('answer' in asked) {
-        emit(asked.answer);
-        break;
-      }
-      if (!record) {
-        const known = named(arg);
-        if (!('id' in known)) {
-          emit(known);
+      const how = { actor: value('actor'), target: value('target'), spendCents };
+      // A tool's own name (`Bash`, `mcp__github__create_issue`) is asked as
+      // the gate asks about the call; see `decideCall`.
+      let decision: any = decideCall(db, arg, how);
+      if (!decision) {
+        const asked = capabilityToAsk(db, arg);
+        if ('answer' in asked) {
+          emit(asked.answer);
           break;
         }
+        if (!record) {
+          const known = named(arg);
+          if (!('id' in known)) {
+            emit(known);
+            break;
+          }
+        }
+        decision = canExecute(db, { ...how, capability: asked.ask });
       }
-      const decision: any = canExecute(db, {
-        actor: value('actor'),
-        capability: asked.ask,
-        target: value('target'),
-        spendCents,
-      });
       if (record) {
         const recorded = recordRefusal(db, decision, value('tool'));
         if (recorded !== undefined) decision.recorded_deficit = recorded;
@@ -702,7 +703,7 @@ async function runCommand(
         // The command that would answer yes next time, for the person to
         // type or not. The narrowest mode that permits: a person still asked.
         const scope = value('target') ? ` --scope=${shellQuote(value('target')!)}` : '';
-        decision.to_grant = `ambit authority grant ${shellQuote(asked.ask.replace(/^combo:/, ''))} confirm${scope}`;
+        decision.to_grant = `ambit authority grant ${shellQuote(String(decision.capability).replace(/^combo:/, ''))} confirm${scope}`;
       }
       emit(decision);
       // --exit-code puts the decision where a shell can branch on it: 0 to go
