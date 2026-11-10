@@ -6,25 +6,24 @@ Capability graph engine, an SVG map of the curated tree in era columns, MCP serv
 
 This file is short on purpose: it is loaded on every turn. It holds the commands, the check that says a change is done, and each rule in one line. The map of the code and the full text of each rule are in one guide per area, listed under [Where to read next](#where-to-read-next).
 
-## Maintenance mode (since 2026-11-10)
+## Focused mode (since 2026-11-10)
 
-Ambit is in maintenance: the owner decided on 2026-11-10 to keep it working and stop developing it. Until this section is removed, it overrides the roadmap and any other document that names work to do next.
+Ambit is in focused mode. On 2026-11-10 the owner decided to keep it as a small developer tool that has to earn its place, not to grow it into a platform. Until this section is removed, it overrides [docs/roadmap.md](docs/roadmap.md) and any other document that names work to do next.
 
 Take:
 
-- a fix for something broken: a failing build or check, a page error, a dead link or source, a deploy that stopped;
+- a fix for something broken: a failing build or check, a page error, a dead link, a release that stopped;
 - security updates and the monthly dependency pull request;
-- a fix for something that breaks the owner's own setup, or a bug an outside user reports;
-- keeping the config readers working when a supported agent changes its config format. That is a fix;
-- a release only to ship fixes.
+- work that makes the capabilities the owner uses every day more reliable or easier to use: the capability graph, dependency checks, the configured/working/authorized distinction, and the MCP server;
+- what an outside user needs to try those capabilities: install, first run, the docs for them, and any bug they report;
+- keeping the config readers working when a supported agent changes its config format.
 
-It stays a personal tool unless outside users start asking for it. This overrides [docs/roadmap.md](docs/roadmap.md).
+Decline the rest, and say in your reply that Ambit is in focused mode:
 
-Decline the rest, and say in your reply that the repository is in maintenance:
-
-- new features, pages, tools, datasets or integrations;
-- redesigns, copy passes, and refactors that fix nothing broken;
-- new automation, services, secrets, paid APIs or scheduled jobs.
+- new agent integrations or config readers added for completeness;
+- enterprise-platform features: organisation policy, central dashboards, multi-user or hosted modes;
+- new automation, services, secrets, paid APIs or scheduled jobs;
+- redesigns and refactors that serve none of the work above.
 
 The owner can still ask for any of these. Do one only when the request says it overrides this section.
 
