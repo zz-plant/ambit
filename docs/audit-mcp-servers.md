@@ -14,7 +14,7 @@ npm install -g ambit-cli   # keeps the `ambit` command the steps below use
 ambit status               # what is reached, what is verified, what is failing
 ```
 
-The map's **My Setup** view is the same list, one row per server, agent, model or command, with which runtime declared it and whether it is enabled.
+`ambit web` opens the map in a browser. Its **My Setup** view is the same list, one row per server, agent, model or command, with which runtime declared it and whether it is enabled.
 
 ## 2. Check which ones work
 
@@ -31,7 +31,7 @@ A check exists only where one is declared: the curated tree declares some, and a
 
 ## 3. See what each one may do without asking
 
-Being able to call a tool is not permission to call it. Each runtime has its own approval setting, and Ambit records each as one of three modes: runs without asking, asks first, or forbidden.
+Being able to call a tool is not permission to call it. Ambit records one of three modes for each capability and action: runs without asking, asks first, or forbidden.
 
 ```bash
 ambit authority                  # every capability's mode, per action
@@ -54,7 +54,7 @@ ambit audit 30                   # who approved what, what ran, and what came of
 
 Both read the session history, Ambit's local record of what agents ran and who was asked. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
 
-`ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the ledger recorded, and every grant that narrowed itself because a check failed.
+`ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the session history recorded, and every grant that narrowed itself because a check failed.
 
 ## Keeping it current
 

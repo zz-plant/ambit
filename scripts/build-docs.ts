@@ -93,7 +93,7 @@ export const PAGES: Page[] = [
     slug: 'loadout',
     title: 'From config files to work done: the seven steps',
     description:
-      'One person, their agents and their machines, from a pile of configs to work done without them: seven legs, the command for each, and what the demo shows.',
+      'Seven steps from a pile of agent configs to work that runs without you: what Ambit shows at each step, the command for it, and where the demo shows it.',
     card: 'Step into your loadout',
   },
   {
@@ -117,7 +117,7 @@ export const PAGES: Page[] = [
     slug: 'ideas',
     title: 'The ideas behind Ambit: what is new, and where it comes from',
     description:
-      "An agent setup's reach is composed, may not work, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim.",
+      'What an agent setup can do is composed from separately configured pieces, and working is not the same as permitted. What is new in Ambit, and what is not.',
     card: 'Reach is composed. Working and permitted are separate facts',
   },
   {
@@ -138,7 +138,7 @@ export const PAGES: Page[] = [
     slug: 'mcp-outage',
     title: 'What stops when an MCP server or credential expires',
     description:
-      'What stops when an MCP server or credential expires: single points of failure in an agent setup, what only weakens, and what was already broken.',
+      'Find the single points of failure in an agent setup: what an expired MCP server or credential takes with it, what only weakens, and what was already broken.',
     card: 'One credential expires. What else stops?',
     pitch: {
       text: 'answers this for your own setup. It maps every agent config on your machine and, for any server or model, splits what would stop from what would keep another provider.',
@@ -172,7 +172,7 @@ export const PAGES: Page[] = [
     slug: 'glossary',
     title: 'Agent and MCP terms: capability, lifecycle, authority and grant',
     description:
-      'Every word Ambit uses, defined once: MCP servers, capabilities, checks and lifecycle, authority and grants, the frontier and the work ledger.',
+      'Every word Ambit uses, defined once: MCP servers, capabilities, checks and lifecycle, authority and grants, proposals and the frontier.',
     card: 'Every word on the map, defined once',
     render: 'glossary',
   },

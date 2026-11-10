@@ -115,7 +115,7 @@ gained = C(S_t+1) \ C(S_t)
 lost   = C(S_t) \ C(S_t+1)
 ```
 
-The ledger implements a narrow structural comparison. It records gains and losses separately; a net count would hide contractions.
+Ambit's frontier history (`ambit history`) implements a narrow structural version of this comparison. It records gains and losses separately; a net count would hide contractions.
 
 ## The AGI thesis
 

@@ -69,7 +69,9 @@ const NO_AUTHORITY: LoopAuthority = {
  * What was forecast against what happened, on one axis.
  *
  * A ratio of 1.1 says nothing on its own; two marks on a shared scale say
- * "predicted 37, got 41" and let the reader judge the gap themselves.
+ * "predicted 37, got 41" and let the reader judge the gap themselves. Both
+ * are hours saved (`forecastPair` in src/engine/views.ts). The observed mark
+ * was labelled "spent", under a headline calling the same 41 hours a saving.
  */
 function ForecastPair({ predicted, observed }: { predicted: number; observed: number }) {
   const w = 200;
@@ -80,7 +82,7 @@ function ForecastPair({ predicted, observed }: { predicted: number; observed: nu
       className="fig-pair"
       viewBox={`0 0 ${w} 42`}
       role="img"
-      aria-label={`Forecast ${predicted} hours, observed ${observed} hours`}
+      aria-label={`Forecast ${predicted} hours saved, observed ${observed} hours saved`}
     >
       {/* The two marks sit close together precisely when the forecast was
           good, which is the moment two labels on one baseline collide into
@@ -94,7 +96,7 @@ function ForecastPair({ predicted, observed }: { predicted: number; observed: nu
       <circle className="fig-dot-hollow" cx={x(predicted)} cy={20} r={4} />
       <circle className="fig-dot" cx={x(observed)} cy={20} r={4.5} />
       <text className="fig-tick fig-tick--strong" x={x(observed)} y={36} textAnchor="middle">
-        {observed}h spent
+        {observed}h saved
       </text>
     </svg>
   );
@@ -1214,6 +1216,12 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
   // and a paragraph of method, and its best number sat in the first of five
   // equal cards.
   const saved = attention.interventions > 0 || roi.monthly_hours.length > 1;
+  // Whose rate prices the hours. A visitor to the sample set none, so the
+  // sample states its own, the one its two yearly figures divide to.
+  const rate =
+    sample && roi.hours_per_year > 0
+      ? `At the sample's ${money(roi.dollars_per_year / roi.hours_per_year)} an hour`
+      : 'At the rate you set';
   // The step is the engine's first, by the one rule `ambit next`, the map's
   // best next step and the council read (src/shared/nextSteps.ts). It used to
   // be the opportunity that paid back soonest, so the page named one step at
@@ -1238,8 +1246,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             {sample && <p className="loop-sample">Sample data</p>}
             {saved ? (
               <h2 className="loop-lead">
-                <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in. At
-                the rate you set, that is <strong>{money(roi.dollars_per_year)}</strong>.
+                <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in.{' '}
+                {rate}, that is <strong>{money(roi.dollars_per_year)}</strong>.
               </h2>
             ) : (
               <h2 className="loop-title">Where the time goes</h2>
@@ -1248,7 +1256,11 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               <div className="loop-move">
                 <p>
                   Next: <strong>{topMove.capability}</strong>
-                  {topMove.cost ? ` · ${topMove.cost}` : ''}. {topMove.why}
+                  {topMove.cost ? ` · ${topMove.cost}` : ''}
+                  {/* The council under this line opens on the same step, and
+                      its first seat says this reason: said here too, one
+                      sentence stood twice on one screen. */}
+                  {loop.council ? '' : `. ${topMove.why}`}
                 </p>
                 {onShowOnMap && topNode && (
                   <button type="button" className="fig-cta" onClick={() => onShowOnMap(topNode)}>
@@ -1264,7 +1276,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               <p>
                 Each time someone had to step in for an agent is logged against the capability it
                 was waiting on. The hours are counted from the session history; the dollar figure is
-                those hours at the rate you set.
+                those hours at {sample ? "the sample's rate" : 'the rate you set'}.
               </p>
             </details>
             <SinceStrip since={since} />

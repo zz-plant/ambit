@@ -8,7 +8,8 @@
  * illustrative, not fabricated-as-live: the page labels it sample data.
  */
 import type { LoopAdvisor, LoopCouncil, LoopSnapshot } from '../../shared/api';
-import { isFailing, isProven } from '../components/civ/layout';
+import { leverageSentence } from '../../shared/nextSteps';
+import { isFailing, isProven, unlockEffect } from '../components/civ/layout';
 import { demoTreeGraph } from '../store/demo';
 
 /**
@@ -29,6 +30,27 @@ function treeStatus() {
     failing: failing.length,
     degraded: failing.map(i => i.name),
   };
+}
+
+/**
+ * Why a step is worth taking, in the sentence the engine writes for `ambit
+ * next` (src/engine/next.ts): how often work was blocked on it, then what
+ * reaching it brings, read off the demo tree. The second half used to be typed
+ * here, and said Embeddings reaches Vector Store and Model Routing reaches
+ * Offline Capable, on a map that lights neither when the step is played.
+ */
+function why(id: string, blocked = 0): string {
+  const { items, connections } = demoTreeGraph();
+  const { reaches, opens } = unlockEffect(items, connections, id);
+  return [
+    blocked ? `It has blocked work ${blocked} ${blocked === 1 ? 'time' : 'times'}.` : '',
+    leverageSentence(
+      reaches.map(i => i.name),
+      opens.map(i => i.name)
+    ),
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
@@ -93,7 +115,7 @@ function demoCouncil(): LoopCouncil {
       {
         seat: 'science',
         reads: 'the frontier',
-        says: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which needs only this one thing to be reached.',
+        says: why('combo:embeddings', 4),
         command: 'ambit propose embeddings',
         subject: { id: 'combo:embeddings', name: 'Embeddings' },
         stance: 'for',
@@ -256,7 +278,7 @@ export function demoSnapshot(): LoopSnapshot {
     ],
     roi: {
       hours_per_year: 41,
-      dollars_per_year: 9600,
+      dollars_per_year: 10250,
       accuracy: 1.1,
       verdict: 'performing near forecast',
       // Twelve months against January's 11.0h: the gap sums to the 41 hours
@@ -327,21 +349,21 @@ export function demoSnapshot(): LoopSnapshot {
       {
         id: 'combo:embeddings',
         capability: 'Embeddings',
-        why: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which needs only this one thing to be reached.',
+        why: why('combo:embeddings', 4),
         cost: '10m',
         basis: 'observed',
       },
       {
         id: 'combo:local-tool-calling',
         capability: 'Local Tool Calling',
-        why: 'It has blocked work 3 times.',
+        why: why('combo:local-tool-calling', 3),
         cost: '15m',
         basis: 'observed',
       },
       {
         id: 'combo:model-routing',
         capability: 'Model Routing',
-        why: 'Reaching it also reaches Offline Capable, which already has a provider and needs only this.',
+        why: why('combo:model-routing'),
         cost: '10m',
         basis: 'observed',
       },

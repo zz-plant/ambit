@@ -547,6 +547,41 @@ export function unlockCascade(items: Item[], connections: Connection[], id: stri
 }
 
 /**
+ * The same set in its two halves, by name: what is reached along with `id`,
+ * and what only becomes a next step. A sentence that states a count after the
+ * step needs them apart. The tour added the whole cascade to what was reached
+ * and said the sample went from 16 to 18 on a step that reaches one capability
+ * and makes two more next steps.
+ */
+export function unlockEffect(
+  items: Item[],
+  connections: Connection[],
+  id: string
+): { reaches: Item[]; opens: Item[] } {
+  const { reaches, opens } = stepEffect(stepGraph(items, connections), id);
+  const byId = new Map(items.map(i => [i.id, i]));
+  const named = (ids: readonly string[]) => ids.flatMap(i => byId.get(i) ?? []);
+  return { reaches: named(reaches), opens: named(opens) };
+}
+
+/**
+ * Where a setup stands before and after one step, as the tour and the front
+ * door say it. Reached is counted as the era heads count it, without what is
+ * failing its check: the tour's third card says a failing capability is not
+ * counted, under a first card that had counted it.
+ */
+export function stepStanding(
+  items: Item[],
+  connections: Connection[],
+  id: string
+): { reached: number; total: number; after: number; reaches: Item[]; opens: Item[] } {
+  const tree = visibleItems(items).filter(i => !isEntry(i));
+  const reached = tree.filter(i => rungOf(i) === 'reached').length;
+  const { reaches, opens } = unlockEffect(items, connections, id);
+  return { reached, total: tree.length, after: reached + 1 + reaches.length, reaches, opens };
+}
+
+/**
  * The path an edge takes: a curve that leaves and arrives horizontally, so a
  * bundle of edges into one node fans instead of converging as straight lines
  * through everything between. An edge inside one column bows out to the right.

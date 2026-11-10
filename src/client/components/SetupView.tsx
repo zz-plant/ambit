@@ -11,12 +11,13 @@ import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
+  costOf,
   eraOf,
   isEntry,
   isFailing,
   isProven,
   isRecovering,
-  nextSteps,
+  mapFindings,
   recentRuns,
 } from './civ/layout';
 import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
@@ -248,10 +249,19 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
   // row used to say "Provides nothing on the map" in warning colour to a
   // visitor who had just pasted their own setup.
   const placed = items.some(i => !isEntry(i));
-  const bestNext = useMemo(
-    () => (placed ? nextSteps(items, connections)[0] : undefined),
-    [placed, items, connections]
-  );
+  // The step the map leads with, by the same call: the engine's first pick
+  // when it ranked any. Ranked here by leverage alone, this line named Model
+  // Routing on the sample while the map and Time & cost named Embeddings.
+  const ranked = useAmbitStore(s => s.loop?.next);
+  const bestNext = useMemo(() => {
+    if (!placed) return undefined;
+    const { best } = mapFindings(
+      items,
+      connections,
+      ranked?.map(n => n.id)
+    );
+    return best && { item: best.item, cost: costOf(best.item) };
+  }, [placed, items, connections, ranked]);
   const idle = placed
     ? live.filter(i => i.type === 'mcp-server' && (provides.get(i.id) || []).length === 0)
     : [];
@@ -267,7 +277,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
         {bestNext && (
           <li className="setup-finding setup-finding--next">
             <span>Next step:</span> <strong>{bestNext.item.name}</strong>
-            {bestNext.cost && bestNext.cost !== 'unknown' ? ` (about ${bestNext.cost})` : ''} —{' '}
+            {bestNext.cost ? ` (about ${bestNext.cost})` : ''} —{' '}
             <button
               type="button"
               className="setup-chip"
