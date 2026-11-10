@@ -241,6 +241,37 @@ test('--help after a command says what it does, and runs nothing', () => {
   }
 });
 
+test('a graph view has help of its own, and runs only under graph', () => {
+  // The graph's index names its views and says `ambit help <verb>` shows one
+  // in full. `help graph surface` printed the index again, and `help surface`
+  // answered with Recovering, whose text says "surface".
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-help-view-'));
+  try {
+    for (const argv of [
+      ['help', 'surface'],
+      ['help', 'graph', 'surface'],
+      ['graph', 'surface', '--help'],
+    ]) {
+      const r = piped(dir, ...argv);
+      expect([argv.join(' '), r.status]).toEqual([argv.join(' '), 0]);
+      expect(r.stdout).toContain('graph [surface|');
+      expect(r.stdout).toContain('ambit graph surface');
+      expect(r.stdout).not.toContain('Recovering');
+    }
+    // A view's own entry comes with it, options included.
+    expect(piped(dir, 'help', 'unmapped').stdout).toContain('graph unmapped [--days=N]');
+    expect(piped(dir, 'help', 'export').stdout).toContain('graph export');
+    // A view that is also a word keeps the word.
+    expect(piped(dir, 'help', 'combos').stdout).toContain('Combo:');
+    // Typed on its own, a view is sent to where it runs.
+    const bare = piped(dir, 'surface');
+    expect(bare.status).toBe(2);
+    expect(bare.stderr).toContain('Did you mean ambit graph surface?');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('a word that names a concept shows that concept alone', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ambit-help-word-'));
   try {
@@ -251,7 +282,7 @@ test('a word that names a concept shows that concept alone', () => {
     // A word no concept is called still finds the one whose text uses it.
     expect(piped(dir, 'help', 'bottlenecks').stdout).toContain('Keystone');
     // A plural is the word.
-    expect(piped(dir, 'help', 'combos').stdout).toContain('Combo');
+    expect(piped(dir, 'help', 'eras').stdout).toContain('Era —');
     // A slip is offered what it was probably meant to be.
     expect(piped(dir, 'help', 'plna').stdout).toContain('ambit help plan');
   } finally {

@@ -1,4 +1,4 @@
-import { ALIASES, GROUPS } from './groups.ts';
+import { ALIASES, GRAPH_VIEWS, GROUPS } from './groups.ts';
 
 /**
  * What `ambit help` prints.
@@ -430,10 +430,30 @@ function commandHelp(verb: string): string | undefined {
 }
 
 /**
+ * A graph view's entries: the one that lists every view, and the view's own
+ * where it has one. The graph's index names its views and says `ambit help
+ * <verb>` shows one in full, but `ambit help graph surface` printed the index
+ * again and `ambit help surface` searched the glossary, which answered with
+ * Recovering because its text says "surface". The `graph` entry and its
+ * options were reachable only from `--all`.
+ */
+function viewHelp(view: string): string {
+  const found = entries().filter(entry => {
+    const rest = entry.slice(2);
+    return (
+      rest.startsWith('graph [') ||
+      (rest.startsWith(`graph ${view}`) && /^(\s|$)/.test(rest.slice(`graph ${view}`.length)))
+    );
+  });
+  return [...found, '', `  A view runs only under graph: ambit graph ${view}`].join('\n');
+}
+
+/**
  * What `ambit help <words>` is about, when it is a command or a group: a
- * group alone is its index, a group and one of its verbs is that verb, and an
- * old name is read as the one it became. Anything else is no topic here, and
- * the caller looks the words up in the glossary.
+ * group alone is its index, a group and one of its verbs is that verb, a
+ * graph view is the graph's entry for it, and an old name is read as the one
+ * it became. Anything else is no topic here, and the caller looks the words
+ * up in the glossary.
  */
 function helpTopic(words: string[]): { text: string; verb?: string } | undefined {
   const named = (word: string | undefined) => {
@@ -442,6 +462,8 @@ function helpTopic(words: string[]): { text: string; verb?: string } | undefined
   };
   let verb = named(words[0]);
   if (!verb) return undefined;
+  const view = verb === 'graph' ? named(words[1]) : verb;
+  if (view && GRAPH_VIEWS.includes(view)) return { text: viewHelp(view), verb: view };
   if (verb in GROUPS) {
     const sub = named(words[1]);
     if (!sub || !GROUPS[verb].includes(sub)) return { text: groupHelp(verb) };

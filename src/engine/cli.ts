@@ -36,7 +36,7 @@ import {
   statusReport,
 } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
-import { GROUPS, commandWords, resolveCommand } from './cli/groups.ts';
+import { GRAPH_VIEWS, GROUPS, commandWords, resolveCommand } from './cli/groups.ts';
 import { nearest } from '../shared/nearest.ts';
 import { shellQuote } from '../shared/shell.ts';
 import { shareSnapshot } from './share.ts';
@@ -308,8 +308,7 @@ async function runCommand(
           );
         else emitRaw(exportGraph(db), false);
       } else {
-        const views = ['surface', 'combos', 'affordances', 'capacity', 'unmapped', 'export'];
-        const meant = nearest(arg, [...views, ...GROUPS.graph], 2);
+        const meant = nearest(arg, [...GRAPH_VIEWS, ...GROUPS.graph], 2);
         emit({
           error: `No graph view "${arg}". ambit graph lists them.`,
           ...(meant.length ? { did_you_mean: meant.map(m => `ambit graph ${m}`) } : {}),
@@ -1248,9 +1247,11 @@ async function runCommand(
       // as one, and exiting 2, the code a usage error conventionally gets, so a
       // script can tell a mistyped verb from a command that ran and failed.
       // A typo names what it was probably meant to be, instead of sending the
-      // reader to a list of forty commands to find it themselves.
+      // reader to a list of forty commands to find it themselves. A graph
+      // view is in the graph's index, which says each runs as `ambit <verb>`,
+      // so `ambit surface` is sent to the one place it runs.
       const paint = terminalPalette(process.stderr);
-      const meant = nearest(cmd, commandWords(), 2);
+      const meant = GRAPH_VIEWS.includes(cmd) ? [`graph ${cmd}`] : nearest(cmd, commandWords(), 2);
       const hint = meant.length
         ? `Did you mean ${meant.map(m => `ambit ${m}`).join(' or ')}?`
         : 'Try: ambit help';

@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import concepts from '../../shared/concepts.json';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 import { trapTab } from '../utils/keys';
-import { typeLabel } from '../utils/labels';
-import { typeColor } from '../utils/typeColors';
 
 export type DocsTab = 'concepts' | 'reading' | 'doing' | 'hotkeys';
 
@@ -22,7 +20,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'hotkeys', label: 'Shortcuts' },
 ];
 
-const HOTKEYS = [
+/** The shell's keys (`pageKey` in utils/keys.ts), which work on every view. */
+const PAGE_KEYS = [
   {
     key: '/',
     desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, a view',
@@ -31,16 +30,6 @@ const HOTKEYS = [
     key: '[ / ]',
     desc: 'Step through the views: the map, My Setup, Time & cost, Audit and Proposals',
   },
-  {
-    key: 'J / K',
-    desc: 'Step through the nodes on the map, skipping any a focus hides; the arrow keys do the same',
-  },
-  { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
-  {
-    key: '+ / -',
-    desc: 'Zoom in / out about the middle of the map. A pinch, or the wheel with Ctrl or ⌘ held, zooms about the point under it',
-  },
-  { key: '0', desc: 'Back to actual size' },
   { key: 'G', desc: 'Go to Proposals, where the decisions wait; from there, back to the map' },
   { key: '?', desc: 'Open this help' },
   {
@@ -49,16 +38,23 @@ const HOTKEYS = [
   },
 ];
 
-/** Drawn from the same label map the map and the panels read, so a rename
- *  cannot leave the documentation describing a word nothing uses. */
-const NODE_TYPES = [
-  { type: 'framework', sym: '★', desc: 'The agent runtime itself' },
-  { type: 'mcp-server', sym: '◈', desc: 'A tool the agent can call' },
-  { type: 'agent', sym: '◆', desc: 'A subagent with its own prompt and model' },
-  { type: 'skill', sym: '◇', desc: 'A procedure loaded on demand' },
-  { type: 'provider', sym: '●', desc: 'Where inference happens' },
-  { type: 'possibility', sym: '●', desc: 'A capability you reach by having others' },
-].map(n => ({ ...n, label: typeLabel(n.type) }));
+/**
+ * The map's keys (`mapKey`), listened for by the map alone. They were listed
+ * with the shell's under "these work anywhere on the page", and on My Setup
+ * or Audit none of them does anything.
+ */
+const MAP_KEYS = [
+  {
+    key: 'J / K',
+    desc: 'Step through the nodes, skipping any a focus hides; the arrow keys do the same',
+  },
+  { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
+  {
+    key: '+ / -',
+    desc: 'Zoom in / out about the middle of the map. A pinch, or the wheel with Ctrl or ⌘ held, zooms about the point under it',
+  },
+  { key: '0', desc: 'Back to actual size' },
+];
 
 const ACTIONS = [
   {
@@ -188,28 +184,22 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 Each column is an era, from the foundations on the left to what depends on them on
                 the right.
               </p>
-              <h3 className="docs-h3">The circles</h3>
-              <div className="docs-list">
-                {NODE_TYPES.map(n => (
-                  <div key={n.label} className="docs-row">
-                    <span className="docs-swatch" style={{ background: typeColor(n.type) }}>
-                      {n.sym}
-                    </span>
-                    <span>
-                      <strong>{n.label}</strong>: {n.desc}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* One section for the three states, in the legend's order. It
-                  was two: "Solid vs outlined" and, further down, "The states",
-                  saying the same thing about the same circles. */}
+              {/* One section for the states, in the legend's order. It was two:
+                  "Solid vs outlined" and, further down, "The states", saying
+                  the same thing about the same circles. A third, "The
+                  circles", gave each kind of entry a colour and a glyph that
+                  only the sunset domain-column map drew; the tree colours a
+                  circle by its state. */}
               <h3 className="docs-h3">Filled, outlined, dashed</h3>
               <p className="docs-p">
                 A filled circle is reached. An outlined one is a next step: its prerequisites are
                 met, and its setup cost sits beside it. A dashed one is blocked, with a prerequisite
                 missing.
+              </p>
+              <p className="docs-p">
+                A red circle with stripes is failing: its last check failed. One whose ring slips is
+                recovering: its last check passed after recent ones failed. The Key lists every
+                other mark.
               </p>
 
               <h3 className="docs-h3">The lines</h3>
@@ -355,10 +345,13 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </div>
                 ))}
               </div>
+              {/* `ambit status` is the full report and names one command to
+                  type next, not the next steps; bare `ambit` is the first
+                  command the CLI's own help gives. */}
               <h3 className="docs-h3">Start here</h3>
               <p className="docs-p">
-                If you run one command, run <code className="docs-cmd-inline">ambit status</code>:
-                what is reached, what is failing, and the next steps.
+                If you run one command, run <code className="docs-cmd-inline">ambit</code>: where
+                you stand, what is failing, and the one step worth taking next.
               </p>
               <p className="docs-p docs-muted">
                 <code className="docs-cmd-inline">ambit help &lt;term&gt;</code> prints any of these
@@ -371,7 +364,16 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
             <>
               <p className="docs-lede">These work anywhere on the page, except while typing.</p>
               <div className="docs-list">
-                {HOTKEYS.map(h => (
+                {PAGE_KEYS.map(h => (
+                  <div key={h.key} className="docs-action">
+                    <kbd className="docs-kbd">{h.key}</kbd>
+                    <span className="docs-answers">{h.desc}</span>
+                  </div>
+                ))}
+              </div>
+              <h3 className="docs-h3">On the map</h3>
+              <div className="docs-list">
+                {MAP_KEYS.map(h => (
                   <div key={h.key} className="docs-action">
                     <kbd className="docs-kbd">{h.key}</kbd>
                     <span className="docs-answers">{h.desc}</span>

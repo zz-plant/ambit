@@ -42,6 +42,12 @@ The first line counted what is verified. On a graph where no check has run it no
 
 `ambit doctor` looked for a server entry called `ambit`. One written by hand under another name, pointing at a checkout since moved, read as not connected, and the advice was `ambit connect`, which adds a second entry and leaves the dead one failing at the start of every session. It now finds an entry that starts Ambit under any name, says which path is gone, and counts a runtime as connected only when an entry there can start.
 
+### Help that answers what it is asked
+
+`ambit help graph` lists the graph's views and says `ambit help <verb>` shows one in full, but `ambit help graph surface` printed the same list again, and `ambit help surface` searched the glossary and answered with Recovering, whose text says "surface". The `graph` entry and its options were reachable only from `--all`. A view, asked about on its own or after `graph`, now prints that entry and the view's own, and `ambit surface` is offered `ambit graph surface`, the one place a view runs.
+
+The map's help had three claims the page no longer kept. Reading the map gave each kind of entry a colour and a glyph that only the retired domain-column map drew, where the tree colours a circle by its state; it now says what a failing circle and a recovering one look like. Shortcuts said every key works anywhere on the page, and the map's keys (J and K, the lenses, the zoom) do nothing on My Setup or Audit; they are listed apart, under On the map. Start here sent a first visitor to `ambit status` for "the next steps", which it does not list; it now names `ambit`, as the CLI's own help does.
+
 ## [0.7.1](https://github.com/zz-plant/ambit/releases/tag/v0.7.1) — 2026-11-10
 
 Ambit on Windows, and a container image that starts.
