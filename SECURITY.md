@@ -8,7 +8,7 @@ Ambit is a personal project, not a staffed one — expect a first response in da
 
 ## What is worth reporting
 
-Ambit reads your agent configuration and, through the visualizer, writes back to it. Four invariants hold that surface, and a break in any of the four is a vulnerability. [AGENTS.md](./AGENTS.md#security-posture) says where each of the four is enforced in code.
+Ambit reads your agent configuration and, through the visualizer, writes back to it. Four invariants hold that surface, and a break in any of the four is a vulnerability. [The servers guide](./src/server/AGENTS.md#security-posture) says where each of the four is enforced in code.
 
 - **Loopback only.** The API server binds `127.0.0.1`. Nothing on your LAN and nothing through a tunnel can reach it, and any path that widens that bind is in scope.
 - **Origin allowlist.** A request whose `Origin` is not this app's own page is rejected with 403 *before routing*. The Origin has to name `localhost`, `127.0.0.1` or `[::1]` on a port the page is served from, which is the API's own and, in a checkout, the dev port `npm run dev` passes to both processes; a page on any other local port is refused, token or not. CORS headers alone would be insufficient, because a simple request skips preflight and reaches the handler regardless. Every request also has to be addressed to `localhost`, `127.0.0.1` or `[::1]`, and any other name is a 403 before routing: a page that rebinds its own name to this address is the same origin as the server, so the origin check cannot stop it, and the name it asked for gives it away. Anything that lets a page you visit reach the API is in scope.

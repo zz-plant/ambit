@@ -1,6 +1,6 @@
 # Contributing
 
-Fork → branch → commit → PR. This file gets you from a clone to a passing PR. [AGENTS.md](./AGENTS.md) is what a change must not break, and where the code lives. [The deep dive](./docs/deep-dive.md) is what the model means: what a node is, what a check proves, what an authority grant does. [The README](./README.md) is what Ambit is for.
+Fork → branch → commit → PR. This file gets you from a clone to a passing PR. [AGENTS.md](./AGENTS.md) is what a change must not break, and it names the guide that maps each part of the code. [The deep dive](./docs/deep-dive.md) is what the model means: what a node is, what a check proves, what an authority grant does. [The README](./README.md) is what Ambit is for.
 
 ## Setup
 
@@ -37,7 +37,7 @@ Without `--url`, the runner makes and serves a temporary production build. With 
 
 ## The checks CI runs
 
-Every push and pull request runs all of these, twice, on Node 22 and Node 24. Running them locally first is faster than a round trip:
+Every push and pull request runs all of these, twice, on Node 22 and Node 24. Running them locally first is faster than a round trip, and `npm run check` runs them all, one line each, with the fix beside a failure (`npm run check -- --fast` is lint, typecheck and the suite):
 
 ```bash
 npm run test:coverage        # the suite, plus the coverage floors a bare `npm test` does not apply
@@ -75,6 +75,6 @@ Branch off `main` and keep the pull request to one thing. The template's checkli
 
 ## Things to keep true
 
-The invariants a change must not break are stated once, in [AGENTS.md](./AGENTS.md). Two of the four under [Security posture](./AGENTS.md#security-posture) bear on ordinary changes: loopback only, and no entry creation over HTTP. Two more are numbered [rules](./AGENTS.md#rules): one resolver decides where the graph is, and nothing that travels may execute. Read that file before touching `src/server/api.ts`, `sync.ts`, or anything under `assure/`.
+The invariants a change must not break are stated once, in [AGENTS.md](./AGENTS.md). Two of the four under [Security posture](./AGENTS.md#security-posture) bear on ordinary changes: loopback only, and no entry creation over HTTP. Two more are numbered [rules](./AGENTS.md#rules): one resolver decides where the graph is, and nothing that travels may execute. Each is one line there and in full in the guide for its area: read [the servers guide](./src/server/AGENTS.md) before touching `src/server/api.ts`, and [the engine guide](./src/engine/AGENTS.md) before `sync.ts` or anything under `assure/`.
 
 Release and launch mechanics, including the directory-submission table, live in [.github/launch-kit.md](./.github/launch-kit.md).
