@@ -153,7 +153,9 @@ src/client/                React frontend
     ProposalsDesk.tsx      The decisions, drawn once: the waiting drafts as a queue, each draft as
                            a plan (what it does, what undoes it, what it forecasts), the one-click
                            approval receipt, and the queue of drafts to decide together
-    DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
+    DocsModal.tsx          The help overlay (`?`): the glossary, how to read the map's states and
+                           lines, what the page and the CLI can do, and the keys, the shell's apart
+                           from the map's
     Council.tsx            The council: the first step to reach, read by five seats, each a
                            sentence with its command and a stance; it says when they are split
     LoopDashboard.tsx      The Time & cost view — the work ledger on shared scales, what may act

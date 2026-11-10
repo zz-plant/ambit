@@ -4878,19 +4878,6 @@ button.app-sample-tag:hover {
   font-weight: 600;
 }
 
-.docs-swatch {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--on-accent);
-  font-size: var(--fs-md);
-  font-weight: 700;
-}
-
 .docs-line-solid,
 .docs-line-dashed {
   flex: none;

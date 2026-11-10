@@ -67,6 +67,13 @@ const GROUPS: Record<string, string[]> = {
 };
 
 /**
+ * The views `ambit graph <view>` prints. A view is not a verb: it runs only
+ * under `graph`, so `ambit surface` is no command, and help and the
+ * unknown-command line send the reader to `ambit graph surface`.
+ */
+const GRAPH_VIEWS = ['surface', 'combos', 'affordances', 'capacity', 'unmapped', 'export'];
+
+/**
  * Resolves `<group> <verb>` to the verb the switch below dispatches on.
  *
  * `graph` is also a command in its own right (`graph surface`, `graph combos`),
@@ -123,4 +130,4 @@ function commandWords(): string[] {
   return [...STANDALONE, ...Object.keys(GROUPS), ...Object.values(GROUPS).flat()];
 }
 
-export { ALIASES, GROUPS, STANDALONE, commandWords, resolveCommand };
+export { ALIASES, GRAPH_VIEWS, GROUPS, STANDALONE, commandWords, resolveCommand };
