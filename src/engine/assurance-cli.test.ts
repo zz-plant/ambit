@@ -5,6 +5,9 @@
  * of a single 2,300-line file so a failure names a subject.
  */
 import { test, expect } from 'vitest';
+import { renderPlan } from './cli/reports.ts';
+import { PLAIN } from './cli/output.ts';
+import { planFor } from './planning.ts';
 import {
   LOCAL_ONLY,
   PLUS_EMBEDDINGS,
@@ -436,6 +439,22 @@ test('planning a capability already reached says so instead of inventing steps',
   const p = cli('goal', 'shell-execution');
   expect(p.reachable).toBe(true);
   expect(p.missing).toEqual([]);
+});
+
+test('a goal already reached names what supplies it, typed as an id or as a sentence', () => {
+  seed(LOCAL_ONLY).close();
+  // Asked by id, as the README and an agent's ambit_goal call both ask it.
+  expect(cli('goal', 'shell-execution').use).toEqual(['tool:bash']);
+  expect(cli('goal', 'combo:shell-execution').use).toEqual(['tool:bash']);
+  // And on a terminal, where the answer stopped at "already reached".
+  const db = getDb(join(dir, 'graph.db'));
+  const plan = { ...(planFor(db, 'combo:shell-execution') as any), use: ['tool:bash'] };
+  db.close();
+  const lines = renderPlan(plan, PLAIN).join('\n');
+  expect(lines).toContain('Shell Execution is already reached.');
+  expect(lines).toContain('Use tool:bash');
+  // A plan with steps left names no provider.
+  expect(cli('goal', 'offline-capable').use).toBeUndefined();
 });
 
 test('a flag is not mistaken for a command argument', () => {

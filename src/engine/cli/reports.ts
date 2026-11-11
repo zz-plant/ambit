@@ -791,6 +791,9 @@ function renderPlan(
     requires_person?: string[];
     degraded?: { id: string; name: string }[];
     note?: string;
+    /** For a capability already reached, the providers here that are working. */
+    use?: string[];
+    use_of?: number;
   },
   c: Palette = C,
   asked?: { sentence: string; others: string[] }
@@ -807,7 +810,15 @@ function renderPlan(
     );
   }
   if (!steps.length && !plan.degraded?.length) {
-    lines.push(`${GUTTER}${c.bold}${plan.goal}${c.reset} is already reached.`, '');
+    lines.push(`${GUTTER}${c.bold}${plan.goal}${c.reset} is already reached.`);
+    if (plan.use?.length) {
+      const more =
+        plan.use_of && plan.use_of > plan.use.length
+          ? ` and ${plan.use_of - plan.use.length} more`
+          : '';
+      lines.push(`${GUTTER}${c.grey}Use${c.reset} ${plan.use.join(', ')}${more}`);
+    }
+    lines.push('');
     return lines;
   }
   const seconds = steps.reduce((sum, s) => sum + (s.setup_seconds || 0), 0);

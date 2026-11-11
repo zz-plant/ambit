@@ -371,10 +371,15 @@ async function runCommand(
           if (r.recommended) {
             const plan = planFor(db, r.recommended) as any;
             if (!plan.error) {
-              const others = (r.candidates ?? [])
+              const candidates: any[] = r.candidates ?? [];
+              const others = candidates
                 .filter((c: any) => c.id !== r.recommended)
                 .map((c: any) => c.name);
-              return renderPlan(plan, palette, { sentence: r.goal, others });
+              const chosen = candidates.find((c: any) => c.id === r.recommended);
+              return renderPlan({ ...plan, use: chosen?.use, use_of: chosen?.use_of }, palette, {
+                sentence: r.goal,
+                others,
+              });
             }
           }
           return formatGeneric(r, palette);
