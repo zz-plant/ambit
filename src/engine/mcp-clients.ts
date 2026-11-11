@@ -262,13 +262,17 @@ function appData(home: string, ...parts: string[]): string[] {
   return [join(process.env.APPDATA || join(home, 'AppData', 'Roaming'), ...parts)];
 }
 
-/** A file in a desktop app's folder, wherever Windows, macOS and Linux each keep that folder. */
+/**
+ * A file in a desktop app's folder, wherever Windows, macOS and Linux each keep
+ * that folder, with this machine's own folder first. The first path is the one
+ * a first run that finds nothing lists, and the one `ambit connect` creates, so
+ * on Linux it was naming, and creating, a `~/Library/Application Support`
+ * folder that Linux builds of these apps never read.
+ */
 function appFolder(home: string, ...parts: string[]): string[] {
-  return [
-    ...appData(home, ...parts),
-    join(home, 'Library', 'Application Support', ...parts),
-    join(home, '.config', ...parts),
-  ];
+  const mac = join(home, 'Library', 'Application Support', ...parts);
+  const xdg = join(home, '.config', ...parts);
+  return [...appData(home, ...parts), ...(process.platform === 'linux' ? [xdg, mac] : [mac, xdg])];
 }
 
 /** Where a VS Code extension built on Cline keeps its MCP settings. */

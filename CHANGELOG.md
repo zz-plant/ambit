@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.1...main)
 
+### On Linux, the first run names Linux's folders
+
+A first run on Linux that found no config listed `~/Library/Application Support/…` for Claude Desktop, Cline, Roo Code and VS Code, folders a Linux machine does not have, though discovery already read `~/.config/…` there. `ambit connect` used the same first path, so connecting one of them before it had a config created the macOS folder. Both now use `~/.config/…` on Linux; macOS and Windows are unchanged.
+
 ### An agent can ask in the words it has
 
 `ambit can Bash` answered no. The name resolved to the entry `tool:bash`, which carries no grant, while the gate asks about the same call as Shell Execution and puts it to the person. An agent that asked first was refused a call the gate would only have asked about, and learned to stop asking.

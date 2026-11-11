@@ -74,6 +74,37 @@ test('a machine that is not Windows is never told Ambit looked under %APPDATA%',
   }
 });
 
+test.each([
+  ['claude-desktop', ['Claude', 'claude_desktop_config.json']],
+  ['vscode', ['Code', 'User', 'mcp.json']],
+  [
+    'cline',
+    [
+      'Code',
+      'User',
+      'globalStorage',
+      'saoudrizwan.claude-dev',
+      'settings',
+      'cline_mcp_settings.json',
+    ],
+  ],
+])('on Linux %s is looked for, and connected, under ~/.config first', (runtime, parts) => {
+  asPlatform('linux');
+  const xdg = join(home, '.config', ...parts);
+  expect(clientPaths(runtime, home)[0]).toBe(xdg);
+  // With no file yet, `ambit connect` creates the first path.
+  const target = runtimeTarget(runtime);
+  expect(target).toBeDefined();
+  expect(targetFile(target!, home)).toEqual({ path: xdg, exists: false });
+});
+
+test('on macOS the Application Support folder still comes first', () => {
+  asPlatform('darwin');
+  expect(clientPaths('claude-desktop', home)[0]).toBe(
+    join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
+  );
+});
+
 test('a config under %APPDATA% is read', () => {
   asPlatform('win32');
   process.env.APPDATA = join(home, 'Roaming');
