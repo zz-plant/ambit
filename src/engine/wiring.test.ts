@@ -274,6 +274,34 @@ describe('how they read', () => {
     expect(text).not.toContain('A  Config');
     expect(text.indexOf('Still missing')).toBeGreaterThan(text.indexOf('not found here'));
   });
+
+  test('a dry run of the Cursor hooks prints the command they run and the events', () => {
+    const text = renderConnect(
+      {
+        ok: true,
+        dry_run: true,
+        configured: [
+          { runtime: 'cursor', label: 'Cursor', path: '/c/mcp.json', action: 'added' },
+          {
+            runtime: 'cursor',
+            label: 'Cursor ledger hooks',
+            path: '/c/hooks.json',
+            action: 'added',
+            hook: 'node /opt/ambit/plugins/cursor/ambit-ledger.mjs',
+            events: ['afterShellExecution', 'sessionEnd'],
+          },
+        ],
+        skipped: [],
+        note: 'Would change ~/.cursor/hooks.json. Nothing was written.',
+      },
+      PLAIN
+    ).join('\n');
+    expect(text).toContain(
+      'runs node /opt/ambit/plugins/cursor/ambit-ledger.mjs on afterShellExecution, sessionEnd'
+    );
+    // The MCP entry carries no hook, so it gets no such line.
+    expect(text.match(/ runs /g)).toHaveLength(1);
+  });
 });
 
 describe('an Ambit entry that cannot start', () => {

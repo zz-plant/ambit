@@ -738,6 +738,12 @@ function renderConnect(
   for (const row of result.configured) {
     const said = row.action === 'already_configured' ? 'already in place' : row.action;
     lines.push(`  ${c.green}✓${c.reset} ${row.label}  ${c.grey}${said} · ${row.path}${c.reset}`);
+    // A hook or status line names the command it runs, which a dry run exists
+    // to show and which a person writing the entry by hand needs to copy.
+    if (row.hook) {
+      const on = row.events?.length ? ` ${c.grey}on ${row.events.join(', ')}${c.reset}` : '';
+      lines.push(`${GUTTER}${c.grey}runs${c.reset} ${row.hook}${on}`);
+    }
   }
   const absent = (s: { reason: string }) => / not found on host$/.test(s.reason);
   for (const row of result.skipped.filter(s => !absent(s))) {
