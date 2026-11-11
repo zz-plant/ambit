@@ -369,7 +369,7 @@ Ambit reads developer toolchains and writes to agent configs, so the properties 
 
 ## Contributing
 
-New capability models, runtime readers, visualization work and edge-case reports are all welcome. Issues labelled [good first issue](https://github.com/zz-plant/ambit/labels/good%20first%20issue) are scoped to an afternoon and name the files to start from. [CONTRIBUTING.md](./CONTRIBUTING.md) gets you from a clone to a passing pull request and [lists every check CI runs](./CONTRIBUTING.md#the-checks-ci-runs).
+New capability models, runtime readers, visualization work and edge-case reports are all welcome. [CONTRIBUTING.md lists three kinds of small, self-contained change](./CONTRIBUTING.md#what-is-worth-contributing) worth starting with; an issue carries [good first issue](https://github.com/zz-plant/ambit/labels/good%20first%20issue) once somebody files one against them. [CONTRIBUTING.md](./CONTRIBUTING.md) gets you from a clone to a passing pull request and [lists every check CI runs](./CONTRIBUTING.md#the-checks-ci-runs).
 
 ---
 
