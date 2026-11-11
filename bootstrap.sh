@@ -9,9 +9,15 @@ if [ "$MODE" = "--dry-run" ]; then
   CONFIG="${OPENCODE_CONFIG:-$HOME/.config/opencode/opencode.json}"
   [ -f "$CONFIG" ] && echo "  opencode.json: found" || echo "  opencode.json: not found"
   curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && echo "  Ollama: running" || echo "  Ollama: not detected"
-  for dir in "$HOME/.agents/skills" "$HOME/.opencode/skills" "$HOME/.hermes/skills"; do
-    [ -d "$dir" ] && echo "  Skills: $(ls "$dir" 2>/dev/null | wc -l | tr -d ' ') in $(basename $(dirname $dir))"
+  # The skill directories the seed reads (`skill_dirs` in src/engine/seed/writers.ts).
+  SKILLS=""
+  for dir in "$HOME/.agents/skills" "$HOME/.opencode/skills" "$HOME/.config/opencode/skills"; do
+    if [ -d "$dir" ]; then
+      SKILLS=1
+      echo "  Skills: $(ls "$dir" 2>/dev/null | wc -l | tr -d ' ') in ~${dir#"$HOME"}"
+    fi
   done
+  [ -n "$SKILLS" ] || echo "  Skills: no directory found"
   exit 0
 fi
 
