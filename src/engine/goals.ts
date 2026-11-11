@@ -198,13 +198,16 @@ function goalFor(db: Db, sentence?: string) {
   // the vocabulary exists to serve.
   if (sentence.includes(':') || sentence.match(/^combo:[a-z0-9-]+$/)) {
     const plan = planFor(db, sentence) as any;
-    if (!plan.error) return { goal: sentence, exact: true, ...plan };
+    if (!plan.error)
+      return { goal: sentence, exact: true, ...plan, ...reachedProviders(db, sentence, plan) };
   }
   // A bare slug that happens to name a capability also plans directly; a bare
   // word that does not falls through to the vocabulary router.
   if (sentence.match(/^[a-z0-9-]+$/)) {
-    const plan = planFor(db, `combo:${sentence}`) as any;
-    if (!plan.error) return { goal: sentence, exact: true, ...plan };
+    const id = `combo:${sentence}`;
+    const plan = planFor(db, id) as any;
+    if (!plan.error)
+      return { goal: sentence, exact: true, ...plan, ...reachedProviders(db, id, plan) };
   }
 
   const { ranked, recommended } = routeSentence(sentence);
@@ -231,8 +234,7 @@ function goalFor(db: Db, sentence?: string) {
       requires_person: plan.error ? undefined : plan.requires_person,
       degraded: plan.error ? undefined : plan.degraded,
       note: plan.error ? undefined : plan.note,
-      // Reached already: what supplies it here, so the answer names a tool.
-      ...(plan.error || plan.steps !== 0 ? {} : usingProviders(db, m.id)),
+      ...(plan.error ? {} : reachedProviders(db, m.id, plan)),
     };
   });
 
@@ -246,8 +248,14 @@ function goalFor(db: Db, sentence?: string) {
   };
 }
 
-/** `use`, and `use_of` when the list was cut short, or nothing when no provider is working. */
-function usingProviders(db: Db, capability: string) {
+/**
+ * Reached already: what supplies it here, so the answer names a tool. `use`,
+ * and `use_of` when the list was cut short, or nothing when the plan has steps
+ * left or no provider is working. A goal typed as an id and one routed from a
+ * sentence both carry it.
+ */
+function reachedProviders(db: Db, capability: string, plan: { steps?: number }) {
+  if (plan.steps !== 0) return {};
   const { ids, of } = workingProviders(db, capability);
   return ids.length ? { use: ids, ...(of > ids.length ? { use_of: of } : {}) } : {};
 }

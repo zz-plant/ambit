@@ -738,6 +738,12 @@ function renderConnect(
   for (const row of result.configured) {
     const said = row.action === 'already_configured' ? 'already in place' : row.action;
     lines.push(`  ${c.green}✓${c.reset} ${row.label}  ${c.grey}${said} · ${row.path}${c.reset}`);
+    // A hook or status line names the command it runs, which a dry run exists
+    // to show and which a person writing the entry by hand needs to copy.
+    if (row.hook) {
+      const on = row.events?.length ? ` ${c.grey}on ${row.events.join(', ')}${c.reset}` : '';
+      lines.push(`${GUTTER}${c.grey}runs${c.reset} ${row.hook}${on}`);
+    }
   }
   const absent = (s: { reason: string }) => / not found on host$/.test(s.reason);
   for (const row of result.skipped.filter(s => !absent(s))) {
@@ -785,6 +791,9 @@ function renderPlan(
     requires_person?: string[];
     degraded?: { id: string; name: string }[];
     note?: string;
+    /** For a capability already reached, the providers here that are working. */
+    use?: string[];
+    use_of?: number;
   },
   c: Palette = C,
   asked?: { sentence: string; others: string[] }
@@ -801,7 +810,15 @@ function renderPlan(
     );
   }
   if (!steps.length && !plan.degraded?.length) {
-    lines.push(`${GUTTER}${c.bold}${plan.goal}${c.reset} is already reached.`, '');
+    lines.push(`${GUTTER}${c.bold}${plan.goal}${c.reset} is already reached.`);
+    if (plan.use?.length) {
+      const more =
+        plan.use_of && plan.use_of > plan.use.length
+          ? ` and ${plan.use_of - plan.use.length} more`
+          : '';
+      lines.push(`${GUTTER}${c.grey}Use${c.reset} ${plan.use.join(', ')}${more}`);
+    }
+    lines.push('');
     return lines;
   }
   const seconds = steps.reduce((sum, s) => sum + (s.setup_seconds || 0), 0);
