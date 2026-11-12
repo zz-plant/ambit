@@ -1256,7 +1256,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               <div className="loop-move">
                 <p>
                   Next: <strong>{topMove.capability}</strong>
-                  {topMove.cost ? ` · ${topMove.cost}` : ''}
+                  {topMove.cost ? ` · ${topMove.cost} of setup` : ''}
                   {/* The council under this line opens on the same step, and
                       its first seat says this reason: said here too, one
                       sentence stood twice on one screen. */}
@@ -1285,9 +1285,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
         {/* The five readings of the first step, before the figures each one
             is drawn from: the decision, then the evidence behind it. */}
-        {loop.council && (
-          <CouncilFigure council={loop.council} onShow={onShow} onShowOnMap={onShowOnMap} />
-        )}
+        {loop.council && <CouncilFigure council={loop.council} onShow={onShow} />}
 
         {status.degraded?.length > 0 && <Fragility status={status} />}
 

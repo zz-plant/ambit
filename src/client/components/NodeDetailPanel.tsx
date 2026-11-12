@@ -71,6 +71,38 @@ const ROUTE_SHOWN = 8;
 const prerequisiteLabel = (conn: Connection) =>
   conn.type === 'soft-dep' ? 'optional' : 'required';
 
+/**
+ * A command as a line of code with a copy control at its end: the check, the
+ * setup plan and the grant's next rung are the same row. The grant's was a
+ * filled blue button under the failing check's, so a failing node showed two
+ * primary actions and the second was not the one to take first.
+ */
+function CommandRow({
+  text,
+  copied,
+  onCopy,
+}: {
+  text: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="sp-cli-row">
+      <code className="sp-cli-cmd">
+        <Command text={text} />
+      </code>
+      <button
+        type="button"
+        className={`sp-cli-copy-btn ${copied ? 'sp-cli-copy-btn--copied' : ''}`}
+        onClick={onCopy}
+        aria-label={`Copy command ${text}`}
+      >
+        {copied ? 'Copied ✓' : 'Copy'}
+      </button>
+    </div>
+  );
+}
+
 interface NodeDetailPanelProps {
   /** Show a neighbour where it lives: a node on the map, an entry in My Setup. */
   onShow?: (id: string) => void;
@@ -372,6 +404,11 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         </button>
       </div>
 
+      {/* What it is, before what was found about it: this sat under the grant
+          and its actions, so a first reader met five facts about a name
+          nothing had explained. */}
+      {item.description && <div className="sp-desc">{item.description}</div>}
+
       {asOf && (
         <p className="sp-asof" role="status">
           As of {asOf}. A past moment records no grants or providers, so simulations are off until
@@ -619,23 +656,17 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           {ladder.rung !== 'forbidden' && ladder.note && (
             <p className="sp-grant-note">{ladder.note}</p>
           )}
-          {/* The command is on the button, as the failing check's is: "copy
-              the command" named none, so what it would do was a hover away
-              and no tap reached it. */}
+          {/* The command is shown, as the failing check's is: "copy the
+              command" named none, so what it would do was a hover away and
+              no tap reached it. */}
           {ladder.next && (
             <>
               <p className="sp-grant-note">{ladder.next.label}:</p>
-              <button
-                type="button"
-                className="sp-verdict-btn sp-grant-next"
-                onClick={() => copy('ladder', ladder.next!.command)}
-                aria-label={`Copy command ${ladder.next.command}`}
-              >
-                <code>
-                  <Command text={ladder.next.command} />
-                </code>
-                <span>{copiedCmd === 'ladder' ? 'Copied ✓' : 'Copy'}</span>
-              </button>
+              <CommandRow
+                text={ladder.next.command}
+                copied={copiedCmd === 'ladder'}
+                onCopy={() => copy('ladder', ladder.next!.command)}
+              />
             </>
           )}
         </div>
@@ -745,8 +776,6 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         </div>
       )}
 
-      {item.description && <div className="sp-desc">{item.description}</div>}
-
       {isolated && <p className="sp-note">Connected to nothing else on this map.</p>}
 
       {/* The one command the page cannot run for you: a check executes, so
@@ -754,19 +783,11 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
       {!(verdict && verdict.tone !== 'ok') && (
         <div className="sp-cli-actions">
           <div className="sp-section-label">Check it</div>
-          <div className="sp-cli-row">
-            <code className="sp-cli-cmd">
-              <Command text={verifyCmd} />
-            </code>
-            <button
-              type="button"
-              className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}
-              onClick={() => copy('verify', verifyCmd)}
-              aria-label={`Copy command ${verifyCmd}`}
-            >
-              {copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}
-            </button>
-          </div>
+          <CommandRow
+            text={verifyCmd}
+            copied={copiedCmd === 'verify'}
+            onCopy={() => copy('verify', verifyCmd)}
+          />
         </div>
       )}
 
@@ -774,19 +795,11 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
       {item.status !== 'built' && (
         <div className="sp-cli-actions">
           <div className="sp-section-label">Review setup plan</div>
-          <div className="sp-cli-row">
-            <code className="sp-cli-cmd">
-              <Command text={`ambit goal ${item.id} --paths`} />
-            </code>
-            <button
-              type="button"
-              className={`sp-cli-copy-btn ${copiedCmd === 'plan' ? 'sp-cli-copy-btn--copied' : ''}`}
-              onClick={() => copy('plan', `ambit goal ${item.id} --paths`)}
-              aria-label={`Copy command ambit goal ${item.id} --paths`}
-            >
-              {copiedCmd === 'plan' ? 'Copied ✓' : 'Copy'}
-            </button>
-          </div>
+          <CommandRow
+            text={`ambit goal ${item.id} --paths`}
+            copied={copiedCmd === 'plan'}
+            onCopy={() => copy('plan', `ambit goal ${item.id} --paths`)}
+          />
         </div>
       )}
 

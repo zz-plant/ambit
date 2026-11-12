@@ -42,7 +42,7 @@ const row = (p: Partial<ProposalRow> & Pick<ProposalRow, 'id' | 'steps'>): Propo
   ...p,
 });
 
-test('a step with no inverse is marked, and the tally says the plan is not reversible', () => {
+test('a step with no inverse is marked, and the Undo row says the plan has no way back', () => {
   seed({
     proposals: [
       row({
@@ -57,7 +57,8 @@ test('a step with no inverse is marked, and the tally says the plan is not rever
   });
   const html = render();
 
-  expect(text(html)).toContain('2 steps · not reversible · 30m of setup');
+  expect(text(html)).toContain('2 steps · 30m of setup');
+  expect(text(html)).toContain('Ambit cannot undo it: one step has no known way back');
   expect(html.match(/gov-step-mark/g)).toHaveLength(1);
   expect(stepNamed(html, 'C')).toContain('cannot be undone');
   expect(stepNamed(html, 'A')).not.toContain('cannot be undone');
@@ -78,7 +79,7 @@ test('reversible and not a config change says apply refuses it, and offers no ap
   });
   const plain = text(render());
 
-  expect(plain).toContain('1 step · reversible');
+  expect(plain).toContain('every step can be undone');
   expect(plain).toContain('ambit apply will not run it: a step is not a config change');
   expect(plain).not.toContain('Copy: ambit apply');
 });
@@ -87,7 +88,7 @@ test('a plan apply can run keeps the command to run it', () => {
   seed({ proposals: demoProposals().filter(p => p.status === 'approved') });
   const plain = text(render());
 
-  expect(plain).toContain('1 step · reversible · 30m of setup');
+  expect(plain).toContain('1 step · 30m of setup');
   expect(plain).toContain('ambit apply can make every change');
   expect(plain).toContain('Copy: ambit apply prop-offline-semantic-search');
 });
@@ -109,7 +110,8 @@ test("the demo's proposals agree with their marks", () => {
   seed({ proposals: demo });
   const html = render();
   expect(html.match(/gov-step-mark/g) ?? []).toHaveLength(withoutInverse);
-  expect(text(html)).toContain('3 steps · not reversible · needs a person · 30m of setup');
+  expect(text(html)).toContain('3 steps · 30m of setup');
+  expect(text(html)).toContain('Ambit cannot undo it: a person does one of the steps');
 });
 
 test('the forecast is the hours before and after, and the button names its proposal', () => {

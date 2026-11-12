@@ -1415,7 +1415,7 @@ button.app-sample-tag:hover {
 }
 
 .sp-desc {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
@@ -6921,7 +6921,9 @@ button.app-sample-tag:hover {
 /* ─── WHAT A NODE MAY DO, PER ACTION ─── */
 .sp-actions {
   list-style: none;
-  margin: 0 0 8px;
+  /* Set off from the grant's command above it: flush, the first action read
+     as that command's last line. */
+  margin: 10px 0 8px;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -7681,7 +7683,7 @@ button.app-sample-tag:hover {
   align-self: flex-start;
 }
 
-/* Five seats, five of these: quiet until pointed at. */
+/* A seat's link to the node it reads: quiet until pointed at. */
 .council-map {
   border-color: transparent;
   color: var(--text-secondary);
@@ -7921,10 +7923,6 @@ button.app-sample-tag:hover {
   font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
-}
-
-.sp-grant-next {
-  margin-top: 8px;
 }
 
 .sp-blocks,

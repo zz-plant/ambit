@@ -54,24 +54,24 @@ const REASON_WORDS = {
 const setupLabel = (hours: number) => (hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`);
 
 /**
- * The plan in one line, above its steps: how many, whether they can be
- * undone, whether a person has to do one, and the setup time. A setup of zero
- * is steps that stated none, so it is left out, not printed as a time.
+ * The plan in one line, above its steps: how many, and the setup time. A
+ * setup of zero is steps that stated none, so it is left out, not printed as
+ * a time. Whether the plan can be undone and whether a person does a step
+ * are the Undo row's to say, and each step that has no way back is marked:
+ * said here too, one fact stood three times on a card.
  */
 function planTally(count: number, d?: ProposalDecision): string {
   const parts = [`${count} ${count === 1 ? 'step' : 'steps'}`];
-  if (d) {
-    parts.push(d.reversible ? 'reversible' : 'not reversible');
-    if (d.requires_person) parts.push('needs a person');
-    if (d.setup_hours > 0) parts.push(`${setupLabel(d.setup_hours)} of setup`);
-  }
+  if (d && d.setup_hours > 0) parts.push(`${setupLabel(d.setup_hours)} of setup`);
   return parts.join(' · ');
 }
 
 /**
  * What a decision needs, in a fixed order: what it is forecast to save, what
  * it costs, whether it can be undone, whether `ambit apply` can run it, and
- * how this person has decided on things like it before. Undo and Apply are
+ * how this person has decided on things like it before. The rows are named
+ * in the words their values use: Revert sat over "cannot undo it", and Before
+ * did not say before what. Undo and Apply are
  * two facts on purpose: every step can carry an inverse and apply still
  * refuse a step that is not a config change, so one word cannot say both.
  */
@@ -90,12 +90,14 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
     ],
     [
       'Costs',
+      // "local" alone under Costs named no noun; the record below calls
+      // the same trait "local changes".
       `${d.recurring ? `${d.recurring} recurring` : 'no recurring cost'}${
-        d.privacy ? ` · ${d.privacy}` : ''
+        d.privacy ? ` · a ${d.privacy} change` : ''
       }`,
     ],
     [
-      'Revert',
+      'Undo',
       d.reversible
         ? 'every step can be undone, and how is worked out before anything runs'
         : d.requires_person
@@ -113,7 +115,7 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
   ];
   if (d.unlocks.length) rows.push(['Unlocks', d.unlocks.join(', ')]);
   if (d.precedent.length) {
-    rows.push(['Before', d.precedent.map(precedentLine).join(' · ')]);
+    rows.push(['Your record', d.precedent.map(precedentLine).join(' · ')]);
   }
   return (
     <dl className="gov-decision">
@@ -313,9 +315,7 @@ export function ProposalsDesk() {
       {/* What approving does, said once for the desk rather than on every
           card that asks for the decision. */}
       {draftCount > 0 && (statusTab === 'all' || statusTab === 'draft') && (
-        <p className="gov-hint">
-          Review it, then approve. Approving signs a receipt; nothing runs until you apply.
-        </p>
+        <p className="gov-hint">Approving signs a receipt; nothing runs until you apply.</p>
       )}
 
       {/* The queue. No comment box: an approval has no field to keep one

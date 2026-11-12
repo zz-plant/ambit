@@ -50,13 +50,10 @@ function names(advisors: LoopAdvisor[], stance: LoopAdvisor['stance']): string {
 export function CouncilFigure({
   council,
   onShow,
-  onShowOnMap,
 }: {
   council: LoopCouncil;
   /** Show a node where it lives, with nothing running. */
   onShow?: (id: string) => void;
-  /** Show the step on the map, with the unlock simulation running. */
-  onShowOnMap?: (id: string) => void;
 }) {
   const items = useAmbitStore(s => s.items);
   const [copied, copy] = useCopied();
@@ -96,8 +93,10 @@ export function CouncilFigure({
       <ul className="council" aria-label="The council's seats">
         {advisors.map(a => {
           const subject = a.subject;
-          const isMotion = subject && motion && subject.id === motion.id;
-          const show = isMotion ? onShowOnMap : onShow;
+          // A seat links to the map only when it reads some other node. The
+          // step itself is one button above the council; a Map link on every
+          // seat that reads it was that button again, four times.
+          const elsewhere = subject && !(motion && subject.id === motion.id);
           return (
             <li key={a.seat} className={`council-seat is-${a.stance}`}>
               <span className="council-seat-name">
@@ -125,16 +124,12 @@ export function CouncilFigure({
               </span>
               <span className="council-side">
                 <span className="council-stance">{STANCE[a.stance]}</span>
-                {subject && show && onMap(subject.id) && (
+                {elsewhere && onShow && onMap(subject.id) && (
                   <button
                     type="button"
                     className="fig-row-btn council-map"
-                    onClick={() => show(subject.id)}
-                    title={
-                      isMotion
-                        ? `Show ${subject.name} on the map and simulate unlocking it`
-                        : `Show ${subject.name}`
-                    }
+                    onClick={() => onShow(subject.id)}
+                    title={`Show ${subject.name}`}
                   >
                     Map
                   </button>
