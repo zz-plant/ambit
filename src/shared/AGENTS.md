@@ -47,6 +47,9 @@ scripts/windows-smoke.ts   The CLI on Windows, in a throwaway home with no HOME 
 scripts/check-reach.ts     That merged work reaches main: a pull request's base has to be on
                            its way there, and every merged one has to have arrived. reach.yml
                            runs it on pull requests, on each push to main and daily
+scripts/release-tag.ts     Release's guard: on a push to main, whether package.json's version has
+                           its tag, and if not, the commit that set it, tagged and pushed so the
+                           same run releases it. A tag pushed by hand passes straight through
 scripts/check-demo-data.ts That demo-data.json still matches what the engine builds from the fixture
 scripts/shots.ts           Every view as a screenshot, from a production build in a headless Chrome,
                            with the checks a machine can make of a frame and a contact sheet
