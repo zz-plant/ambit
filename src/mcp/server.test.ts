@@ -13,6 +13,20 @@ const ENGINE = join(import.meta.dirname, '..', 'engine', 'engine.ts');
 const SERVER = join(import.meta.dirname, 'server.ts');
 let dir: string;
 
+/**
+ * What a child process here is started with: the graph it is to open, under
+ * both names. The engine reads AMBIT_DB before TOOLCHAIN_DB
+ * (src/shared/db-path.ts), so with only the second set an AMBIT_DB exported in
+ * the developer's shell won. The seed and every call went to that graph, and
+ * twelve tests failed copying one this directory never held.
+ */
+function childEnv(
+  db = join(dir, 'graph.db'),
+  extra: Record<string, string> = {}
+): NodeJS.ProcessEnv {
+  return { ...process.env, TOOLCHAIN_DB: db, AMBIT_DB: db, ...extra };
+}
+
 // Seeded once for the file rather than per test. Every test here is
 // read-only, and spawning a full seed four times took long enough on a cold CI
 // runner to exceed the default hook timeout — a failure a fast machine hides.
@@ -24,15 +38,13 @@ beforeAll(() => {
     JSON.stringify({ provider: { ollama: { models: { 'qwen3-coder': {} } } } })
   );
   execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: {
-      ...process.env,
+    env: childEnv(join(dir, 'graph.db'), {
       OPENCODE_CONFIG: config,
-      TOOLCHAIN_DB: join(dir, 'graph.db'),
       CONFIG_MAPPING: JSON.stringify({
         config_keys: { provider: { type: 'provider', domain: 'ai-ml' } },
         skill_dirs: [],
       }),
-    },
+    }),
     stdio: 'ignore',
   });
 });
@@ -46,7 +58,7 @@ function rpc(
 ): any[] {
   const out = execFileSync('node', ['--experimental-sqlite', SERVER, ...(options.args ?? [])], {
     input: requests.map(r => JSON.stringify(r)).join('\n') + '\n',
-    env: { ...process.env, TOOLCHAIN_DB: db, ...options.env },
+    env: childEnv(db, options.env),
     encoding: 'utf8',
     stdio: 'pipe',
   });
@@ -208,7 +220,7 @@ test('the ambit command passes its profile on to the server', () => {
   const CLI = join(import.meta.dirname, '..', '..', 'cli.js');
   const out = execFileSync('node', [CLI, 'mcp', '--profile=agent'], {
     input: `${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })}\n`,
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') },
+    env: childEnv(),
     encoding: 'utf8',
     stdio: 'pipe',
   });
@@ -218,7 +230,7 @@ test('the ambit command passes its profile on to the server', () => {
   try {
     execFileSync('node', [CLI, 'mcp', '--profile=agnet'], {
       input: '',
-      env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') },
+      env: childEnv(),
       stdio: 'pipe',
     });
   } catch (e) {
@@ -614,7 +626,7 @@ test('a message the server cannot use is answered, not swallowed', () => {
         JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call' }),
         JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { arguments: {} } }),
       ].join('\n') + '\n',
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') },
+    env: childEnv(),
     encoding: 'utf8',
   });
   const replies = out

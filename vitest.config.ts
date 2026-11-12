@@ -29,7 +29,14 @@ export default defineConfig({
     // that wants models or logs makes them. `goal --judge` falls back to an
     // embedding model when no judge answers, so that points at the discard
     // port, where nothing listens, and never at the developer's own Ollama.
+    // The graph is held the same way. The engine opens AMBIT_DB before
+    // TOOLCHAIN_DB, so one exported in the developer's shell was seeded and
+    // written to by each test that named its graph as TOOLCHAIN_DB alone, and
+    // CI, which exports neither, could not see it. The suite's own is inside a
+    // folder that does not exist: a test that starts the CLI or a server names
+    // its graph as AMBIT_DB, or fails to open one, here and in CI alike.
     env: {
+      AMBIT_DB: join(tmpdir(), `ambit-test-no-graph-${process.pid}`, 'graph.db'),
       AMBIT_EMBED_URL: 'http://127.0.0.1:9',
       AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`),
       OLLAMA_MODELS: join(tmpdir(), `ambit-test-no-ollama-${process.pid}`),
