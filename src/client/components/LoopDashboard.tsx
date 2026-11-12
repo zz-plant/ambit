@@ -1285,9 +1285,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
         {/* The five readings of the first step, before the figures each one
             is drawn from: the decision, then the evidence behind it. */}
-        {loop.council && (
-          <CouncilFigure council={loop.council} onShow={onShow} onShowOnMap={onShowOnMap} />
-        )}
+        {loop.council && <CouncilFigure council={loop.council} onShow={onShow} />}
 
         {status.degraded?.length > 0 && <Fragility status={status} />}
 

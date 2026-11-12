@@ -54,17 +54,15 @@ const REASON_WORDS = {
 const setupLabel = (hours: number) => (hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`);
 
 /**
- * The plan in one line, above its steps: how many, whether they can be
- * undone, whether a person has to do one, and the setup time. A setup of zero
- * is steps that stated none, so it is left out, not printed as a time.
+ * The plan in one line, above its steps: how many, and the setup time. A
+ * setup of zero is steps that stated none, so it is left out, not printed as
+ * a time. Whether the plan can be undone and whether a person does a step
+ * are the Revert row's to say, and each step that has no way back is marked:
+ * said here too, one fact stood three times on a card.
  */
 function planTally(count: number, d?: ProposalDecision): string {
   const parts = [`${count} ${count === 1 ? 'step' : 'steps'}`];
-  if (d) {
-    parts.push(d.reversible ? 'reversible' : 'not reversible');
-    if (d.requires_person) parts.push('needs a person');
-    if (d.setup_hours > 0) parts.push(`${setupLabel(d.setup_hours)} of setup`);
-  }
+  if (d && d.setup_hours > 0) parts.push(`${setupLabel(d.setup_hours)} of setup`);
   return parts.join(' · ');
 }
 
@@ -313,9 +311,7 @@ export function ProposalsDesk() {
       {/* What approving does, said once for the desk rather than on every
           card that asks for the decision. */}
       {draftCount > 0 && (statusTab === 'all' || statusTab === 'draft') && (
-        <p className="gov-hint">
-          Review it, then approve. Approving signs a receipt; nothing runs until you apply.
-        </p>
+        <p className="gov-hint">Approving signs a receipt; nothing runs until you apply.</p>
       )}
 
       {/* The queue. No comment box: an approval has no field to keep one
