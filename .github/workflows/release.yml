@@ -4,27 +4,80 @@ name: Release
 # tap's url, version and checksum. Every manual step is a step that gets skipped,
 # which is how the tap drifts behind the repo and how the formula ended up with
 # no sha256 at all. Pushing a v* tag now does the mechanical parts.
+#
+# The tag was the step left, and it was skipped too: package.json said 0.7.1
+# on main for days while npm served 0.6.0. So a push to main that changes the
+# version releases it as well. The guard job tags the commit that set the
+# version, and the jobs after it release that tag in the same run; a tag pushed
+# with the workflow's token starts no other run. scripts/release-tag.ts says
+# how it decides.
 
 on:
   push:
     tags: ['v*']
+    # Paths are not evaluated for a tag push, so every v* tag still releases.
+    # This file and the guard are listed so a change to how releasing works
+    # runs once on merge, which does nothing while the version is tagged.
+    branches: [main]
+    paths:
+      - package.json
+      - .github/workflows/release.yml
+      - scripts/release-tag.ts
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to (re)publish, e.g. v0.4.1'
-        required: true
+        description: 'Existing tag to (re)publish, e.g. v0.4.1. Leave empty to release main''s version if it has no tag yet.'
+        required: false
 
 permissions:
   contents: write
 
+# Runs for main queue one behind another, so two pushes cannot both decide to
+# tag the same version. A run for a tag queues only behind runs for that tag.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
+  guard:
+    # A fork releases only the tags it pushes: on the version path it would
+    # tag and release on every sync of main.
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || github.repository_owner == 'zz-plant'
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.decide.outputs.release }}
+      tag: ${{ steps.decide.outputs.tag }}
+    steps:
+      # The whole history: the commit that set the version may be far back.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # On a tag, passes it through. On main, tags the commit that set the
+      # version when its tag is missing, or says there is nothing to release.
+      - name: Decide what to release
+        id: decide
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: node --experimental-strip-types scripts/release-tag.ts --push
+
   release:
+    needs: guard
+    if: needs.guard.outputs.release == 'true'
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       sha256: ${{ steps.meta.outputs.sha256 }}
     steps:
+      # The tag, not the commit that started the run: on main that is the
+      # commit that set the version, however far main has moved since.
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.guard.outputs.tag }}
 
       - uses: actions/setup-node@v7
         with:
@@ -41,7 +94,7 @@ jobs:
       - name: Tag and checksum
         id: meta
         env:
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          TAG: ${{ needs.guard.outputs.tag }}
         run: |
           set -euo pipefail
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"

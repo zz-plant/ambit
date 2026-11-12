@@ -105,6 +105,16 @@ Its CONTRIBUTING.md asks automated agents to mark their pull requests in the tit
 
 Keep the table current: an entry that says "submitted" is the one thing that stops the same directory being submitted twice.
 
+## Releasing
+
+Merging a version bump to main publishes it. Bump every version string as `chore(release): Release 0.7.1` did: `package.json` and its lock, `server.json`, `CITATION.cff`, both plugin manifests and `.claude-plugin/marketplace.json` (`scripts/claude-plugin.test.ts` fails on a plugin left behind). Turn the changelog's Unreleased heading into the version, and merge.
+
+The [Release workflow](./workflows/release.yml) runs on each push to main that touches `package.json`. When `v<version>` is not on GitHub, its guard tags the commit on main that set the version, and the same run tests that commit, creates the GitHub release, publishes `ambit-cli` to npm and writes the Homebrew formula. When the tag is there it does nothing, so a later change to the dependencies releases nothing. The release's notes are GitHub's list of merged pull requests; the changelog entry is the written version, to paste over them. `node --experimental-strip-types scripts/release-tag.ts` on main says what the next run will do, and writes nothing.
+
+Pushing a `v*` tag by hand still releases that commit, as before. A tag the workflow pushes starts no second run, and a version whose tag is already on GitHub is not released again. If a job fails after the guard has tagged, later pushes find the tag and skip: re-run the failed jobs, or run Release by hand with the tag.
+
+Two settings only a person can make: npm's trusted publisher for `ambit-cli` (npmjs.com, the package's Settings, Trusted publisher, GitHub Actions: `zz-plant`, `ambit`, `release.yml`), and a `TAP_TOKEN` secret with Contents write on `zz-plant/homebrew-tap`. Without the first the npm job fails; without the second the tap job fails and prints the formula to paste. The MCP registry is not in the workflow: once npm has the version, `mcp-publisher login github`, then `mcp-publisher publish`.
+
 ## After the first release on npm
 
 `ambit-cli` 0.5.0 was published on 2026-10-01. Done in the same change: the README's Get started table and the welcome screen lead with `npx ambit-cli`; CI's "Check adoption copy" step, which failed any README that named the npm route, is gone; and the Claude Code plugin's MCP server and briefing run through `npx -y ambit-cli`, so installing the plugin needs nothing else first. The gate plugin keeps calling an installed `ambit`, because it runs on every tool call and `npx` resolution would add to each one.
@@ -113,6 +123,6 @@ The registry listing went up the same day: `io.github.zz-plant/ambit` 0.5.0, wit
 
 Left, and each needs a person:
 
-1. Add an `NPM_TOKEN` automation token to the repository's secrets, so the release workflow publishes the next version itself, with provenance. 0.5.0 was published from a laptop without it.
+1. Set up npm's trusted publisher and the `TAP_TOKEN` secret, under [Releasing](#releasing), so the release workflow publishes each version itself, with provenance. 0.5.0 was published from a laptop without it.
 2. Post the Show HN draft, whose install line is now `npx ambit-cli`.
-3. Done for 0.6.0 (2026-10-05): published to npm by hand, the GitHub release made the tag, the MCP registry lists 0.6.0 as latest, and the formula, written by the tap job from the npm tarball, was committed to `zz-plant/homebrew-tap` by hand. The next release is the same four steps until `NPM_TOKEN` and `TAP_TOKEN` are set.
+3. Done for 0.6.0 (2026-10-05): published to npm by hand, the GitHub release made the tag, the MCP registry lists 0.6.0 as latest, and the formula, written by the tap job from the npm tarball, was committed to `zz-plant/homebrew-tap` by hand. Until the trusted publisher and `TAP_TOKEN` are set, the npm and tap halves of a release stay these manual steps.
