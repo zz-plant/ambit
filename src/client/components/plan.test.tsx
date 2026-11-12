@@ -42,7 +42,7 @@ const row = (p: Partial<ProposalRow> & Pick<ProposalRow, 'id' | 'steps'>): Propo
   ...p,
 });
 
-test('a step with no inverse is marked, and the Revert row says the plan has no way back', () => {
+test('a step with no inverse is marked, and the Undo row says the plan has no way back', () => {
   seed({
     proposals: [
       row({

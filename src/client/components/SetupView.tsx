@@ -243,6 +243,13 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
   const failingEntries = live.filter(
     i => evidenceOf(i, provides.get(i.id) || [])?.tone === 'error'
   );
+  const failingNodes = [
+    ...new Set(
+      failingEntries.flatMap(
+        i => evidenceOf(i, provides.get(i.id) || [])?.failing?.map(n => n.name) ?? []
+      )
+    ),
+  ];
   // With no tree in the graph, nothing has been placed yet, so nothing can
   // be said to provide nothing. That is a config read in the browser: the
   // entries are real, and placing them on the tree is the engine's job. Every
@@ -271,20 +278,34 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
         {failingEntries.length > 0 && (
           <li className="setup-finding setup-finding--bad">
             <strong>{nameList(failingEntries.map(i => i.name))}</strong>{' '}
-            {failingEntries.length === 1 ? 'provides' : 'provide'} something whose check is failing.
+            {failingEntries.length === 1 ? 'provides' : 'provide'}{' '}
+            {/* The capability by name: "something" sent the reader down the
+                list to find out what. An entry failing its own check
+                provides nothing to name. */}
+            {failingNodes.length === 0
+              ? 'something whose check is failing.'
+              : `${nameList(failingNodes)}, whose ${
+                  failingNodes.length === 1 ? 'check is' : 'checks are'
+                } failing.`}
           </li>
         )}
         {bestNext && (
           <li className="setup-finding setup-finding--next">
-            <span>Next step:</span> <strong>{bestNext.item.name}</strong>
-            {bestNext.cost ? ` (about ${bestNext.cost})` : ''} —{' '}
+            {/* One sentence, one flex item: as loose runs each took its own
+                column on a phone and the cost broke a word to a line. */}
+            <span>
+              Next step: <strong>{bestNext.item.name}</strong>
+              {/* The map's own words for it, and a button that says where it
+                goes: "Review setup plan" opened the node on the map. */}
+              {bestNext.cost ? ` · ${bestNext.cost} of setup` : ''}
+            </span>
             <button
               type="button"
               className="setup-chip"
               onClick={() => onShow(bestNext.item.id)}
-              title={`Review setup plan for ${bestNext.item.name}`}
+              title={`Show ${bestNext.item.name} on the map`}
             >
-              Review setup plan
+              Show it on the map
             </button>
           </li>
         )}

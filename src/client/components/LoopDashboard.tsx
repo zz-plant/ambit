@@ -1256,7 +1256,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               <div className="loop-move">
                 <p>
                   Next: <strong>{topMove.capability}</strong>
-                  {topMove.cost ? ` · ${topMove.cost}` : ''}
+                  {topMove.cost ? ` · ${topMove.cost} of setup` : ''}
                   {/* The council under this line opens on the same step, and
                       its first seat says this reason: said here too, one
                       sentence stood twice on one screen. */}
