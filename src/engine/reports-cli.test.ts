@@ -432,6 +432,7 @@ test('a command whose answer is a list prints the list', () => {
     env: {
       ...process.env,
       TOOLCHAIN_DB: join(dir, 'graph.db'),
+      AMBIT_DB: join(dir, 'graph.db'),
       OPENCODE_CONFIG: join(dir, 'config.json'),
     },
     encoding: 'utf8',
