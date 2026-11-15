@@ -50,6 +50,7 @@ import {
 } from './inference.ts';
 import {
   runVerification,
+  verifyMcpServers,
   evidenceFor,
   authorityReport,
   actionsReport,
@@ -73,21 +74,6 @@ import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
 import { ledgerHistory, ledgerSince, typedTimestamps } from './ledger.ts';
 import {
-  recordDelegationState,
-  delegationRecords,
-  delegationManifest,
-  recordObjection,
-  answerObjection,
-  unansweredObjections,
-  ingestForeignRecords,
-  declareDelegationSource,
-  setDelegationSourceEnabled,
-  forgetDelegationSource,
-  delegationSources,
-  pullDelegationSources,
-  verifyChain,
-} from './delegation.ts';
-import {
   planFor,
   recordFailure,
   simulateFrontier,
@@ -99,16 +85,13 @@ import { goalFor, pathsFor } from './goals.ts';
 import { loadTechTree, typedCommand } from './paths.ts';
 import { judgeGoal } from './judge.ts';
 import { judgeUnrouted, specDirHint, specGoal } from './spec.ts';
-import { humanDigest, notify, notifyPending } from './attention.ts';
-import { dispatchProposal, dispatchPending } from './dispatch.ts';
+import { humanDigest } from './attention.ts';
 import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
 import { carryReport, weigh } from './weight.ts';
 import { declareModelPrice, economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
 import { roiFor, roiSummary } from './roi.ts';
-import { exportSummary, importSummary } from './federation.ts';
-import { portfolio } from './portfolio.ts';
 import { incidents, resolveIncident } from './incident.ts';
 import { catalogReport, installText } from './catalog.ts';
 import { isReached, recheckCommand } from './vocabulary.ts';
@@ -144,12 +127,6 @@ import { runInitRules } from './init-rules.ts';
 import { checkInit } from './checkInit.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
-import { judgeTasks, planDecision } from './decision/goals.ts';
-import { evaluateGoals, SMOKE_CASES } from './decision/evaluate.ts';
-import { decisionHistory, reviewDecision } from './decision/records.ts';
-import { judgeAttention, judgeTools, judgeFailures, judgeNext } from './decision/contexts.ts';
-import { askDecision } from './decision/client.ts';
-import type { WorkflowOptions } from './decision/workflow.ts';
 
 /**
  * A refusal or a ceiling with what it reaches on this machine: the answer says
@@ -390,11 +367,6 @@ async function runCommand(
     case 'attention':
       emit(humanDigest(db, days()));
       break;
-    case 'notify':
-      // async: the push is an HTTP POST and must complete before close. The
-      // attention digest, or with --approvals what waits on a decision.
-      emit(flags.has('--approvals') ? await notifyPending(db, arg) : await notify(db, arg));
-      break;
     case 'work':
       emit(workReport(db, parseInt(arg, 10) || 20));
       break;
@@ -448,12 +420,6 @@ async function runCommand(
       // async: probing the manifest is a set of HTTP checks.
       else emit(await incidents(db));
       break;
-    case 'portfolio': {
-      const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
-      const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
-      emit(portfolio(db, Number.isFinite(budget as any) ? budget : undefined));
-      break;
-    }
     case 'catalog':
       emit(catalogReport(db, arg));
       break;
@@ -461,20 +427,6 @@ async function runCommand(
       // A window by `--days=N` as everywhere else; the bare number still works.
       emit(auditFor(db, value('days') ?? arg));
       break;
-    case 'federation': {
-      const verb = arg;
-      if (verb === 'export') {
-        const summary = exportSummary(db);
-        emitRaw(summary);
-        break;
-      }
-      if (verb === 'import') {
-        emit(importSummary(db, positional[1]));
-        break;
-      }
-      emit({ error: 'Usage: ambit federation export [path] | ambit federation import <path>' });
-      break;
-    }
     case 'impact':
       // With no id it crashed on the query's missing parameter, a stack trace
       // where every other verb says how it is used.
@@ -496,6 +448,15 @@ async function runCommand(
           const redirect = Array.isArray(runs) && !runs.length ? checksOf(db, node.id) : undefined;
           emit(redirect && 'checks' in redirect ? redirect : runs);
         }
+      } else if (flags.has('--mcp')) {
+        const ran = await verifyMcpServers(db, arg || undefined);
+        emit(ran);
+        if (
+          flags.has('--exit-code') &&
+          ('error' in ran || ran.verified !== ran.checked || ran.checked === 0)
+        ) {
+          raiseExitCode(1);
+        }
       } else {
         const failing = flags.has('--failing');
         const node = arg && !failing ? named(arg) : undefined;
@@ -505,7 +466,7 @@ async function runCommand(
             : runVerification(db, node?.id ?? arg, value('target'), { failing });
         // A server the model holds no check for: name the checks on what it
         // provides, instead of "no capability in the model" about a word the
-        // graph plainly knows. A probed service or a skill keeps its own answer.
+        // graph plainly knows. Use `--mcp` to smoke-test local MCP servers.
         if (
           node &&
           'id' in node &&
@@ -736,90 +697,6 @@ async function runCommand(
       }
       break;
     }
-    case 'delegation': {
-      // What the graph has recorded about grants narrowing themselves, in the
-      // shared record shape. `--record` writes the account for the current
-      // state; verification already calls it, so this is for asking on demand.
-      if (flags.has('--record')) emit(recordDelegationState(db));
-      else if (flags.has('--export')) {
-        for (const record of delegationRecords(db, Number(value('limit') || 500))) {
-          emitText(JSON.stringify(record));
-        }
-      } else if (arg === 'verify') emit(verifyChain(db));
-      // A person contesting a record Ambit wrote, and the answer they are owed.
-      // Neither widens authority: see recordObjection for why that is deliberate.
-      else if (arg === 'object') {
-        const res = recordObjection(db, {
-          record: positional[1] || value('record') || '',
-          by: by() || '',
-          basis: value('basis') || '',
-          requested:
-            value('requested') === 'reversal'
-              ? 'reversal'
-              : value('requested') === 'narrowing'
-                ? 'narrowing'
-                : 'reconsideration',
-          note: value('note'),
-        });
-        emit(!res.ok ? { error: res.reason } : res);
-      } else if (arg === 'answer') {
-        const res = answerObjection(db, {
-          objection: positional[1] || value('objection') || '',
-          disposition: flags.has('--refuse') ? 'refused' : 'upheld',
-          because: value('because') || '',
-          by: by() || '',
-        });
-        emit(!res.ok ? { error: res.reason } : res);
-      } else if (arg === 'objections') emit(unansweredObjections(db));
-      // Reading another system's stream. Foreign discrepancies land as evidence
-      // attributed to the sender; they never move a lifecycle on their own.
-      // Where foreign records arrive from, declared once instead of typed each
-      // time. A full `ambit verify` reads every enabled one.
-      else if (arg === 'sources') emit(delegationSources(db));
-      else if (arg === 'source') {
-        const action = positional[1];
-        const id = positional[2] || value('id') || '';
-        if (action === 'add') {
-          const res = declareDelegationSource(db, {
-            id,
-            system: value('system') || '',
-            instance: value('instance'),
-            location: value('from') || '',
-            by: by() || '',
-          });
-          emit(!res.ok ? { error: res.reason } : res);
-        } else if (action === 'disable') {
-          const res = setDelegationSourceEnabled(db, id, false);
-          emit(!res.ok ? { error: res.reason } : res);
-        } else if (action === 'enable') {
-          const res = setDelegationSourceEnabled(db, id, true);
-          emit(!res.ok ? { error: res.reason } : res);
-        } else if (action === 'forget') {
-          const res = forgetDelegationSource(db, id);
-          emit(!res.ok ? { error: res.reason } : res);
-        } else
-          emit({
-            error: 'Usage: ambit delegation source add|enable|disable|forget <id>',
-          });
-      } else if (arg === 'pull')
-        emit(pullDelegationSources(db, path => readFileSync(path, 'utf8')));
-      else if (arg === 'ingest') {
-        const path = positional[1] || value('file');
-        if (!path) emit({ error: 'Pass a file: ambit delegation ingest <path>' });
-        else emit(ingestForeignRecords(db, readFileSync(path, 'utf8')));
-      } else
-        emit({
-          ...delegationManifest(db),
-          recent: delegationRecords(db, Number(value('limit') || 10)).map(r => ({
-            record_id: r.record_id,
-            kind: r.kind,
-            subject: r.subject,
-            summary: r.summary,
-            recorded_at: r.time.recorded_at,
-          })),
-        });
-      break;
-    }
     case 'history':
       if (arg === 'since') {
         const [when, until] = typedTimestamps(positional.slice(1));
@@ -837,24 +714,7 @@ async function runCommand(
         value('by'),
         value('for')
       );
-      // --dispatch pushes the draft out of band in the same breath, so an
-      // unattended loop's request reaches the person without a second verb.
-      if (drafted?.proposal && (flags.has('--dispatch') || value('dispatch'))) {
-        emit({
-          ...drafted,
-          dispatch: await dispatchProposal(db, drafted.proposal, { to: value('dispatch') }),
-        });
-      } else emit(drafted);
-      break;
-    }
-    case 'dispatch': {
-      // async: the push is an HTTP POST and must complete before close.
-      const isPending = !arg || arg === 'pending' || flags.has('--pending') || arg === 'all';
-      if (isPending) {
-        emit(await dispatchPending(db, { to: value('to') }));
-      } else {
-        emit(await dispatchProposal(db, arg, { to: value('to') }));
-      }
+      emit(drafted);
       break;
     }
     case 'proposals':
@@ -885,22 +745,7 @@ async function runCommand(
       }
       const approved: any =
         ids.length > 1 ? approveProposals(db, ids, person) : approveProposal(db, arg, person);
-      // --dispatch sends the signed artifact where the person is, so what
-      // they read on a phone is what apply will verify here.
-      if (flags.has('--dispatch') || value('dispatch')) {
-        const to = value('dispatch');
-        // Only what was actually approved goes out; a refused approval has
-        // nothing signed to send.
-        const wins: string[] =
-          ids.length > 1
-            ? (approved.results || []).filter((r: any) => !r.error).map((r: any) => r.id)
-            : approved.error
-              ? []
-              : [arg];
-        const pushed: Record<string, any> = {};
-        for (const id of wins) pushed[id] = await dispatchProposal(db, id, { to });
-        emit({ ...approved, dispatch: ids.length > 1 ? pushed : pushed[arg] });
-      } else emit(approved);
+      emit(approved);
       break;
     }
     case 'reject': {
@@ -1093,150 +938,6 @@ async function runCommand(
         if (!res.ok) {
           process.exitCode = res.exit_code;
         }
-      }
-      break;
-    }
-    case 'judge': {
-      const sub = arg;
-      const options: WorkflowOptions & { live?: boolean } = {
-        provider: value('provider') as any,
-        url: value('url'),
-        model: value('model'),
-        accountId: value('account') ?? value('account-id'),
-        token: value('token'),
-        threshold: value('threshold') !== undefined ? Number(value('threshold')) : undefined,
-        record: flags.has('--record'),
-        multi: flags.has('--multi'),
-        live: flags.has('--live'),
-      };
-      switch (sub) {
-        case 'goal': {
-          const text = positional.slice(1).join(' ').trim();
-          if (!text) {
-            emit({ error: 'Supply a goal or task sentence.' });
-            break;
-          }
-          emit(await judgeTasks(db, [{ id: 'goal', text }], options));
-          break;
-        }
-        case 'evaluate': {
-          let cases = SMOKE_CASES;
-          const filePath = positional[1] || value('file');
-          if (filePath) {
-            try {
-              cases = JSON.parse(readFileSync(filePath, 'utf8'));
-            } catch {
-              emit({ error: `Cannot read evaluation cases file: ${filePath}` });
-              break;
-            }
-          }
-          emit(await evaluateGoals(db, cases, options));
-          break;
-        }
-        case 'history': {
-          const limit = value('limit') !== undefined ? Number(value('limit')) : undefined;
-          emit({ decisions: decisionHistory(db, limit) });
-          break;
-        }
-        case 'review': {
-          const id = positional[1];
-          const disposition = positional[2] as 'accepted' | 'rejected';
-          const note = value('note') || positional[3];
-          if (!id || !disposition) {
-            emit({ error: 'Usage: ambit judge review <decision-id> <accepted|rejected>' });
-            break;
-          }
-          emit(reviewDecision(db, id, disposition, note));
-          break;
-        }
-        case 'plan': {
-          const id = positional[1];
-          if (!id) {
-            emit({ error: 'Usage: ambit judge plan <decision-id>' });
-            break;
-          }
-          emit(planDecision(db, id));
-          break;
-        }
-        case 'attention': {
-          const filePath = positional[1] || value('file');
-          if (!filePath) {
-            emit({ error: 'Pass an attention entries JSON file: ambit judge attention <file>' });
-            break;
-          }
-          let entries: unknown;
-          try {
-            entries = JSON.parse(readFileSync(filePath, 'utf8'));
-          } catch {
-            emit({ error: `Cannot read attention file: ${filePath}` });
-            break;
-          }
-          emit(await judgeAttention(db, entries as any, options));
-          break;
-        }
-        case 'tools': {
-          const filePath = positional[1] || value('file');
-          if (!filePath) {
-            emit({ error: 'Pass a tools JSON file: ambit judge tools <file>' });
-            break;
-          }
-          let tools: unknown;
-          try {
-            tools = JSON.parse(readFileSync(filePath, 'utf8'));
-          } catch {
-            emit({ error: `Cannot read tools file: ${filePath}` });
-            break;
-          }
-          emit(await judgeTools(db, tools as any, options));
-          break;
-        }
-        case 'failures': {
-          const filePath = positional[1] || value('file');
-          if (!filePath) {
-            emit({ error: 'Pass a failures JSON file: ambit judge failures <file>' });
-            break;
-          }
-          let failures: unknown;
-          try {
-            failures = JSON.parse(readFileSync(filePath, 'utf8'));
-          } catch {
-            emit({ error: `Cannot read failures file: ${filePath}` });
-            break;
-          }
-          emit(await judgeFailures(db, failures as any, options));
-          break;
-        }
-        case 'next': {
-          const goal = positional.slice(1).join(' ').trim();
-          if (!goal) {
-            emit({ error: 'Usage: ambit judge next <goal>' });
-            break;
-          }
-          emit(await judgeNext(db, goal, options));
-          break;
-        }
-        case 'media': {
-          const filePath = positional[1] || value('file');
-          if (!filePath) {
-            emit({ error: 'Pass a media request JSON file: ambit judge media <file>' });
-            break;
-          }
-          let request: unknown;
-          try {
-            request = JSON.parse(readFileSync(filePath, 'utf8'));
-          } catch {
-            emit({ error: `Cannot read media request file: ${filePath}` });
-            break;
-          }
-          emit(await askDecision(request as any, options));
-          break;
-        }
-        default:
-          emit({
-            error:
-              'Usage: ambit judge goal|evaluate|history|review|plan|attention|tools|failures|next|media',
-          });
-          break;
       }
       break;
     }

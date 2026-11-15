@@ -16,7 +16,7 @@ import { makeGraph } from './testing/graph.ts';
 /** A day inside the default window, and a stamp on it in either stored form. */
 const day = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
 const sqlite = (hour: string) => `${day} ${hour}:00:00`;
-const iso = (hour: string) => `${day}T${hour}:00:00.000Z`;
+const _iso = (hour: string) => `${day}T${hour}:00:00.000Z`;
 
 function graph(): Db {
   return makeGraph({
@@ -35,7 +35,7 @@ function act(db: Db, session: string, capability: string, action: string, at: st
 }
 
 /** A delegation record as the log stores it, with only the fields the trail reads. */
-function record(db: Db, id: string, kind: string, at: string, content: Record<string, unknown>) {
+function _record(db: Db, id: string, kind: string, at: string, content: Record<string, unknown>) {
   const body = {
     record_id: id,
     kind,
@@ -51,7 +51,7 @@ function record(db: Db, id: string, kind: string, at: string, content: Record<st
   ).run(id, kind, body.subject, at, JSON.stringify(body));
 }
 
-test('approvals, demotions and delegation revisions merge in true time order', () => {
+test('approvals and demotions merge in true time order', () => {
   const db = graph();
   db.prepare(
     `INSERT INTO proposals (id, goal, status, steps, simulated, created_at, approved_by, approved_at, approval_artifact)
@@ -59,11 +59,6 @@ test('approvals, demotions and delegation revisions merge in true time order', (
   ).run(sqlite('02'), sqlite('05'));
   // The echo an approval leaves in the learning table: the same decision.
   act(db, 'approval', 'human:web', 'approved', sqlite('05'), 'prop-a: reach the shell');
-  record(db, 'ambit:revision:1', 'revision', iso('03'), {
-    mode_now: 'confirm',
-    mode_declared: 'unattended',
-  });
-  record(db, 'ambit:revision:answer:1', 'revision', iso('06'), { disposition: 'upheld' });
   act(db, 'authority', 'combo:shell', 'demoted', sqlite('07'), 'execute: back to confirm');
 
   const { events, truncated } = auditStream(db);
@@ -71,9 +66,7 @@ test('approvals, demotions and delegation revisions merge in true time order', (
 
   expect(events.map(e => [e.action, e.outcome?.word])).toEqual([
     ['demoted', 'grant narrowed'],
-    ['revision', 'objection upheld'],
     ['approved', 'signed'],
-    ['revision', 'grant narrowed'],
     ['proposed', undefined],
   ]);
   expect(events.map(e => e.at)).toEqual([...events.map(e => e.at)].sort().reverse());

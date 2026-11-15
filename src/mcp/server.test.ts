@@ -1,8 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
-import { createServer } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { getDb } from '../engine/db.ts';
@@ -741,45 +739,6 @@ test('every listed tool has a handler, and takes what its own schema says it tak
     .map((r, i) => ({ name: tools[i].name, error: r.error }))
     .filter(r => r.error);
   expect(protocolErrors).toEqual([]);
-});
-
-test('a slow incident probe does not hold up a ping queued behind it', async () => {
-  // The probe waits up to three seconds per service. Answered from the handler
-  // it blocked every request behind it, a ping among them, which a client reads
-  // as a dead server; answered from its own callback it does not.
-  const silent = createServer(() => {}); // accepts the connection and never answers
-  await new Promise<void>(done => silent.listen(0, '127.0.0.1', done));
-  const { port } = silent.address() as AddressInfo;
-  const manifest = join(dir, 'slow-manifest.json');
-  writeFileSync(
-    manifest,
-    JSON.stringify({ services: [{ key: 'slow', url: `http://127.0.0.1:${port}/` }] })
-  );
-  try {
-    const replies = rpc(
-      [
-        {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/call',
-          params: { name: 'ambit_incidents', arguments: {} },
-        },
-        { jsonrpc: '2.0', id: 2, method: 'ping' },
-      ],
-      copyOfGraph('incidents.db'),
-      { env: { INFRA_MANIFEST: manifest } }
-    );
-    expect(replies.map(r => r.id)).toEqual([2, 1]);
-    // And the answer still arrives once the probe gives up, although the
-    // client closed its side as soon as it had sent both.
-    expect(replies[1].result.structuredContent).toMatchObject({ probed: 1, online: 0 });
-    expect(replies[1].result.structuredContent.incidents[0]).toMatchObject({
-      service: 'svc:slow',
-      status: 'down',
-    });
-  } finally {
-    silent.close();
-  }
 });
 
 // ── A call that cannot work says so, in a form the model can act on ─────────

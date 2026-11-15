@@ -15,7 +15,6 @@ import {
   LOCAL_ONLY,
   WITH_PEOPLE,
   cli,
-  cliAsync,
   dir,
   existsSync,
   getDb,
@@ -521,21 +520,6 @@ test('an expired approval is refused until re-approved', () => {
 
   const refused = cli('apply', p.proposal);
   expect(refused.error).toContain('expired');
-});
-
-test('notify-approvals lists approved proposals awaiting apply', async () => {
-  seed(APPLIABLE).close();
-  const p = cli('propose', 'web-research');
-  cli('approve', p.proposal, 'kanav');
-
-  const r = await cliAsync('notify-approvals');
-  expect(r.error).toContain('Usage'); // opt-in: nothing is sent without a topic
-
-  // The pending set is readable through the engine directly.
-  const db = getDb(join(dir, 'graph.db'));
-  const rows = db.prepare("SELECT id FROM proposals WHERE status = 'approved'").all() as any[];
-  expect(rows.map((r: any) => r.id)).toContain(p.proposal);
-  db.close();
 });
 
 // ── canExecute (WP-8) ─────────────────────────────────────────────────────────

@@ -570,4 +570,4 @@ async function weigh(
   };
 }
 
-export { carryById, carryReport, launchOf, toolServers, weigh, type ToolServer };
+export { carryById, carryReport, launchOf, listTools, toolServers, weigh, type ToolServer };

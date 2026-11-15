@@ -2,7 +2,6 @@ import type { Db } from './db.ts';
 import type { AuditEvent, AuditOutcome, AuditResponse } from '../shared/api.ts';
 import { parseUtcDate } from '../shared/format.ts';
 import { canExecute } from './assurance.ts';
-import { delegationRecords } from './delegation.ts';
 import {
   DEFAULT_WINDOW_DAYS,
   ACT_OUTCOMES,
@@ -490,39 +489,6 @@ function runEvents(db: Db, window: string, take: number): AuditEvent[] {
   return events;
 }
 
-/**
- * The delegation records, which no list of the trail used to carry. A revision
- * that took a grant down to asking says so; the answer to an objection says
- * which way it went.
- */
-function delegationEvents(db: Db, days: number, take: number): AuditEvent[] {
-  const since = Date.now() - days * 86_400_000;
-  const events: AuditEvent[] = [];
-  for (const record of delegationRecords(db, take).reverse()) {
-    const at = isoTime(record.time?.recorded_at);
-    if (!at || Date.parse(at) < since) continue;
-    const content = record.content ?? {};
-    const narrowed =
-      record.kind === 'revision' &&
-      typeof content.mode_now === 'string' &&
-      content.mode_now !== content.mode_declared;
-    const answered =
-      content.disposition === 'upheld' || content.disposition === 'refused'
-        ? outcomeOf(content.disposition)
-        : undefined;
-    events.push({
-      id: record.record_id,
-      at,
-      actor: record.actor?.id || undefined,
-      action: record.kind,
-      target: record.subject || undefined,
-      summary: record.summary || undefined,
-      outcome: narrowed ? outcomeOf('narrowed') : answered,
-    });
-  }
-  return events;
-}
-
 /** A source this database predates reads as no events, not as a failed trail. */
 function guarded(read: () => AuditEvent[]): AuditEvent[] {
   try {
@@ -558,7 +524,6 @@ function auditStream(db: Db | null, opts: { days?: number; limit?: number } = {}
         ...guarded(() => actEvents(db, window, take)),
         ...guarded(() => proposalEvents(db, window, take)),
         ...guarded(() => runEvents(db, window, take)),
-        ...guarded(() => delegationEvents(db, days, take)),
       ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     : [];
   return { days, limit, events: merged.slice(0, limit), truncated: merged.length > limit };

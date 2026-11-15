@@ -23,7 +23,7 @@
  * should be and are meant to come down; lower the ceiling when they do.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname ?? __dirname, '..');
@@ -79,6 +79,7 @@ type Row = { file: string; words: number; dash: number; ratherThan: number };
 
 const rows: Row[] = [];
 for (const file of tracked()) {
+  if (!existsSync(join(ROOT, file))) continue;
   const text = readFileSync(join(ROOT, file), 'utf8');
   const prose = file.endsWith('.md') ? proseOfMarkdown(text) : proseOfSource(text);
   const words = prose.split(/\s+/).filter(Boolean).length;

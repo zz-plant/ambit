@@ -103,33 +103,9 @@ plan — what to acquire next, and whether it paid
                           its simulation; --by records who drafted it
   plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
                           proposal's before/after verdict
-  plan portfolio [--budget=N]   across imported environments — shared attention,
-                          single points of failure, where capex would produce the most
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
   plan repo [dir]         inspect project stack and recommend tailored agent superpowers
-  plan judge goal <sentence> [--multi] [--threshold=0.8] [--record]   which
-                          capability a sentence means: the vocabulary first,
-                          then a judgment model for what it could not route;
-                          --multi scores each node apart. A suggestion with a
-                          probability, kept as a receipt only with --record
-  plan judge next <goal>  the next steps, reordered by how directly each one
-                          advances the goal; costs and checks stay the graph's
-  plan judge tools|failures|attention <file.json>   a model's reading of tool
-                          descriptions, reported failures or recorded
-                          interventions; none relabels the ledger or counts
-                          as evidence. judge media <file.json> sends one raw
-                          request, with its images or audio
-  plan judge evaluate [cases.json] [--live]   score routing against expected
-                          answers: the vocabulary alone, or the model with --live
-  plan judge history [--limit=N] · review <id> accepted|rejected · plan <id>
-                          the receipts kept, a person's one review of each, and
-                          the plans an accepted one asks for, from the graph now
-  plan judge … --provider=cloudflare [--model=<name>]
-                          send the request to Workers AI, with
-                          CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN. The
-                          default is a model on this machine, loopback only,
-                          at AMBIT_JUDGE_URL or a default port
 
 check — what is verified, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
@@ -219,36 +195,10 @@ govern — the reviewable path from proposal to applied change
                           Where it cannot write, or with --print, it writes
                           nothing and gives each runtime's own command
   govern rollback <id>    undo it, in the file it was written to
-  govern dispatch <id> [--to=<url>]   push a proposal to Slack, Discord,
-                          Telegram, ntfy or any JSON endpoint. A draft goes
-                          out for a decision, an approved one as its signed
-                          artifact. AMBIT_APPROVAL_WEBHOOK is the standing
-                          target; propose and approve take --dispatch to
-                          push as they go
   govern history [since <when> [<until>]]   how the frontier moved, up to now
                           or up to a later observation
   govern audit [run-…|prop-…|human:name|days]   the trail of who approved
                           what, what ran, and whether it held
-  govern delegation [verify] [--record] [--export] [--limit=N]   grants that
-                          narrowed themselves because what they rest on stopped
-                          passing, written in the STD-07 record shape
-  govern delegation object <record> --by= --basis= [--requested=]   contest a
-                          record. Recorded, answerable, and it does not widen
-                          authority: fix the check or re-declare the grant
-  govern delegation answer <objection> --by= --because= [--refuse]   the answer
-                          an objection is owed, either way
-  govern delegation objections   objections nobody has answered yet
-  govern delegation ingest <file>   read another system's records. Foreign
-                          discrepancies land as evidence attributed to the
-                          sender; they never move a lifecycle here
-  govern delegation source add <id> --system= --from= --by= [--instance=]
-                          declare where a system's records arrive, so a full
-                          ambit verify reads it instead of someone typing
-                          ingest each time. An ambit source must name which
-                          environment it is, and cannot be this one
-  govern delegation sources / pull   what is declared and when each was last
-                          read, or read them all now. A source that goes quiet
-                          says so rather than looking like a quiet week
 
 report — what the setup cost to operate
   report work [limit]     recent runs, each with what it cost
@@ -267,16 +217,12 @@ report — what the setup cost to operate
                           tokens, so a session's tokens on it are a spend
                           against Hosted Inference's budget
   report attention [days] how much work still runs through the human
-  report notify <topic> [--approvals]   push the week's attention digest to ntfy,
-                          or with --approvals what waits on a decision; nothing
-                          is sent without a topic
   report record <cap> [class] [note]   record that a task was blocked
   report record skill:<name> --provides=<cap> --verify="<command>"   put a skill
                           the agent wrote on the map, with the check that proves it
   report signals [days]   failures observed without anyone recording them
   report preferences [--observed] [who]   what someone declared, or what they
                           have actually approved and refused
-  report federation export|import   the signed summary a portfolio layer reads
   report statusline [--json]   one line for Claude Code's status line: what fails
                           its check, the proposals to decide, the verified count.
                           Reads the graph and writes nothing
@@ -312,8 +258,6 @@ const INDEX: Record<string, [string, string][]> = {
     ['roi', 'whether the changes you applied paid'],
     ['reversible', 'what could be acquired without a person'],
     ['repo [dir]', 'what to add for the project you are in'],
-    ['portfolio', 'the same questions across imported environments'],
-    ['judge', 'ask a model on this machine which node a sentence means'],
   ],
   check: [
     ['verify [cap]', 'run the declared checks and record what passed'],
@@ -341,10 +285,8 @@ const INDEX: Record<string, [string, string][]> = {
     ['apply <id>', "write an approved change into a runtime's config"],
     ['rollback <id>', 'undo an applied change'],
     ['people', 'who may approve and set budgets'],
-    ['dispatch <id>', 'send a proposal to Slack, Discord, ntfy or a webhook'],
     ['history', 'how the frontier moved over time'],
     ['audit', 'who approved what, what ran, and whether it held'],
-    ['delegation', 'grants that narrowed when what they rest on failed'],
   ],
   report: [
     ['work', 'recent runs, each with what it cost'],
@@ -354,8 +296,6 @@ const INDEX: Record<string, [string, string][]> = {
     ['record <cap>', 'record a blocked task, or a skill the agent wrote'],
     ['signals', 'failures observed without anyone recording them'],
     ['preferences', 'what someone declared, or what they actually approve'],
-    ['notify <topic>', "push the week's digest to ntfy"],
-    ['federation', 'the signed summary a portfolio layer reads'],
     ['statusline', "one line for Claude Code's status line"],
   ],
 };

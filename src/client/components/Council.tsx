@@ -66,31 +66,31 @@ export function CouncilFigure({
     <figure className="fig fig--council">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">
-          <Term name="council">The council</Term>
+          <Term name="council">Next-step tradeoffs</Term>
         </span>
         <span className="fig-caption-note">
           {motion
             ? `on ${motion.name}, the first step to reach${motion.cost ? ` · ${motion.cost}` : ''}`
-            : 'there is no next step, so each seat reads its own ground'}
+            : 'there is no next step, so each check reads its own ground'}
         </span>
       </figcaption>
       {motion && (
         <p className={`council-verdict${split ? ' is-split' : ''}`}>
           {split ? (
             <>
-              <strong>Split.</strong> {names(advisors, 'for')} for, {names(advisors, 'against')}{' '}
-              against.
+              <strong>Tradeoffs.</strong> {names(advisors, 'for')} in favor,{' '}
+              {names(advisors, 'against')} flagged a risk.
             </>
           ) : against ? (
             <>
-              <strong>Against.</strong> {names(advisors, 'against')} would not build on it yet.
+              <strong>Risk flagged.</strong> {names(advisors, 'against')} would not build on it yet.
             </>
           ) : (
-            <>No seat is against it.</>
+            <>No risk flagged.</>
           )}
         </p>
       )}
-      <ul className="council" aria-label="The council's seats">
+      <ul className="council" aria-label="Next-step tradeoff checks">
         {advisors.map(a => {
           const subject = a.subject;
           // A seat links to the map only when it reads some other node. The

@@ -23,7 +23,13 @@ export {
   recentRuns,
   recovering,
 } from './assure/lifecycle.ts';
-export { verifyCheck, evidenceFor, runVerification, checkableNames } from './assure/verify.ts';
+export {
+  verifyCheck,
+  evidenceFor,
+  runVerification,
+  verifyMcpServers,
+  checkableNames,
+} from './assure/verify.ts';
 export {
   narrower,
   specificity,

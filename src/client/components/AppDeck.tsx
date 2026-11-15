@@ -164,7 +164,7 @@ const VIEW_TABS: { view: View; label: string; short?: string; title: string; ico
   },
   {
     view: 'cost',
-    label: 'Time & cost',
+    label: 'Usage & friction',
     short: 'Cost',
     title:
       'What your agents cost in tokens, what they save you in time, what may run without asking, and what would pay back fastest',
@@ -190,7 +190,7 @@ const VIEW_TABS: { view: View; label: string; short?: string; title: string; ico
   },
   {
     view: 'proposals',
-    label: 'Proposals',
+    label: 'Changes',
     title: 'What an agent wants to change, waiting on your decision (g)',
     icon: (
       <>

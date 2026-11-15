@@ -9,18 +9,7 @@
  */
 const GROUPS: Record<string, string[]> = {
   graph: ['impact', 'where', 'share', 'catalog', 'skills', 'sync', 'objects'],
-  plan: [
-    'goal',
-    'next',
-    'council',
-    'opportunities',
-    'roi',
-    'propose',
-    'portfolio',
-    'reversible',
-    'judge',
-    'repo',
-  ],
+  plan: ['goal', 'next', 'council', 'opportunities', 'roi', 'propose', 'reversible', 'repo'],
   check: [
     'verify',
     'fix',
@@ -40,25 +29,12 @@ const GROUPS: Record<string, string[]> = {
     'receipt',
     'ci',
   ],
-  govern: [
-    'people',
-    'proposals',
-    'approve',
-    'reject',
-    'apply',
-    'rollback',
-    'dispatch',
-    'history',
-    'audit',
-    'delegation',
-  ],
+  govern: ['people', 'proposals', 'approve', 'reject', 'apply', 'rollback', 'history', 'audit'],
   report: [
     'work',
     'usage',
     'economics',
     'attention',
-    'notify',
-    'federation',
     'record',
     'signals',
     'preferences',
@@ -110,7 +86,6 @@ const ALIASES: Record<string, { to: string; flag?: string }> = {
   proposal: { to: 'proposals' },
   opportunity: { to: 'opportunities' },
   incident: { to: 'incidents' },
-  'notify-approvals': { to: 'notify', flag: '--approvals' },
 };
 
 function canonical(alias: string, argv: string[]): { cmd: string; argv: string[] } {

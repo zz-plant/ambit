@@ -51,9 +51,6 @@ const READS: Annotations = { readOnlyHint: true };
 const WRITES: Annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
 // Runs a command that was declared in the graph: it can do anything a shell can.
 const RUNS: Annotations = { readOnlyHint: false, destructiveHint: true, openWorldHint: true };
-// Probes the hosts the infrastructure manifest names, records each answer as a
-// check run, and opens a run per outage.
-const PROBES: Annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: true };
 
 const NONE = { type: 'object', properties: {} } as const;
 const str = (description?: string): Prop => ({
@@ -341,22 +338,6 @@ const BASE_TOOLS: ToolDef[] = [
     annotations: WRITES,
   },
   {
-    name: 'economics',
-    description: 'Declared costs: hourly rate, tools, goal values. One goal: ambit_goal_value.',
-    inputSchema: NONE,
-    annotations: READS,
-  },
-  {
-    name: 'goal_value',
-    description: 'Goal value: frequency, success value, failure cost. All: ambit_economics.',
-    inputSchema: {
-      type: 'object',
-      properties: { goal: str('Goal ID') },
-      required: ['goal'],
-    },
-    annotations: READS,
-  },
-  {
     name: 'opportunities',
     description: 'Opportunities ranked by attention, ROI or reliability. One: ambit_opportunity.',
     inputSchema: {
@@ -398,24 +379,6 @@ const BASE_TOOLS: ToolDef[] = [
     annotations: WRITES,
   },
   {
-    name: 'roi',
-    description:
-      'Realized ROI of one applied proposal: hours, reliability. Totals: ambit_roi_summary.',
-    inputSchema: {
-      type: 'object',
-      properties: { proposalId: str('Proposal ID') },
-      required: ['proposalId'],
-    },
-    annotations: WRITES,
-  },
-  {
-    name: 'roi_summary',
-    description:
-      'Savings across applied proposals: hours, dollars, forecast accuracy. One: ambit_roi.',
-    inputSchema: NONE,
-    annotations: READS,
-  },
-  {
     name: 'catalog',
     description: 'Acquisition channels: build, buy, subscribe, delegate. Draft: ambit_propose.',
     inputSchema: {
@@ -431,35 +394,6 @@ const BASE_TOOLS: ToolDef[] = [
     inputSchema: {
       type: 'object',
       properties: { target: str('Filter target') },
-    },
-    annotations: READS,
-  },
-  {
-    name: 'incidents',
-    description: 'Probe infrastructure and open incident runs. Fix: ambit_incident_resolve.',
-    inputSchema: NONE,
-    annotations: PROBES,
-  },
-  {
-    name: 'incident_resolve',
-    description: 'Close an incident run with recovery outcome and MTTR. After: ambit_incidents.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        service: str('Service ID (svc:key)'),
-        outcome: str('Recovery outcome'),
-      },
-      required: ['service', 'outcome'],
-    },
-    annotations: WRITES,
-  },
-  {
-    name: 'portfolio',
-    description:
-      'Federation receipts: attention, single points of failure, spend. Local: ambit_stats.',
-    inputSchema: {
-      type: 'object',
-      properties: { budget: num('Budget cap dollars') },
     },
     annotations: READS,
   },
@@ -656,20 +590,8 @@ const BASE_TOOLS: ToolDef[] = [
     annotations: READS,
   },
   {
-    name: 'preferences_observed',
-    description: 'Approvals and refusals by trait (local or hosted). Declared: ambit_preferences.',
-    inputSchema: NONE,
-    annotations: READS,
-  },
-  {
     name: 'pending',
     description: 'Proposals waiting on a person, with costs and nodes. Draft: ambit_propose.',
-    inputSchema: NONE,
-    annotations: READS,
-  },
-  {
-    name: 'promotions',
-    description: 'Grants widening on evidence, and recent moves. Grants: ambit_authority.',
     inputSchema: NONE,
     annotations: READS,
   },

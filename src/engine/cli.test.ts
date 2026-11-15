@@ -169,8 +169,6 @@ test('the exit code says what the words say', () => {
     expect(usage.stdout).toBe(`${JSON.stringify({ error }, null, 2)}\n`);
     expect(piped(dir, 'goal', '--paths').status).toBe(1);
     expect(piped(dir, 'help', 'no-such-concept').status).toBe(1);
-    expect(piped(dir, 'delegation', 'source').status).toBe(1);
-    expect(piped(dir, 'delegation', 'ingest').status).toBe(1);
 
     // A known value flag without value exits 1.
     const missingVal = piped(dir, 'can', 'offline-capable', '--target');
