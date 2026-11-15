@@ -2,7 +2,6 @@ import { readFileSync, existsSync } from 'node:fs';
 import type { Db } from './db.ts';
 import { beginRun, addEvent, endRun } from './telemetry.ts';
 import { canExecute, deriveLifecycles, evaluatePromotions, usable } from './assurance.ts';
-import { recordDelegationState } from './delegation.ts';
 import { infraManifestPath } from './paths.ts';
 import { storedTags } from './seed/structure.ts';
 import { CHECK_RUN } from './vocabulary.ts';
@@ -156,11 +155,9 @@ async function incidents(db: Db) {
   // it, as after `ambit verify`: the lifecycles first, then the grants that
   // widen or narrow on them, then the record of any that rest on one failing.
   let authority: ReturnType<typeof evaluatePromotions> | undefined;
-  let delegation: ReturnType<typeof recordDelegationState> | undefined;
   if (recorded.some(Boolean)) {
     deriveLifecycles(db);
     authority = evaluatePromotions(db);
-    delegation = recordDelegationState(db);
   }
 
   const results = [];
@@ -244,7 +241,6 @@ async function incidents(db: Db) {
     gate: unavailable.length
       ? 'these are failing their probe, so plans, simulations and authority leave them out until it passes again. ambit incidents probes again.'
       : undefined,
-    narrowed: delegation?.narrowed.length ? delegation.narrowed : undefined,
     authority_changed:
       authority && (authority.promoted.length || authority.demoted.length) ? authority : undefined,
     not_in_graph: unseeded.length ? unseeded : undefined,

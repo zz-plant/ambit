@@ -1,18 +1,10 @@
-/**
- * Running a capability's declared check, and the evidence that accumulates.
- *
- * The distinction this exists to keep: configured is not verified. A check
- * that has never run and a check that passed an hour ago are different states,
- * and everything that decides availability reads the difference.
- */
-import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { deriveLifecycles, recentRuns, usable } from './lifecycle.ts';
 import { evaluatePromotions } from './promote.ts';
-import { pullDelegationSources, recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
+import { listTools, toolServers } from '../weight.ts';
 import type { CapabilityRow } from '../rows.ts';
 import {
   CHECK_RUN_SQL,
@@ -249,7 +241,6 @@ function runVerification(
       const history = evidenceFor(db, which);
       deriveLifecycles(db);
       const authority = evaluatePromotions(db);
-      recordDelegationState(db);
       return {
         checked: 1,
         verified: r.status === 'verified' ? 1 : 0,
@@ -292,7 +283,6 @@ function runVerification(
     ).length;
     deriveLifecycles(db);
     const authority = evaluatePromotions(db);
-    recordDelegationState(db);
     (r as any).lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
       .get(r.id)?.lifecycle;
@@ -367,12 +357,6 @@ function settle(db: Db, results: any[], target?: string) {
   // rather than waiting for someone to run a command named "promote".
   deriveLifecycles(db);
   const authority = evaluatePromotions(db);
-  recordDelegationState(db);
-  // Every declared source, read on the run where this graph's evidence changes
-  // anyway. After the lifecycles and promotions above, deliberately: what
-  // arrives here is evidence attributed to another system, and running it
-  // before them would suggest it decides something. It does not.
-  pullDelegationSources(db, path => readFileSync(path, 'utf8'));
   for (const r of withReliability) {
     r.lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
@@ -453,4 +437,43 @@ function checkableNames(db: Db): string[] {
   return [];
 }
 
-export { verifyCheck, evidenceFor, runVerification, checkableNames };
+/**
+ * Smoke-test local MCP servers via `initialize` + `tools/list` so `ambit verify`
+ * works for user-configured servers without hand-written shell probes.
+ */
+async function verifyMcpServers(
+  db: Db,
+  which?: string,
+  timeoutMs = 15_000
+): Promise<ReturnType<typeof settle> | { error: string }> {
+  const servers = toolServers().filter(
+    s => !s.remote && s.enabled && s.command && (!which || s.id === which || s.name === which)
+  );
+  if (!servers.length) {
+    return {
+      error: which
+        ? `No local enabled MCP server found for ${which}.`
+        : 'No local enabled MCP servers found to verify.',
+    };
+  }
+  const results = await Promise.all(
+    servers.map(async s => {
+      const started = Date.now();
+      const ans = await listTools(s, timeoutMs);
+      const status = ans.ok ? ('verified' as const) : ('failed' as const);
+      const detail = ans.ok
+        ? `${ans.listing.tools.length} tool${ans.listing.tools.length === 1 ? '' : 's'} listed`
+        : ans.reason;
+      const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(s.id);
+      if (exists) {
+        db.prepare(
+          "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, ?)"
+        ).run(s.id, ans.ok ? 'passed' : 'failed', ans.ok ? 1 : 0, detail || null);
+      }
+      return { id: s.id, name: s.name, status, detail, ms: Date.now() - started };
+    })
+  );
+  return settle(db, results);
+}
+
+export { verifyCheck, evidenceFor, runVerification, verifyMcpServers, checkableNames };

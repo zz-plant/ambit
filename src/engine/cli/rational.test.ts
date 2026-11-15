@@ -16,10 +16,6 @@ import { WITH_PEOPLE, cli, seed } from '../testing/cli.ts';
 test('every old name runs as the command it now is, and help teaches only the new one', () => {
   expect(resolveCommand('brief', [])).toEqual({ cmd: 'briefing', argv: [] });
   expect(resolveCommand('proposal', ['prop-1'])).toEqual({ cmd: 'proposals', argv: ['prop-1'] });
-  expect(resolveCommand('notify-approvals', ['t'])).toEqual({
-    cmd: 'notify',
-    argv: ['t', '--approvals'],
-  });
   // Under its group as well.
   expect(resolveCommand('plan', ['opportunity', 'opp-1'])).toEqual({
     cmd: 'opportunities',

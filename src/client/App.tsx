@@ -61,9 +61,9 @@ const PANEL_W = 340;
 const VIEW_TITLES: Record<View, string | null> = {
   map: null,
   setup: 'My Setup',
-  cost: 'Time & cost',
+  cost: 'Usage & friction',
   audit: 'Audit',
-  proposals: 'Proposals',
+  proposals: 'Changes',
 };
 const PAGE_TITLE = typeof document === 'undefined' ? 'Ambit' : document.title;
 

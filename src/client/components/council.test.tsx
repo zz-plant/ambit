@@ -28,9 +28,9 @@ test('the sample is split, and the panel names who is for it and who against', (
   const html = page(demoSnapshot().council);
   const words = text(html);
 
-  expect(words).toContain('The council');
+  expect(words).toContain('Next-step tradeoffs');
   expect(words).toContain('on Embeddings, the first step to reach');
-  expect(words).toContain('Split. Reach and Cost for, What could break against.');
+  expect(words).toContain('Tradeoffs. Reach and Cost in favor, What could break flagged a risk.');
   for (const seat of ['Reach', 'What could break', 'Cost', 'Permission', 'Checks']) {
     expect(words).toContain(seat);
   }
@@ -64,8 +64,8 @@ test('a silent seat says what it has not got, and no seat is for nothing', () =>
   const words = text(html);
 
   expect(words).toContain('there is no next step');
-  expect(words).not.toContain('Split.');
-  expect(words).not.toContain('No seat is against it');
+  expect(words).not.toContain('Tradeoffs.');
+  expect(words).not.toContain('No risk flagged');
   expect(html).toContain('council-seat is-silent');
   expect(words).toContain('Silent');
   expect(words).not.toContain('For ');
@@ -73,5 +73,5 @@ test('a silent seat says what it has not got, and no seat is for nothing', () =>
 
 test('a council with no seats draws nothing', () => {
   const html = page({ motion: null, advisors: [], split: false });
-  expect(text(html)).not.toContain('The council');
+  expect(text(html)).not.toContain('Next-step tradeoffs');
 });

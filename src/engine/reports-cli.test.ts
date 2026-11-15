@@ -30,7 +30,6 @@ import {
   rows,
   seed,
   seedWith,
-  writeAndReturn,
   writeFileSync,
   withEnv,
 } from './testing/cli.ts';
@@ -244,12 +243,6 @@ test('the digest reports a broken capability separately from reducible friction'
   expect(d.broken.length).toBe(1);
   expect(d.broken[0].capability).toBe('Shell Execution');
   expect(d.reducible).toBeUndefined();
-});
-
-test('ntfy is opt-in — nothing is pushed without a topic', async () => {
-  seed(WITH_PREFS).close();
-  const r = await cliAsync('notify');
-  expect(r.error).toContain('Usage');
 });
 
 // ── Deficits ────────────────────────────────────────────────────────────────
@@ -530,38 +523,6 @@ test('incidents open a run for an offline service and resolve with MTTR', async 
   // The closed run is now auditable with its MTTR in the ledger.
   const audit = cli('audit', resolved.run);
   expect(audit.goal).toContain('ollama');
-});
-
-test('portfolio reads shared burden and capex across imported environments', () => {
-  seed(WITH_PREFS).close();
-  // Two environments, both burdened on the same capability.
-  for (const env of ['acme-ltd', 'globex']) {
-    const e = env;
-    const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
-    const r = beginRun(db, { goal: 'move data between systems' });
-    recordIntervention(db, r.run, 'human:kanav', {
-      kind: 'clerical',
-      capabilityId: 'combo:data-access',
-      activeSeconds: 1800,
-    });
-    (db as any).close();
-    const summary = withEnv({ AMBIT_ENV: e }, () => cli('federation', 'export'));
-    const receipt = cli('federation', 'import', writeAndReturn(join(dir, `${env}.json`), summary));
-    expect(receipt.capabilities).toBeGreaterThan(0);
-  }
-
-  const pf = cli('portfolio');
-  expect(pf.environments).toBe(2);
-  expect(pf.environments_list.map((x: any) => x.environment).sort()).toEqual([
-    'acme-ltd',
-    'globex',
-  ]);
-  const shared = pf.shared_burden.find((s: any) => s.capability_id === 'combo:data-access');
-  expect(shared).toBeDefined();
-  expect(shared.environments).toBe(2);
-
-  const withBudget = cli('portfolio', '--budget=100000');
-  expect(withBudget.allocation.length).toBe(2);
 });
 
 test('roi with no argument is the cumulative headline', () => {

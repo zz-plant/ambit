@@ -76,10 +76,10 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
     />
   );
 
-test('the time-and-cost view is offered on a real machine, not only in the demo', () => {
+test('the usage-and-friction view is offered on a real machine, not only in the demo', () => {
   // The tab was rendered behind `demo &&`, so the half of the product that
   // prices your time was invisible to anyone running it on their own setup.
-  expect(deck()).toContain('Time &amp; cost');
+  expect(deck()).toContain('Usage &amp; friction');
 });
 
 test('each view tab keeps its name where it shows a short word or only its icon', () => {
@@ -87,7 +87,7 @@ test('each view tab keeps its name where it shows a short word or only its icon'
   // buttons beside them already did, or Docs was pushed past the right edge
   // (at 1024px Docs started at x=1035).
   const html = deck();
-  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit', 'Proposals']) {
+  for (const name of ['Map', 'My Setup', 'Usage &amp; friction', 'Audit', 'Changes']) {
     expect(html).toMatch(
       new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
     );
@@ -101,12 +101,12 @@ test('each view tab keeps its name where it shows a short word or only its icon'
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
 });
 
-test('the Proposals tab says how many drafts wait, to a screen reader too', () => {
+test('the Changes tab says how many drafts wait, to a screen reader too', () => {
   // The fixed aria-label replaced the button's text, so the badge was never
-  // read out: a reader heard "Proposals" with two decisions waiting.
+  // read out: a reader heard "Changes" with two decisions waiting.
   const html = deck({ draftCount: 2 });
   expect(html).toMatch(
-    /<button[^>]*aria-label="Proposals"[^>]*aria-describedby="app-deck-drafts"|<button[^>]*aria-describedby="app-deck-drafts"[^>]*aria-label="Proposals"/
+    /<button[^>]*aria-label="Changes"[^>]*aria-describedby="app-deck-drafts"|<button[^>]*aria-describedby="app-deck-drafts"[^>]*aria-label="Changes"/
   );
   expect(html).toContain('<span id="app-deck-drafts" hidden="">2 waiting for your decision</span>');
   // With nothing waiting there is nothing to describe.

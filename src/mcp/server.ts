@@ -44,7 +44,6 @@ import {
   actionsReport,
   scopeReport,
   canExecute,
-  promotionReport,
 } from '../engine/assurance.ts';
 import {
   planFor,
@@ -69,7 +68,6 @@ import {
 } from '../engine/telemetry.ts';
 import { budgetReport } from '../engine/budgets.ts';
 import { reversibilityReport } from '../engine/reversibility.ts';
-import { observedReport } from '../engine/observed.ts';
 import { objectReport } from '../engine/objects.ts';
 import { briefing, briefingText, taskBriefing } from '../engine/briefing.ts';
 import { nextSteps } from '../engine/next.ts';
@@ -78,11 +76,7 @@ import { registerSkill, registeredSkills } from '../engine/skills.ts';
 import { ledgerSince, ledgerHistory } from '../engine/ledger.ts';
 import { goalFor, pathsFor } from '../engine/goals.ts';
 import { humanDigest } from '../engine/attention.ts';
-import { economicsReport, goalValue } from '../engine/economics.ts';
 import { opportunitiesFor, opportunityFor } from '../engine/opportunities.ts';
-import { roiFor, roiSummary } from '../engine/roi.ts';
-import { portfolio } from '../engine/portfolio.ts';
-import { incidents, resolveIncident } from '../engine/incident.ts';
 import { catalogReport } from '../engine/catalog.ts';
 import { auditFor } from '../engine/audit.ts';
 import { listProposals, showProposal, pendingProposals } from '../engine/governance.ts';
@@ -440,12 +434,6 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
       case 'tt_digest':
         res = tt(db => humanDigest(db, args?.days));
         break;
-      case 'tt_economics':
-        res = tt(db => economicsReport(db));
-        break;
-      case 'tt_goal_value':
-        res = tt(db => goalValue(db, args.goal));
-        break;
       case 'tt_opportunities':
         res = tt(db => opportunitiesFor(db, args?.by, args?.budget));
         break;
@@ -503,9 +491,6 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
       case 'tt_skills':
         res = tt(db => registeredSkills(db));
         break;
-      case 'tt_promotions':
-        res = tt(db => promotionReport(db));
-        break;
       case 'tt_objects':
         res = tt(db => objectReport(db, args?.target));
         break;
@@ -515,38 +500,12 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
       case 'tt_reversible':
         res = tt(db => reversibilityReport(db));
         break;
-      case 'tt_preferences_observed':
-        res = tt(db => observedReport(db));
-        break;
       case 'tt_pending':
         res = tt(db => pendingProposals(db));
-        break;
-      case 'tt_roi':
-        res = tt(db => roiFor(db, args.proposalId));
         break;
       case 'tt_audit':
         res = tt(db => auditFor(db, args.target));
         break;
-      case 'tt_incident_resolve':
-        res = tt(db => resolveIncident(db, args.service, args.outcome));
-        break;
-      case 'tt_portfolio':
-        res = tt(db => portfolio(db, args?.budget));
-        break;
-      case 'tt_roi_summary':
-        res = tt(db => roiSummary(db));
-        break;
-      // Answered from the callback, so a slow probe does not hold up the
-      // requests queued behind it, a ping among them. It has a rejection
-      // handler because a probe that threw was an unhandled rejection,
-      // which ends the whole server.
-      case 'tt_incidents': {
-        try {
-          return toolResult(await incidents(getWarmDb()));
-        } catch (e) {
-          return toolResult({ error: e instanceof Error ? e.message : String(e) });
-        }
-      }
       case 'tt_catalog':
         res = tt(db => catalogReport(db, capId || args?.capability));
         break;
@@ -771,10 +730,7 @@ server.setRequestHandler(PermissiveCallToolSchema as any, async request => {
   if (typeof name !== 'string' || !name) {
     throw new McpError(ErrorCode.InvalidParams, 'tools/call needs params.name, the tool to call.');
   }
-  const bare = String(name).replace(/^(ambit|tt)_/, '');
-  const isIncidents = bare === 'incidents';
   const run = () => dispatchTool(name, args);
-  if (isIncidents) return await run();
   return await __serialize(run);
 });
 
