@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/mcp-outage.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"What stops when an MCP server or credential expires","description":"Find the single points of failure in an agent setup: what an expired MCP server or credential takes with it, what only weakens, and what was already broken.","url":"https://zz-plant.github.io/ambit/docs/mcp-outage/","dateModified":"2026-11-10","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"What stops when an MCP server or credential expires","item":"https://zz-plant.github.io/ambit/docs/mcp-outage/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"What stops when an MCP server or credential expires","description":"Find the single points of failure in an agent setup: what an expired MCP server or credential takes with it, what only weakens, and what was already broken.","url":"https://zz-plant.github.io/ambit/docs/mcp-outage/","dateModified":"2026-11-17","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"What stops when an MCP server or credential expires","item":"https://zz-plant.github.io/ambit/docs/mcp-outage/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -70,7 +70,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <li>Write down what your agents rely on (opening a pull request, searching the web, querying a database), and next to each, every server, model or tool that can do it.</li>
 <li>Anything with one name next to it is a single point of failure.</li>
 <li>Anything whose names all read the same token variable, or all reach the same host, is one too, however many names it has. Revoke the token or lose the host and they go together.</li>
-<li>For the third answer, try each one. A server you have not seen work recently may already be broken.</li>
+<li>For the third answer, try each one. A server you have not seen work recently may already be broken, and a remote one may have moved or gone.</li>
 </ol>
 <p>This stops scaling at a few runtimes and a dozen servers, and it misses a capability one piece unlocks for another, which only exists in combination.</p>
 <h2 id="asking-from-the-terminal"><a class="anchor" href="#asking-from-the-terminal" aria-hidden="true" tabindex="-1">#</a>Asking from the terminal</h2>
@@ -78,6 +78,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <pre><code class="language-bash">npx ambit-cli              # reads every agent config on this machine into the graph
 npm install -g ambit-cli   # keeps the `ambit` command
 ambit status               # what is failing, and what has a single provider
+ambit verify --mcp --remote  # which servers, local or remote, answer at all
 ambit impact mcp:github    # what stops, and what only weakens, if this one goes
 ambit credentials          # what revoking each declared credential would end
 </code></pre>
@@ -85,7 +86,7 @@ ambit credentials          # what revoking each declared credential would end
 <p>Two of the answers need something from you first:</p>
 <ul>
 <li><strong>Shared credentials are declared, never inferred.</strong> Ambit cannot see that three servers present one token until a <code>credentials</code> block in the config names them (<a href="/ambit/docs/deep-dive/#what-a-node-is">the shape</a>). Until then <code>ambit credentials</code> says none are declared, and three providers behind one token read as three providers.</li>
-<li><strong>&quot;Already broken&quot; needs a declared check.</strong> A capability counts as failing only when it declares a check and that check last failed (<code>ambit verify</code> runs them). Most MCP servers a person adds have none, so they read as reached and unverified: counted as working, never shown as broken.</li>
+<li><strong>&quot;Already broken&quot; needs a check that ran.</strong> A capability counts as failing only when its last check failed. <code>ambit verify</code> runs the declared ones, and <code>ambit verify --mcp --remote</code> checks each server itself: a local one is started and asked for its tools, and a remote one is sent a request with no sign-in. A server that was never checked reads as reached and unverified, and a remote one that asks for a sign-in stays unverified, since your runtime&#39;s own sign-in is never sent.</li>
 </ul>
 <h2 id="seeing-it-on-the-map"><a class="anchor" href="#seeing-it-on-the-map" aria-hidden="true" tabindex="-1">#</a>Seeing it on the map</h2>
 <p>The <a href="https://zz-plant.github.io/ambit/?demo=1&amp;tour=outage">hosted demo</a> opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press <strong>Simulate an outage</strong> to ask it of that one: what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.</p>
@@ -94,7 +95,7 @@ ambit credentials          # what revoking each declared credential would end
 <ul>
 <li><strong>For what stops</strong>, add a second provider: another server, model or tool that supplies the same capability. <code>ambit catalog &lt;capability&gt;</code> lists the ways the tree knows to provide it, where it knows any. Once the new provider is in a config and seeded, <code>ambit impact</code> on the old one reports the capability as surviving.</li>
 <li><strong>For providers behind one token or host</strong>, declare the credential in a <code>credentials</code> block so the sharing is counted, then give one of them its own key or a different host.</li>
-<li><strong>For what is already broken</strong>, fix or remove it, and declare a check where you can so the next failure shows up before an agent finds it.</li>
+<li><strong>For what is already broken</strong>, fix or remove it, then <code>ambit verify --failing</code> re-runs what failed. Declare a check where you can, so the next failure shows up before an agent finds it.</li>
 </ul>
 <p>Before removing a server or revoking a token on purpose, run <code>ambit impact</code> on it first. Its answer is as complete as the declarations behind it, so declare shared tokens and checks first.</p>
 <p>Every new capability rests on pieces that already exist, so knowing which ones carry the most is the guardrail half of widening what a setup can do.</p>

@@ -49,8 +49,8 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/docs/guide/">Get started</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a><a class="cta" href="/ambit/?demo=1">Live demo</a></header>
 <main>
 <div align="center"><h1 id="ambit"><a class="anchor" href="#ambit" aria-hidden="true" tabindex="-1">#</a>Ambit</h1>
-<p><strong>A Civilization-style tech tree of every MCP server your AI agents have: what they can do, and what one more step would unlock.</strong></p>
-<p>Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and <a href="#get-started">13 other agents</a> into one local map. What you, your agents and your machines can jointly do is your <em>ambit</em>: this shows where its edge is and how to move it.</p>
+<p><strong>Every MCP server your AI agents have, on one local map: what they can do together, what one more step would open, and which pieces actually work.</strong></p>
+<p>Ambit reads the MCP configs of Claude Code and its plugins, Codex, Cursor, OpenCode and <a href="#get-started">12 other agents</a> into one local graph, drawn as a tree of capabilities in eras. What you, your agents and your machines can jointly do is your <em>ambit</em>: this shows where its edge is and how to move it.</p>
 <p><a href="https://github.com/zz-plant/ambit/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&amp;style=flat-square&amp;label=tests" alt="CI"></a>
 <a href="https://github.com/zz-plant/ambit/releases/latest"><img src="https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&amp;color=7aa2f7" alt="Release"></a>
 <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&amp;logo=node.js&amp;logoColor=white" alt="Node"></a>
@@ -68,7 +68,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <li><strong>What stops if a piece goes.</strong> Three providers that share one API credential show up as one point of failure.</li>
 </ul>
 <p>Run it once to see what you have, then again after any change. A token that expired, a server that moved, or a binary that broke shows up as failing, and the next check proves the repair.</p>
-<p>Your agents can ask the same questions over MCP: what they can do before they try, and at a limit, what would lift it, drafted as a change you approve. Ambit is itself an MCP server that reads your other MCP servers, speaking the protocol of the tools it reads. The graph is a local SQLite file, with no telemetry.</p>
+<p>Your agents can ask the same questions, over MCP or through a skill: what they can do before they try, and at a limit, what would lift it, drafted as a change you approve. The graph is a local SQLite file, with no telemetry.</p>
 <p>Three facts stay apart: configured, working, and allowed. A configured server may fail its check, and a working one may still not be permitted to run without asking. Ambit reports each separately, and never lets one stand in for another.</p>
 <p>On a small setup, Ambit mostly answers what to add next. On a larger one, with several runtimes and a second machine, it mostly answers which configured tools fail their checks and what would stop with them. <a href="#the-words-ambit-uses">The words it uses</a> are defined further down.</p>
 <p>If it answers a question your config files could not, <a href="https://github.com/zz-plant/ambit/stargazers">a star</a> is how the next person with the same stack finds it.</p>
@@ -98,16 +98,17 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left"><strong>From your agent</strong></td>
-<td align="left">Register Ambit over MCP and the agent can ask what it is able to do before it tries. <a href="#connect-it-to-your-agent">Connect it to your agent</a> has the snippet.</td>
+<td align="left">Register Ambit over MCP, or install its skill in any agent that reads Agent Skills, and the agent can ask what it is able to do before it tries. <a href="#connect-it-to-your-agent">Connect it to your agent</a> has both.</td>
 </tr>
 </tbody></table>
-<p>npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows <code>./bootstrap.sh</code> does not run, <code>ambit weigh</code> cannot start a server launched through a <code>.cmd</code> such as <code>npx</code>, and a check written for <code>sh</code> stays unverified unless Git Bash or another <code>sh</code> is on the PATH. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code (with the plugins it has turned on, and by name the servers a project it knows commits in <code>.mcp.json</code>), Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout <code>npx ambit-cli</code> does, and links <code>ambit</code> into <code>~/.local/bin</code> when that directory is on your PATH (or prints the <code>ln -s</code> line when it is not). <code>./bootstrap.sh --dry-run</code> writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.</p>
+<p><strong>What it reads.</strong> The MCP configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro; from Claude Code, also the servers and skills of each plugin you have turned on, and by name the servers a project commits in its <code>.mcp.json</code>; the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>; and the names of the models Ollama and LM Studio keep on disk. <a href="/ambit/docs/mcp-config-locations/">Where each AI agent keeps its MCP config</a> gives every path.</p>
+<p><strong>Where it runs.</strong> npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows <code>./bootstrap.sh</code> does not run, <code>ambit weigh</code> cannot start a server launched through a <code>.cmd</code> such as <code>npx</code>, and a check written for <code>sh</code> stays unverified unless Git Bash or another <code>sh</code> is on the PATH. In a checkout, <code>./bootstrap.sh</code> builds the graph, prints the same readout <code>npx ambit-cli</code> does, and links <code>ambit</code> into <code>~/.local/bin</code> when that directory is on your PATH (or prints the <code>ln -s</code> line when it is not); <code>--dry-run</code> writes nothing and reports whether there is an OpenCode config, a running Ollama and a skills directory.</p>
 <div align="center">
 <img src="/ambit/docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
 <br><sub>My Setup lists every server, agent, and model found on the machine: whether it is on, what its check said, and which capabilities on the map it provides</sub>
 </div><hr>
 <h2 id="where-ambit-sits-in-the-stack"><a class="anchor" href="#where-ambit-sits-in-the-stack" aria-hidden="true" tabindex="-1">#</a>Where Ambit sits in the stack</h2>
-<p>Ambit sits above the protocol layer and below workflow orchestration. Its CLI and MCP server neither route an agent&#39;s calls nor run them. Its one hook on the call path, <code>ambit gate</code> for Claude Code, can only deny a call or ask about it. The one part that can run an agent&#39;s step is <a href="#the-control-plane">the control plane</a>, which you start yourself from a checkout, and only with its opt-in Docker adapter.</p>
+<p>Ambit sits beside the agent, above the protocol and below workflow orchestration. Its CLI and MCP server neither route an agent&#39;s calls nor run them. Its one hook on the call path, <code>ambit gate</code> for Claude Code, can only deny a call or ask about it. The one part that can run a step is <a href="#the-control-plane">the control plane</a>, a reference implementation you start yourself from a checkout.</p>
 <table>
 <thead>
 <tr>
@@ -133,8 +134,23 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left">Allow or refuse each call as it happens</td>
-<td align="left"><a href="/ambit/docs/compare/">An MCP gateway</a></td>
-<td align="left">No place on the call path; Ambit&#39;s gate only answers Claude Code&#39;s hook, with deny or ask</td>
+<td align="left">Your runtime&#39;s permission mode, or <a href="/ambit/docs/compare/">an MCP gateway</a></td>
+<td align="left">No place on the call path; <code>ambit authority</code> shows Claude Code&#39;s rules beside your grants, and the gate only adds a deny or an ask</td>
+</tr>
+<tr>
+<td align="left">Keep one server list in every runtime</td>
+<td align="left">A config sync tool such as vsync or mcp-sync</td>
+<td align="left">Which of those servers work, and what they add up to</td>
+</tr>
+<tr>
+<td align="left">Track tokens, cost and plan quota</td>
+<td align="left"><a href="https://github.com/ryoppippi/ccusage">ccusage</a> and the tools around it</td>
+<td align="left">Tokens per model in Time &amp; cost, beside what the setup can do</td>
+</tr>
+<tr>
+<td align="left">Scan tool descriptions for poisoning</td>
+<td align="left">A scanner such as <a href="https://github.com/snyk/agent-scan">Snyk Agent Scan</a></td>
+<td align="left">Nothing on that; what each tool may do without asking</td>
 </tr>
 <tr>
 <td align="left">See what the whole setup can do, which pieces work, and what to add next</td>
@@ -174,7 +190,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left"><code>ambit authority</code></td>
-<td align="left">Per-action permissions: what runs unattended, what needs confirmation</td>
+<td align="left">Per-action permissions: what runs unattended, what needs confirmation, and where Claude Code&#39;s own rules disagree</td>
 </tr>
 <tr>
 <td align="left"><code>ambit verify [id]</code></td>
@@ -350,13 +366,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 </ul>
 <hr>
 <h2 id="the-control-plane"><a class="anchor" href="#the-control-plane" aria-hidden="true" tabindex="-1">#</a>The control plane</h2>
-<p>The control plane is an interceptor that can stand between an agent and the shell: a step routed through it runs only if the graph says it may.</p>
-<p>Ambit answers whether a step may run wherever it is asked, and the answer binds in three places: <code>ambit apply</code>, always; this interceptor, for execution routed through it; and Claude Code&#39;s tool calls, once the <code>ambit gate</code> hook is installed. Other runtimes choose whether to ask <code>ambit_can</code>.</p>
-<p><strong>It runs from a checkout.</strong> The interceptor is a reference implementation and not part of the <code>ambit</code> command, so npm and Homebrew do not install it. In a clone, <code>npm run demo:incident</code> replays the walkthrough at the end of this section on a throwaway graph, and <code>node --experimental-sqlite src/control_plane/cli.ts --help</code> lists its commands. <code>exec &lt;envDir&gt; &lt;dbPath&gt; &#39;&lt;request&gt;&#39;</code> routes one step through the gate against the graph at <code>dbPath</code>. The others serve the walkthrough: <code>setup-env</code> writes its fixture actors and capabilities into the graph it is given, replacing any row with the same id, and <code>verify-node</code> sets a lifecycle with no check run, so point both at a new file and never at the graph <code>ambit where</code> prints.</p>
-<p>Host-level agent tooling is a real attack surface, so the interceptor can stand between an agent and the shell. Before a tool call routed through it reaches your machine, the proxy in <code>src/control_plane/proxy.ts</code> verifies three conditions: prerequisite capabilities are present, the capability is verified and functioning, and the caller has explicit authorization. A call that fails any condition is refused (<code>AMBIT_BLOCKED_UNAUTHORIZED</code>, exit code <code>2</code>) and leaves system state unchanged. Blocked calls generate a draft proposal and an HMAC challenge; <code>ambit approve &lt;proposal-id&gt; --by=&lt;person&gt;</code> creates a signed authorization artifact verified by the executor, which expires or invalidates if the proposal is modified. Spans record each evaluation, challenge, and receipt.</p>
-<p>The decision runs against the graph you name. What sits on the other side of the gate is chosen when the control plane starts, and every span names it. The default, <code>simulatedAdapter</code>, is a fixture: it merges the change into a JSON file and runs nothing.</p>
-<p><code>AMBIT_ADAPTER=docker</code>, or <code>--adapter=docker</code> on <code>src/control_plane/cli.ts</code>, puts a Docker adapter there instead, and an approved step&#39;s <code>payload.command</code> runs in a throwaway container. The approval names the command: the step a person signs shows it, and a retry carrying a different one is refused. Break-glass runs nothing there, since an agent cannot authorise its own command. Each step gets its own container from an image you pulled yourself (<code>alpine:3.20</code> unless <code>AMBIT_DOCKER_IMAGE</code> names another), with no network, a read-only root, every Linux capability dropped, an unprivileged user, and limits on memory, CPU and processes. The container is removed afterwards and its output, capped, comes back in the result; a step that exits non-zero ends the run as failed. A step reaches the network only when you started the control plane with <code>AMBIT_DOCKER_NETWORK=bridge</code> and a grant for the <code>network</code> action on its capability answers ALLOW. Nothing from the host is mounted unless <code>AMBIT_DOCKER_WORKDIR</code> names a directory, which is mounted read-only, and never your home directory, its dot-directories or the Docker socket. If Docker cannot run the step, the control plane refuses before anything runs and does not fall back to the simulator.</p>
-<p>Neither adapter deploys anything anywhere. Another one (Kubernetes, a deploy API) implements the same three-method <code>EnvironmentAdapter</code>, and nothing above the gate changes. <a href="https://github.com/zz-plant/ambit/blob/main/docs/incidents/INCIDENT_TRACE_001.md"><code>INCIDENT_TRACE_001</code></a> walks a deploy agent blocked mid-flight and then remediated, and <code>npm run demo:incident</code> replays it in 90 seconds; with <code>AMBIT_ADAPTER=docker</code> the authorized deploy runs <code>echo</code> in a container.</p>
+<p>A step routed through the control plane runs only if the graph says it may: prerequisites present, the capability passing its check, and the caller authorized. It is a reference implementation that runs from a checkout, not part of the <code>ambit</code> command, and by default it runs nothing: its executor merges a change into a JSON file. An opt-in Docker adapter runs an approved step in a throwaway container with no network. It is kept as it is and not extended, since the runtimes&#39; own permission modes and MCP gateways now own the call path. <a href="https://github.com/zz-plant/ambit/blob/main/docs/control-plane.md">The control plane</a> describes it in full.</p>
 <hr>
 <h2 id="security-invariants"><a class="anchor" href="#security-invariants" aria-hidden="true" tabindex="-1">#</a>Security invariants</h2>
 <p>Ambit reads developer toolchains and writes to agent configs, so the properties below are fixed. <a href="/ambit/docs/security/"><code>SECURITY.md</code></a> states each in full, with what is in scope and what is not; <a href="https://github.com/zz-plant/ambit/blob/main/src/server/AGENTS.md#security-posture">the servers guide</a> says where each is enforced.</p>
@@ -373,19 +383,19 @@ already recorded the deficit, so do not retry it under another name.</p>
 <li><a href="/ambit/docs/deep-dive/">Deep dive</a>: the reference for the model under everything above, the map in full, and where Ambit sits in the revisable-delegation loop.</li>
 <li><a href="/ambit/docs/mcp-config-locations/">Where each AI agent keeps its MCP config</a> · <a href="/ambit/docs/mcp-outage/">What breaks if an MCP server goes down</a> · <a href="/ambit/docs/audit-mcp-servers/">Auditing an agent&#39;s MCP servers</a> · <a href="/ambit/docs/compare/">Ambit and MCP gateways</a>: the questions people search for, answered with the commands above.</li>
 <li><a href="/ambit/docs/security/">Security</a> · <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md">Agent invariants</a> · <a href="https://github.com/zz-plant/ambit/blob/main/SUPPORT.md">Support</a> · <a href="/ambit/docs/contributing/">Contributing</a>: the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.</li>
-<li><a href="/ambit/docs/">Everything else</a>: the argument, the theory, Jev, the design notes, the changelog, the incident traces.</li>
+<li><a href="/ambit/docs/">Everything else</a>: the argument, the theory, the control plane, Jev, the design notes, the changelog, the incident traces.</li>
 <li><a href="https://zz-plant.github.io/ambit/llms.txt"><code>llms.txt</code></a>: the project in one page, for an agent that is deciding whether to recommend it.</li>
 </ul>
 <hr>
 <h2 id="contributing"><a class="anchor" href="#contributing" aria-hidden="true" tabindex="-1">#</a>Contributing</h2>
-<p>New capability models, runtime readers, visualization work and edge-case reports are all welcome. <a href="/ambit/docs/contributing/#what-is-worth-contributing">CONTRIBUTING.md lists three kinds of small, self-contained change</a> worth starting with; an issue carries <a href="https://github.com/zz-plant/ambit/labels/good%20first%20issue">good first issue</a> once somebody files one against them. <a href="/ambit/docs/contributing/">CONTRIBUTING.md</a> gets you from a clone to a passing pull request and <a href="/ambit/docs/contributing/#the-checks-ci-runs">lists every check CI runs</a>.</p>
+<p>Ambit is in <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#focused-mode-since-2026-11-10">focused mode</a>: it takes fixes, reports of where it read a setup wrong, and work that makes the capabilities it already has more reliable, and declines new integrations added for completeness. <a href="/ambit/docs/contributing/#what-is-worth-contributing">CONTRIBUTING.md lists three kinds of small, self-contained change</a> worth starting with; an issue carries <a href="https://github.com/zz-plant/ambit/labels/good%20first%20issue">good first issue</a> once somebody files one against them. <a href="/ambit/docs/contributing/">CONTRIBUTING.md</a> gets you from a clone to a passing pull request and <a href="/ambit/docs/contributing/#the-checks-ci-runs">lists every check CI runs</a>.</p>
 <hr>
 <h2 id="support-the-project"><a class="anchor" href="#support-the-project" aria-hidden="true" tabindex="-1">#</a>Support the project</h2>
 <p>Ambit is a personal project. It has one maintainer, so the fastest help is telling it where it got your setup wrong.</p>
 <ul>
 <li>Share an <code>ambit share --redact</code> snapshot of your map. Paths never enter the file and <code>--redact</code> replaces every name the tree did not supply with its category, so a real setup can be shown without naming it.</li>
-<li>Report unsupported runtimes or inaccurate capability models via <a href="https://github.com/zz-plant/ambit/issues/new/choose">issue templates</a>.</li>
-<li>To hear when a new runtime reader or capability lands, choose <strong>Watch → Custom → Releases</strong>.</li>
+<li>Report a runtime whose config Ambit misread, or a capability model that is wrong, via <a href="https://github.com/zz-plant/ambit/issues/new/choose">issue templates</a>.</li>
+<li>To hear when a release lands, choose <strong>Watch → Custom → Releases</strong>.</li>
 </ul>
 <hr>
 <h2 id="license"><a class="anchor" href="#license" aria-hidden="true" tabindex="-1">#</a>License</h2>
