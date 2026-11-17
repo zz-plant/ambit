@@ -629,9 +629,9 @@ async function main() {
   await cdp.clickWhere(deckTab('Standard'));
   await sleep(900);
 
-  // 7 — the proposal waiting for a person
+  // 7 — the proposal waiting for a person, under Changes
   console.log('  · proposals');
-  await cdp.clickWhere(deckTab('Proposals'));
+  await cdp.clickWhere(deckTab('Changes'));
   await sleep(1400);
   await hold(2.4);
 
