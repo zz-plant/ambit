@@ -26,12 +26,17 @@ Ambit reads the MCP configs of Claude Code and its plugins, Codex, Cursor, OpenC
 
 ---
 
-## What it tells you
+## When you'd reach for it
 
-- **What you already have.** Every MCP server each agent has, which of them pass their checks, and what may run without asking.
-- **What is one step away.** Capabilities whose prerequisites you already meet, each with a setup estimate, ranked by what keeps blocking your agents and by how much each step opens. Tools also compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions.
-- **What is configured but not working.** `ambit verify` runs a capability's declared check, and `ambit verify --mcp --remote` asks each MCP server, local or remote, whether it answers. One that fails is left out of plans and permissions until it passes.
-- **What stops if a piece goes.** Three providers that share one API credential show up as one point of failure.
+| When | Run | What it tells you |
+| :--- | :--- | :--- |
+| You want your agent to do something it cannot yet | `ambit goal "deploy on merge"` | The steps from what you already have, in order, each with a setup estimate |
+| You use two agents and cannot say which has what | `ambit` | Every agent's MCP servers on one map, Claude Code's plugins included, and the step that would open the most |
+| A server stopped answering, or a token expired | `ambit verify --mcp --remote` | Which servers answer, local or remote; `ambit impact <id>` names what stops with one that does not |
+| You start on a new project | `ambit repo` | What the project uses, and the server to add for it, with the command that adds it |
+| You approve the same permission prompt all day | `ambit authority` | What may run without asking, beside what Claude Code's own rules say |
+
+Under each answer is one graph of what your servers, models and skills add up to. Tools compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions. Three providers that share one API credential show up as one point of failure.
 
 Run it once to see what you have, then again after any change. A token that expired, a server that moved, or a binary that broke shows up as failing, and the next check proves the repair.
 

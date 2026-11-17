@@ -17,7 +17,8 @@ import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mapFindings } from './civ/layout';
-import WelcomeScreen, { RUNTIMES, RUNTIMES_READ } from './WelcomeScreen';
+import { GROUPS } from '../../engine/cli/groups';
+import WelcomeScreen, { MOMENTS, RUNTIMES, RUNTIMES_READ } from './WelcomeScreen';
 
 const html = renderToStaticMarkup(<WelcomeScreen onExploreDemo={() => {}} onViewLoop={() => {}} />);
 
@@ -119,4 +120,18 @@ test('the privacy assurance appears once, below the input and before agent help'
   expect(privacy).toBeGreaterThan(html.indexOf('</textarea>'));
   expect(privacy).toBeLessThan(html.indexOf('Which agent is it for?'));
   expect(html).toContain('class="intake-trust"');
+});
+
+test('the landing says when a developer would run it, goal first, before the paste box', () => {
+  expect(html).toContain('When you would run it');
+  expect(MOMENTS[0].run).toMatch(/^ambit goal /);
+  expect(html.indexOf('When you would run it')).toBeLessThan(html.indexOf('Paste a config here'));
+  expect(html.indexOf('Watch it open')).toBeLessThan(html.indexOf('When you would run it'));
+  // Each moment runs a verb the CLI has, so the page cannot outlive one.
+  const verbs = new Set(['status', ...Object.values(GROUPS).flat()]);
+  for (const { run } of MOMENTS) {
+    const verb = run.split(' ')[1];
+    if (verb) expect(verbs.has(verb), run).toBe(true);
+    expect(html).toContain(run.replace(/"/g, '&quot;'));
+  }
 });

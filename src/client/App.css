@@ -3205,6 +3205,52 @@ button.app-sample-tag:hover {
   margin-top: 4px;
 }
 
+/* When a developer would run it: the moment, the command, and what it says,
+   one row each and dense enough that the paste box stays near the fold. */
+.app-welcome-moments {
+  width: 100%;
+}
+
+.app-welcome-moments h2 {
+  margin: 0 0 8px;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.app-welcome-moments ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-welcome-moments li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+
+.app-welcome-when {
+  color: var(--text-primary);
+}
+
+.app-welcome-moments code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--accent);
+}
+
+.app-welcome-says {
+  flex-basis: 100%;
+  color: var(--text-muted);
+}
+
 .app-welcome-yours h2 {
   margin: 0 0 10px;
   font-size: var(--fs-lg);
@@ -6211,6 +6257,25 @@ button.app-sample-tag:hover {
 .ambit-limits {
   margin-top: 14px;
   margin-bottom: 8px;
+}
+
+/* Each server the reader pasted, with what it gives the agent: the name as a
+   step's name reads, what it supplies after it, and whether it is remote or
+   the only source of something, muted as a step's time is. */
+.ambit-server {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.ambit-server .ambit-step-name {
+  color: var(--text-primary);
+}
+
+.ambit-server-more {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
 
 /* On a phone the card is a sheet over the map, and what it names has to stay
