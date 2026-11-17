@@ -60,13 +60,42 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <br><img src="/ambit/docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it rings in blue the two capabilities it would make reachable; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920"><p><sub>Pick a next step and the map shows what it opens. Switch off something you rely on and it counts what stops.</sub></p>
 <p><code>npx ambit-cli</code>, or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and install nothing.</p>
 </div><hr>
-<h2 id="what-it-tells-you"><a class="anchor" href="#what-it-tells-you" aria-hidden="true" tabindex="-1">#</a>What it tells you</h2>
-<ul>
-<li><strong>What you already have.</strong> Every MCP server each agent has, which of them pass their checks, and what may run without asking.</li>
-<li><strong>What is one step away.</strong> Capabilities whose prerequisites you already meet, each with a setup estimate, ranked by what keeps blocking your agents and by how much each step opens. Tools also compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions.</li>
-<li><strong>What is configured but not working.</strong> <code>ambit verify</code> runs a capability&#39;s declared check, and <code>ambit verify --mcp --remote</code> asks each MCP server, local or remote, whether it answers. One that fails is left out of plans and permissions until it passes.</li>
-<li><strong>What stops if a piece goes.</strong> Three providers that share one API credential show up as one point of failure.</li>
-</ul>
+<h2 id="when-youd-reach-for-it"><a class="anchor" href="#when-youd-reach-for-it" aria-hidden="true" tabindex="-1">#</a>When you&#39;d reach for it</h2>
+<table>
+<thead>
+<tr>
+<th align="left">When</th>
+<th align="left">Run</th>
+<th align="left">What it tells you</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">You want your agent to do something it cannot yet</td>
+<td align="left"><code>ambit goal &quot;deploy on merge&quot;</code></td>
+<td align="left">The steps from what you already have, in order, each with a setup estimate</td>
+</tr>
+<tr>
+<td align="left">You use two agents and cannot say which has what</td>
+<td align="left"><code>ambit</code></td>
+<td align="left">Every agent&#39;s MCP servers on one map, Claude Code&#39;s plugins included, and the step that would open the most</td>
+</tr>
+<tr>
+<td align="left">A server stopped answering, or a token expired</td>
+<td align="left"><code>ambit verify --mcp --remote</code></td>
+<td align="left">Which servers answer, local or remote; <code>ambit impact &lt;id&gt;</code> names what stops with one that does not</td>
+</tr>
+<tr>
+<td align="left">You start on a new project</td>
+<td align="left"><code>ambit repo</code></td>
+<td align="left">What the project uses, and the server to add for it, with the command that adds it</td>
+</tr>
+<tr>
+<td align="left">You approve the same permission prompt all day</td>
+<td align="left"><code>ambit authority</code></td>
+<td align="left">What may run without asking, beside what Claude Code&#39;s own rules say</td>
+</tr>
+</tbody></table>
+<p>Under each answer is one graph of what your servers, models and skills add up to. Tools compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions. Three providers that share one API credential show up as one point of failure.</p>
 <p>Run it once to see what you have, then again after any change. A token that expired, a server that moved, or a binary that broke shows up as failing, and the next check proves the repair.</p>
 <p>Your agents can ask the same questions, over MCP or through a skill: what they can do before they try, and at a limit, what would lift it, drafted as a change you approve. The graph is a local SQLite file, with no telemetry.</p>
 <p>Three facts stay apart: configured, working, and allowed. A configured server may fail its check, and a working one may still not be permitted to run without asking. Ambit reports each separately, and never lets one stand in for another.</p>
