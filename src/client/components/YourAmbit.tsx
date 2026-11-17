@@ -3,6 +3,8 @@ import { shellQuote } from '../../shared/shell';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { INSTALL } from '../utils/copy';
+import { yourServers } from '../utils/yourServers';
+import { andList } from '../../shared/nextSteps';
 import { isEntry, isFailing, isProven, nextSteps, visibleItems } from './civ/layout';
 
 interface YourAmbitProps {
@@ -17,6 +19,9 @@ interface YourAmbitProps {
 
 /** How many next steps the card offers: one is a recommendation, three are a choice. */
 const SHOWN = 3;
+
+/** How many of a reading's servers the card names; the rest are counted. */
+const SERVERS_SHOWN = 6;
 
 /** A step as the card lists it, from the engine's ranking or the same rule run in the tab. */
 interface Step {
@@ -88,6 +93,17 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
   }, [first]);
 
   const reached = tree.filter(i => i.status === 'built');
+  // In the reader's terms: each server they pasted and what it gives the
+  // agent. Only for a reading; the machine's own graph has My Setup for this.
+  const servers = useMemo(() => (reading ? yourServers(items) : []), [reading, items]);
+  const remote = servers.filter(s => s.remote).map(s => s.name);
+  // What the tab cannot know, said once, with what the CLI would ask a remote
+  // server the reader named.
+  const limits = `This tab cannot run checks or read your other agents. The CLI does both, on your machine${
+    remote.length
+      ? `, and asks ${andList(remote, 3)} whether ${remote.length === 1 ? 'it answers' : 'each answers'}`
+      : ''
+  }:`;
   const shown = steps.find(s => s.id === lit) ?? steps[0];
   const close = () => {
     clearSimulation();
@@ -161,6 +177,38 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
         </p>
       )}
 
+      {servers.length > 0 && (
+        <div className="ambit-steps ambit-servers">
+          <h3 className="ambit-steps-head">What your servers give the agent</h3>
+          <ul>
+            {servers.slice(0, SERVERS_SHOWN).map(s => (
+              <li key={s.id} className="ambit-server">
+                <span className="ambit-step-name">{s.name}</span>{' '}
+                {s.supplies.length ? andList(s.supplies) : 'nothing on the map yet'}
+                {s.remote ? <span className="ambit-step-meta"> · remote</span> : null}
+                {s.alone.length > 0 && (
+                  <span className="ambit-step-meta">
+                    {s.alone.length === s.supplies.length
+                      ? ' · only source'
+                      : ` · only source of ${andList(s.alone)}`}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {servers.length > SERVERS_SHOWN && (
+            <p className="ambit-server-more">
+              and {servers.length - SERVERS_SHOWN} more, on the map
+            </p>
+          )}
+          {servers.some(s => s.alone.length > 0) && (
+            <p className="ambit-server-more">
+              If an only source stops, what it supplies stops with it.
+            </p>
+          )}
+        </div>
+      )}
+
       {shown && (
         <div className="ambit-steps">
           <h3 className="ambit-steps-head">What one more step opens</h3>
@@ -190,10 +238,7 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
 
       {reading ? (
         <>
-          <p className="app-tour-note ambit-limits">
-            This tab cannot run checks or read your other agents. The CLI does both, on your
-            machine:
-          </p>
+          <p className="app-tour-note ambit-limits">{limits}</p>
           <div className="app-tour-install">
             <code>{INSTALL}</code>
             <button type="button" onClick={() => copy('install', INSTALL)}>

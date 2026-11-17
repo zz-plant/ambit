@@ -46,6 +46,36 @@ export const RUNTIMES = [
  */
 export const RUNTIMES_READ = 16;
 
+/**
+ * When a developer would reach for it, each with the command and what it
+ * says. The lede says what Ambit is in its own terms; this says it in the
+ * reader's, as moments from their own week, so a visitor who never pastes a
+ * config still leaves knowing when it would earn a run. The goal comes first,
+ * since widening is what the product is for.
+ */
+export const MOMENTS = [
+  {
+    when: 'You want your agent to do something it cannot yet',
+    run: 'ambit goal "deploy on merge"',
+    says: 'The steps from what you already have, in order, each with a setup estimate.',
+  },
+  {
+    when: 'You use two agents and cannot say which has what',
+    run: 'ambit',
+    says: 'Every agent’s servers on one map, plugins included, and the step that would open the most.',
+  },
+  {
+    when: 'A server stopped answering, or a token expired',
+    run: 'ambit verify --mcp --remote',
+    says: 'Which servers answer, local or remote. ambit impact names what stops with one that does not.',
+  },
+  {
+    when: 'You approve the same permission prompt all day',
+    run: 'ambit authority',
+    says: 'What may run without asking, beside what Claude Code’s own rules say.',
+  },
+] as const;
+
 /** What the owner of an empty graph runs, which the page copies and never runs. */
 const SEED = 'ambit seed';
 
@@ -114,7 +144,8 @@ function demoNextStep() {
  * button that shows it happening. What breaks if a piece goes is in the lede
  * and the tour, after it, as the half that makes widening safe.
  *
- * Then the visitor's own config, pasted or dropped, and last what a visitor
+ * Then when a developer would reach for it, in the moments of their own week,
+ * then the visitor's own config, pasted or dropped, and last what a visitor
  * who is already convinced needs: the install line and the docs. Rendered
  * without the app chrome, so the first screen is not an empty search result.
  */
@@ -205,8 +236,23 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
         )}
 
         {!owner && (
+          <section className="app-welcome-moments" aria-labelledby="welcome-moments">
+            <h2 id="welcome-moments">When you would run it</h2>
+            <ul>
+              {MOMENTS.map(m => (
+                <li key={m.run}>
+                  <span className="app-welcome-when">{m.when}</span>
+                  <code>{m.run}</code>
+                  <span className="app-welcome-says">{m.says}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {!owner && (
           <div className="app-welcome-yours">
-            <h2>Or map your own MCP config</h2>
+            <h2>See it with your own MCP config</h2>
             <ConfigIntake onMapped={onMapped} />
             {dropError && (
               <p className="intake-error" role="alert">
@@ -233,11 +279,6 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
               No install needed: npx fetches it for the run, and it maps every runtime on this
               machine. To keep the command, install with Homebrew or{' '}
               <code>npm install -g ambit-cli</code>.
-            </p>
-            <p className="app-welcome-local">
-              Have a goal in mind? <code>ambit goal &quot;launch my saas&quot;</code> prints the
-              steps in order. Run <code>ambit status</code> again after any change: a token that
-              expired or a server that moved shows up as failing.
             </p>
           </>
         )}

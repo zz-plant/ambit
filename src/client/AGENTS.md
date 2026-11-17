@@ -70,8 +70,10 @@ src/client/                React frontend
     ConfigIntake.tsx       Which agent you use, asked first (`AGENTS` in hooks/useConfigImport.ts),
                            then its config pasted or picked, with the path to copy; or the servers
                            it runs, ticked (`PICKS`). The agent names the runtime a bare file omits
-    YourAmbit.tsx          The readout: what was read, how much of the tree it reaches, the next
-                           steps by the engine's rule, what is not verified yet, and one command. For
+    YourAmbit.tsx          The readout: what was read, how much of the tree it reaches, for a config
+                           read in the tab each of its servers and what it gives the agent
+                           (`utils/yourServers.ts`), the next steps by the engine's rule, what is
+                           not verified yet, and one command. For
                            a config read in the tab when it is read, and for the machine's own graph
                            on the first visit to `ambit web`, where the steps are `/api/loop`'s.
                            readout-parity.test.ts holds the tab to what `ambit` says of one config
@@ -183,6 +185,8 @@ src/client/                React frontend
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
     placeInTab.ts          A config read in the tab placed on the curated tree, by the engine's
                            rule: whose file it is, what every runtime brings, and its model
+    yourServers.ts         Each server a pasted config switches on: what it supplies on the map,
+                           what nothing else there supplies, and whether it is remote
     demoSnapshot.ts        The hosted demo's LoopSnapshot — the shape /api/loop returns; why a
                            step is next is read off the demo tree, never typed
     demoRun.ts             The hosted demo's sample runs

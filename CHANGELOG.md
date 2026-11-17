@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.1...main)
 
+### A pasted config's readout names your servers
+
+A config pasted into the hosted page got how much of the tree it reaches and what one more step would open, and not one word about the servers in it, so a visitor could not tell what any of it had to do with their setup. The readout now lists each server first: what it gives the agent, what nothing else in the file supplies and so goes with it, and which are remote. The line about what the tab cannot do names the remote ones as servers the CLI would ask. A capability any MCP server reaches by being one (Tool Protocol) is left out of each server's list, since it says nothing about that server.
+
+### The landing and the README say when you would run it
+
+Both explained what Ambit is in its own words (capabilities, reach, next steps) and left the reader to work out when they would want it. Each now opens with moments from a developer's week, each with the command and what it says: a goal the agent cannot reach yet, two agents and no idea which has what, a server that stopped answering, the same permission prompt all day, and in the README a new project. On the landing they sit between the sample's number and the paste box, which is now headed "See it with your own MCP config".
+
 ### What Claude Code's plugins bring is on the map
 
 A plugin is how many MCP servers arrive now, most of them remote, and Claude Code keeps none of them in `~/.claude.json`, which was the only file read. A setup whose services all came with plugins reached none of them. The seed now reads each plugin the user-level settings turn on (`enabledPlugins`, with `settings.local.json` having the last word), from where `plugins/installed_plugins.json` says it is installed: the servers in its `.mcp.json` or its manifest's `mcpServers`, and its skills. A server is named as the tool names Claude Code gives it, so a failure in `mcp__plugin_engineering_github__create_issue`, or a gate question about it, lands on `mcp:plugin-engineering-github`.
