@@ -105,7 +105,9 @@ plan — what to acquire next, and whether it paid
                           proposal's before/after verdict
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
-  plan repo [dir]         inspect project stack and recommend tailored agent superpowers
+  plan repo [dir]         what the project in a folder uses, and the servers to add
+                          for it: one another runtime runs, or the goal that
+                          reaches one
 
 check — what is verified, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
@@ -178,10 +180,12 @@ check — what is verified, what is permitted, what is currently broken
                           can only deny or ask, never allow. It denies what is
                           forbidden and asks about what asks first or has no
                           grant. Ends on what is still missing
-  check init-rules        inject pre-flight guidance into workspace agent rules
+  check init-rules        write the line an agent follows before an unused tool
+                          into CLAUDE.md, AGENTS.md or .cursorrules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported
-  check ci [--strict]     verify capability invariants for CI/CD pipelines
+  check ci [--strict]     fail a pipeline on any failing check; --strict also on
+                          what is unverified or rests on one provider
 
 govern — the reviewable path from proposal to applied change
   govern people [add <id> ["Name"]]   who may approve and set budgets; adding

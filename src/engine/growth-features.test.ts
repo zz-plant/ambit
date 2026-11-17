@@ -680,7 +680,7 @@ describe('ambit connect on the runtimes it only read before', () => {
 });
 
 describe('ambit repo (repository stack intelligence)', () => {
-  test('inspects package.json dependencies, database, and recommends superpowers', () => {
+  test('reads the dependencies and database files, and says what to add for them', () => {
     const projectDir = join(testDir, 'my-app');
     mkdirSync(projectDir, { recursive: true });
     writeFileSync(
@@ -712,7 +712,8 @@ describe('ambit repo (repository stack intelligence)', () => {
 
     const analysis = analyzeRepo(projectDir, testDir);
     expect(analysis.superpowers.length).toBeGreaterThan(0);
-    expect(analysis.superpowers.some(sp => sp.title.includes('Database'))).toBe(true);
+    expect(analysis.superpowers.some(sp => /database/i.test(sp.title))).toBe(true);
+    expect(analysis.summary).toMatch(/to add$/);
     expect(analysis.superpowers.some(sp => sp.title.includes('Playwright'))).toBe(true);
   });
 

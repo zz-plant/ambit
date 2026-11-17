@@ -22,31 +22,31 @@ Three descriptions exist and they are not interchangeable. The paragraph above i
 
 Not posted as of 2026-11-04. Before posting:
 
-1. Publish the release first, so `npx ambit-cli` gives what the post describes. `ambit weigh` and the shared readout are not in 0.6.0.
+1. Publish the release first, so `npx ambit-cli` gives what the post describes. Plugin servers and `ambit verify --mcp --remote` are not in 0.7.1.
 2. Re-check the counts. Tools are `TOOLS` in `src/mcp/tools.ts`. Runtimes are OpenCode, Claude Code and the `CLIENTS` array in `src/engine/mcp-clients.ts`. Capabilities with a check are the tree's nodes carrying `verify`. No test pins any of the three.
 3. Run `npx ambit-cli` on a clean home, and open the demo on a phone.
 4. Post on a weekday morning, US time, when you can answer comments for the next few hours. Ask no one for votes.
 
 The last paragraph of limits is there on purpose. The first reply will raise them otherwise, and a reader who sees them stated trusts the rest more. Read the sentence about Claude Code and make sure it says what you would say.
 
-**Title:** Show HN: Ambit – A Civilization-style tech tree of what your AI agents can do
+**Title:** Show HN: Ambit – A local map of what your AI agents can do, and what actually works
 
 My agent setup grew into a pile of MCP servers, scripts, skills, credentials and runtimes. I could read each config file, but none of them said what the whole thing could do, what one missing piece was holding back, or which configured tools had stopped working.
 
-Ambit reads those configs (Claude Code, Cursor, OpenCode and 13 others) into a local SQLite graph and places your setup on a curated tree of 46 capabilities. It tells you:
+Ambit reads those configs (Claude Code and its plugins, Codex, Cursor, OpenCode and 12 others) into a local SQLite graph and places your setup on a curated tree of 46 capabilities. It tells you:
 
 - What is one step away and what that step would open. On the demo's sample setup, adding embeddings takes about 10 minutes and opens two more capabilities.
-- Which configured tools fail their checks.
-- What each tool server's tool list costs in context every session.
+- Which configured tools fail their checks, and which MCP servers, local or remote, do not answer.
 - What stops if a server or a shared credential goes.
+- What may run without asking, beside what Claude Code's own permission rules say.
 
-Your agents can ask the same questions over MCP, 61 tools of them, and can draft a config change. Approving and applying it stay outside MCP, with you.
+Your agents can ask the same questions, over MCP or through a skill in any agent that reads them, and can draft a config change. Approving and applying it stay outside the agent, with you.
 
 Demo, nothing to install: https://zz-plant.github.io/ambit/?demo=1. Paste a config and it is read in the tab, or tick the servers you run.
 
 On your machine: `npx ambit-cli`, with Node 22.18 or newer, on macOS, Linux or Windows. It writes only its own local file, and there is no telemetry. MIT licensed.
 
-Where it falls short: the tree is my opinion of what a capability is and what it needs, so it will be wrong in places. About half the capabilities have a declared check, and the rest can only be shown as configured. Windows is the newest and least tested: CI shows only that it reads configs there. The time and cost reports need a few weeks of recorded sessions before they say much. Most of the code was written with Claude Code, under my direction.
+Where it falls short: the tree is my opinion of what a capability is and what it needs, so it will be wrong in places. It does not track tokens against a plan's quota, sync configs between runtimes or scan tool descriptions; other tools do each of those well. About half the capabilities have a declared check, and the rest can only be shown as configured. Windows is the newest and least tested: CI shows only that it reads configs there. The time and cost reports need a few weeks of recorded sessions before they say much. Most of the code was written with Claude Code, under my direction.
 
 Repository: https://github.com/zz-plant/ambit
 

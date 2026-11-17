@@ -22,7 +22,7 @@ For a small setup, a table on paper is enough:
 2. Write down what your agents rely on (opening a pull request, searching the web, querying a database), and next to each, every server, model or tool that can do it.
 3. Anything with one name next to it is a single point of failure.
 4. Anything whose names all read the same token variable, or all reach the same host, is one too, however many names it has. Revoke the token or lose the host and they go together.
-5. For the third answer, try each one. A server you have not seen work recently may already be broken.
+5. For the third answer, try each one. A server you have not seen work recently may already be broken, and a remote one may have moved or gone.
 
 This stops scaling at a few runtimes and a dozen servers, and it misses a capability one piece unlocks for another, which only exists in combination.
 
@@ -34,6 +34,7 @@ This stops scaling at a few runtimes and a dozen servers, and it misses a capabi
 npx ambit-cli              # reads every agent config on this machine into the graph
 npm install -g ambit-cli   # keeps the `ambit` command
 ambit status               # what is failing, and what has a single provider
+ambit verify --mcp --remote  # which servers, local or remote, answer at all
 ambit impact mcp:github    # what stops, and what only weakens, if this one goes
 ambit credentials          # what revoking each declared credential would end
 ```
@@ -43,7 +44,7 @@ ambit credentials          # what revoking each declared credential would end
 Two of the answers need something from you first:
 
 - **Shared credentials are declared, never inferred.** Ambit cannot see that three servers present one token until a `credentials` block in the config names them ([the shape](./deep-dive.md#what-a-node-is)). Until then `ambit credentials` says none are declared, and three providers behind one token read as three providers.
-- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unverified: counted as working, never shown as broken.
+- **"Already broken" needs a check that ran.** A capability counts as failing only when its last check failed. `ambit verify` runs the declared ones, and `ambit verify --mcp --remote` checks each server itself: a local one is started and asked for its tools, and a remote one is sent a request with no sign-in. A server that was never checked reads as reached and unverified, and a remote one that asks for a sign-in stays unverified, since your runtime's own sign-in is never sent.
 
 ## Seeing it on the map
 
@@ -55,7 +56,7 @@ Each answer has its own fix:
 
 - **For what stops**, add a second provider: another server, model or tool that supplies the same capability. `ambit catalog <capability>` lists the ways the tree knows to provide it, where it knows any. Once the new provider is in a config and seeded, `ambit impact` on the old one reports the capability as surviving.
 - **For providers behind one token or host**, declare the credential in a `credentials` block so the sharing is counted, then give one of them its own key or a different host.
-- **For what is already broken**, fix or remove it, and declare a check where you can so the next failure shows up before an agent finds it.
+- **For what is already broken**, fix or remove it, then `ambit verify --failing` re-runs what failed. Declare a check where you can, so the next failure shows up before an agent finds it.
 
 Before removing a server or revoking a token on purpose, run `ambit impact` on it first. Its answer is as complete as the declarations behind it, so declare shared tokens and checks first.
 

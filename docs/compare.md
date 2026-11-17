@@ -10,16 +10,20 @@ A gateway answers **may this call go ahead, now?** It sees calls as they happen,
 
 A third kind, discovery tools, answers which servers exist at all: [Akto](https://www.akto.io/blog/mcp-discovery-tools) finds MCP servers across an organization's networks, cloud and registries.
 
+## The runtime's own permission mode
+
+Before any gateway, the runtime decides. Claude Code's permission rules and modes, auto mode among them, decide what runs without asking, with its sandbox as the boundary for shell commands, and Codex CLI has its approval policy and sandbox. They sit on the call path too, built in, and most sessions run under them with no gateway at all. Ambit does not replace them: `ambit authority` lists Claude Code's rules beside your grants in Ambit and says which holds where they disagree.
+
 ## Ambit
 
-Ambit works beside the agent and does not need to be on the call path. It reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI and others into one local graph, and answers questions about the setup as a whole:
+Ambit works beside the agent and does not need to be on the call path. It reads the configs of Claude Code and its plugins, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI and others into one local graph, and answers questions about the setup as a whole:
 
 - **What can this setup do?** Capabilities are composed: version control plus a review agent is a review loop. Ambit maps what the servers, models, skills and commands add up to, against a curated tree of what agent setups grow into.
-- **Does it work?** A capability with a declared check is verified or failing, and a failing one is left out of every plan and permission decision until it passes.
+- **Does it work?** A capability with a declared check is verified or failing, and a failing one is left out of every plan and permission decision until it passes. `ambit verify --mcp --remote` asks each server, local or remote, whether it answers.
 - **What breaks if one piece goes?** [The blast radius](./mcp-outage.md) of a server, model or credential: what would stop, and what would only lose one of its providers.
 - **What should change next, and was it worth it?** Ranked by what has actually blocked work, drafted as a proposal a person approves, and, once the session history (Ambit's local record of agent runs) holds a few weeks of them, measured against the hours it was forecast to save.
 
-Ambit has a gate too, and it is the guardrail, not the center. `ambit can` returns ALLOW, CONFIRM or DENY for an action, approvals are signed artifacts the executor verifies, and a grant narrows itself on one failing check. Two parts sit on the call path when you route calls through them: the control plane, and in Claude Code the `ambit gate` hook, which answers every tool call and can only deny or ask, never allow. The center is the map and the session history.
+Ambit has a gate too, and it is the guardrail, not the center. `ambit can` returns ALLOW, CONFIRM or DENY for an action, approvals are signed artifacts the executor verifies, and a grant narrows itself on one failing check. Two parts sit on the call path when you route calls through them: [the control plane](./control-plane.md), a reference implementation kept as it is, and in Claude Code the `ambit gate` hook, which answers every tool call and can only deny or ask, never allow. The center is the map and the session history.
 
 ## Side by side
 
