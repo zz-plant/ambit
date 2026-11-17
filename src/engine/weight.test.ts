@@ -33,6 +33,9 @@ const out = m => process.stdout.write(JSON.stringify(m) + '\\n');
 createInterface({ input: process.stdin }).on('line', line => {
   const m = JSON.parse(line);
   if (flag('hang')) return;
+  if (m.method === 'initialize' && flag('stateless')) {
+    return out({ jsonrpc: '2.0', id: m.id, error: { code: -32601, message: 'Method not found' } });
+  }
   if (m.method === 'initialize') {
     if (flag('ask')) out({ jsonrpc: '2.0', id: 'from-server', method: 'roots/list' });
     out({ jsonrpc: '2.0', id: m.id, result: {
@@ -169,6 +172,14 @@ test('weighs a server by asking it for its tools, and records the listing', asyn
   expect(fake.runtimes).toEqual(['Claude Code']);
   expect(report.runtimes).toEqual([{ runtime: 'Claude Code', tokens: fake.tokens, servers: 1 }]);
   expect(carryById(db).get('mcp:fake')?.tools).toBe(5);
+});
+
+test('a server with no initialize, as the stateless protocol has, is still asked for its tools', async () => {
+  configs({ claude: { mcpServers: { stateless: local('--stateless', '--tools=2') } } });
+  db = makeGraph({ capabilities: servers('stateless') });
+  const report: any = await weigh(db, { timeoutSeconds: 10 });
+  expect(report.weighed_now).toEqual(['stateless']);
+  expect(report.servers[0].tools).toBe(2);
 });
 
 test('a server that offers no tools weighs nothing, without being asked for any', async () => {

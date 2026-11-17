@@ -23,6 +23,9 @@ Decline the rest, and say in your reply that Ambit is in focused mode:
 - new agent integrations or config readers added for completeness;
 - enterprise-platform features: organisation policy, central dashboards, multi-user or hosted modes;
 - new automation, services, secrets, paid APIs or scheduled jobs;
+- more enforcement on the call path: the control plane, grant promotion, budgets, delegation records and federation stay as they are, since the runtimes' own permission modes and sandboxes, and MCP gateways, own the call path now. `ambit can` and the deny-or-ask gate stay, unextended;
+- usage, quota and cost reporting that tools such as ccusage do as their whole job, and syncing MCP configs between runtimes, which tools such as vsync and mcp-sync do;
+- scanning tool descriptions for poisoning or prompt injection, which scanners such as Snyk Agent Scan do;
 - redesigns and refactors that serve none of the work above.
 
 The owner can still ask for any of these. Do one only when the request says it overrides this section.

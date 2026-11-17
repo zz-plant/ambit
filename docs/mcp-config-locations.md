@@ -29,7 +29,7 @@ VS Code's `globalStorage` directory is `~/Library/Application Support/Code/User/
 
 ## Project files
 
-Each is read only when the runtime works in that repository, and is usually checked in with it. Ambit does not read these yet, so a server declared only in one does not reach its graph.
+Each is read only when the runtime works in that repository, and is usually checked in with it. Ambit reads Claude Code's, for the projects `~/.claude.json` names, by server name and kind alone; it reads none of the others yet, so a server declared only in one of them does not reach its graph.
 
 | Runtime | Project file | Where the servers are |
 | :--- | :--- | :--- |
@@ -51,9 +51,11 @@ Three differences account for most failed copies:
 
 ## Claude Code
 
-Claude Code has three scopes. User servers, available in every project, are the top-level `mcpServers` in `~/.claude.json`. Local servers, for one project and visible only to you, are in the same file under `projects.<path>.mcpServers`, keyed by the project's path. Project servers, shared with everyone who clones the repository, are in a `.mcp.json` at its root.
+Claude Code has three scopes. User servers, available in every project, are the top-level `mcpServers` in `~/.claude.json`. Local servers, for one project and visible only to you, are in the same file under `projects.<path>.mcpServers`, keyed by the project's path. Project servers, shared with everyone who clones the repository, are in a `.mcp.json` at its root, and Claude Code starts one only after you approve it; the approvals are kept in `~/.claude.json` under each project (`enabledMcpjsonServers`, `disabledMcpjsonServers`).
 
-Ambit reads the user and local servers and counts a server once, wherever it is declared; it does not read `.mcp.json` yet. It also reads skills, agents and settings under `~/.claude/`. `CLAUDE_CONFIG` and `CLAUDE_HOME` point Ambit at a different file or directory.
+Plugins bring servers too, and most of them are remote. A plugin turned on in `~/.claude/settings.json` (`enabledPlugins`, by `name@marketplace`) is installed where `~/.claude/plugins/installed_plugins.json` records, and its servers are in a `.mcp.json` at the plugin's root or under `mcpServers` in its `.claude-plugin/plugin.json`. Claude Code names each one `plugin:<plugin>:<server>`, and its tools `mcp__plugin_<plugin>_<server>__<tool>`.
+
+Ambit reads the user and local servers, the servers and skills of every plugin that is turned on, and each known project's `.mcp.json` by name and kind, never its commands. It counts a server once, wherever it is declared. It also reads skills, agents and settings under `~/.claude/`. `CLAUDE_CONFIG` and `CLAUDE_HOME` point Ambit at a different file or directory.
 
 ## Claude Desktop
 

@@ -64,7 +64,6 @@ import {
   workReport,
   usageReport,
   unmappedUse,
-  usageWindows,
 } from '../engine/telemetry.ts';
 import { budgetReport } from '../engine/budgets.ts';
 import { reversibilityReport } from '../engine/reversibility.ts';
@@ -435,7 +434,7 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
         res = tt(db => humanDigest(db, args?.days));
         break;
       case 'tt_opportunities':
-        res = tt(db => opportunitiesFor(db, args?.by, args?.budget));
+        res = tt(db => opportunitiesFor(db, args?.by));
         break;
       case 'tt_opportunity':
         res = tt(db => opportunityFor(db, args.id));
@@ -514,11 +513,7 @@ async function dispatchTool(name: string, rawArgs: unknown): Promise<any> {
         break;
       case 'tt_usage':
         res = tt(db =>
-          args?.windows
-            ? usageWindows(db, { days: args?.days })
-            : args?.unmapped
-              ? unmappedUse(db, args?.days)
-              : usageReport(db, args?.days)
+          args?.unmapped ? unmappedUse(db, args?.days) : usageReport(db, args?.days)
         );
         break;
       case 'tt_run_begin':

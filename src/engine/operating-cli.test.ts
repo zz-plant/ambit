@@ -585,38 +585,3 @@ test('the curated model contributes catalog rows for alternatives it names', () 
   expect(catalog.options[0].source).toBe('techtree');
   expect(catalog.options[0].setup).toBeDefined();
 });
-
-test('--budget allocates the best combination within it', () => {
-  seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
-  // Two clerical burdens: a small one and a large one, both priced.
-  const r = beginRun(db, { goal: 'move data' });
-  for (let i = 0; i < 6; i++)
-    recordIntervention(db, r.run, 'human:kanav', {
-      kind: 'clerical',
-      capabilityId: 'combo:data-access',
-      activeSeconds: 1800,
-    });
-  const r2 = beginRun(db, { goal: 'search the web' });
-  for (let i = 0; i < 3; i++)
-    recordIntervention(db, r2.run, 'human:kanav', {
-      kind: 'clerical',
-      capabilityId: 'combo:web-research',
-      activeSeconds: 1800,
-    });
-  (db as any).close();
-
-  const withBudget = cli('opportunities', '--budget=5000');
-  expect(withBudget.allocation).toBeDefined();
-  expect(withBudget.allocation.budget_dollars).toBe(5000);
-  expect(withBudget.allocation.setup_dollars).toBeLessThanOrEqual(5000);
-  expect(withBudget.allocation.savings_per_year_dollars).toBeGreaterThan(0);
-  expect(withBudget.allocation.picks.length).toBeGreaterThan(0);
-  // Every pick is a real opportunity from the ranked list.
-  const ids = new Set(withBudget.opportunities.map((o: any) => o.id));
-  for (const pick of withBudget.allocation.picks) expect(ids.has(pick.id)).toBe(true);
-
-  // No budget → no allocation, just the ranked list.
-  const plain = cli('opportunities');
-  expect(plain.allocation).toBeUndefined();
-});

@@ -116,6 +116,11 @@ check — what is verified, what is permitted, what is currently broken
   check verify --failing  re-run only the checks that are failing or recovering
                           now, after fixing what broke them; one pass brings a
                           capability back
+  check verify --mcp [server] [--remote]   start each local MCP server and ask
+                          for its tools; --remote, or a remote server named,
+                          also sends each remote one a request with no sign-in
+                          and records whether it answers. A server that asks
+                          for a sign-in proves nothing, so no run is recorded
   check fix <cap>         what to type for a capability that is failing or not
                           yet reached: the re-check command and the ways to
                           acquire it, with each patch to paste. Prints only
@@ -173,10 +178,6 @@ check — what is verified, what is permitted, what is currently broken
                           can only deny or ask, never allow. It denies what is
                           forbidden and asks about what asks first or has no
                           grant. Ends on what is still missing
-  check port [server] [--to=<runtime|all>] [--from=<runtime>] [--dry-run]
-                          port an MCP server between agent runtimes (Claude, Cursor, Codex, etc.)
-  check toggle <server> [--off|--on] [--to=<runtime>] [--dry-run]
-                          turn an MCP server off or on across agent runtimes
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported
@@ -203,11 +204,6 @@ govern — the reviewable path from proposal to applied change
 report — what the setup cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
-  report usage --windows [days]
-                          tokens per five-hour window, each runtime's apart,
-                          the current one's time left, and the last 7 days;
-                          the last 24 hours unless days are given. No plan's
-                          limit is known, so none is shown
   report usage --refresh  read every Claude Code, Codex, OpenCode and Amp
                           session log again from the top, for token counts an
                           earlier read missed
@@ -269,8 +265,6 @@ const INDEX: Record<string, [string, string][]> = {
     ['budget', 'a ceiling on what a capability may spend'],
     ['gate', 'the brake on a Claude Code tool call: it can ask or deny, never allow'],
     ['weigh', "what each tool server's tool list costs in context"],
-    ['toggle <server>', 'turn a tool server off or on across runtimes'],
-    ['port [server]', 'copy a tool server from one runtime to another'],
     ['credentials', 'what revoking each credential would end'],
     ['init <cap>', 'scaffold a declared check to paste'],
     ['init-rules', "add Ambit's pre-flight guidance to your agent rules"],

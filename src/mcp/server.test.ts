@@ -111,6 +111,23 @@ test('every request in a batch is answered', () => {
   expect(replies.map(r => r.id)).toEqual([1, 2, 3]);
 });
 
+test('a client that sends no initialize, as on the stateless protocol, is still answered', () => {
+  // The 2026-07-28 revision drops the handshake: each request carries what it
+  // needs, so a client on it opens with the request it wants answered.
+  const [listed] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/list',
+      params: { _meta: { 'io.modelcontextprotocol/protocolVersion': '2026-07-28' } },
+    },
+  ]);
+  expect(listed.error).toBeUndefined();
+  expect(listed.result.tools.length).toBeGreaterThan(0);
+  const answered = call('ambit_briefing');
+  expect(answered.error).toBeUndefined();
+});
+
 test('the capability lifecycle is reachable by an agent, not only the CLI', () => {
   const [list] = rpc([{ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }]);
   const names = list.result.tools.map((t: any) => t.name);

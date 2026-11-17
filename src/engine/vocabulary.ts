@@ -348,8 +348,8 @@ const TOKEN_SOURCES: Readonly<Record<string, string>> = {
  * shows them. They had settled on 30 days apiece, except `attention` and
  * `audit`, at 7, so `ambit attention` and the Time & cost page read the same
  * ledger over different months. A window that means something else keeps its
- * own: ROI compares before and after over 60, a receipt covers the last hour,
- * and `usage --windows` the last day.
+ * own: ROI compares before and after over 60, and a receipt covers the last
+ * hour.
  */
 const DEFAULT_WINDOW_DAYS = 30;
 

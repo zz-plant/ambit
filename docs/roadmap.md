@@ -84,8 +84,8 @@ do real work → discover friction → identify the capability deficit
 | [12](#12-the-long-running-agent--built) | The long-running agent | built | Nothing in this section's scope. By design, a reply to a dispatched proposal comes back through `ambit approve` on a machine holding the key, never through the channel it was pushed to. |
 | [13](#13-expanding-the-ambit--built) | Expanding the ambit | built | The era tree does not refer to objects: *read repo A* and *read repo B* are two recorded facts and still one node. |
 | [14](#14-the-economic-half--partly-built) | The economic half | partly built | Human agency accounting normalized into Compensatory Friction (mechanical shims and glue to automate away) versus Sovereign Discretion (judgment, ethics and fiduciary sign-off to preserve). Spend recorded from session logs against declared prices. |
-| [15](#15-the-control-plane--built-against-a-simulated-environment) | The control plane | built, against a simulated environment | A runtime that routes through the proxy by default: it has its own entry point and no `ambit` verb, so nothing reaches it unless a caller chooses to. The Docker adapter, chosen explicitly, runs an approved step in an isolated container and deploys nothing anywhere; an adapter for a real deploy target (Kubernetes, a deploy API) is unbuilt. |
-| [16](#16-federation-fleet-governance-and-team-agency--partly-built) | Federation, fleet governance, and team agency | partly built | Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt. Only delegation records are hash-chained, and a machine's last-seen time moves only when `ambit incidents` runs. |
+| [15](#15-the-control-plane--built-and-declined-beyond-it) | The control plane | built, and declined beyond it | Declined in focused mode: the runtimes' own permission modes and sandboxes, and MCP gateways, own the call path now, so nothing here is to be extended. What exists stays as it is: its own entry point and no `ambit` verb, and a Docker adapter, chosen explicitly, that runs an approved step in an isolated container and deploys nothing anywhere. |
+| [16](#16-federation-fleet-governance-and-team-agency--declined) | Federation, fleet governance, and team agency | declined | Declined in focused mode: multi-tenant synchronization, GitOps governance, role-based access control and compliance exports are enterprise-platform work, which [AGENTS.md](../AGENTS.md#focused-mode-since-2026-11-10) declines. The signed summaries and delegation records that exist stay as they are. |
 | [17](#17-defined-outcomes--proposed) | Defined outcomes | proposed, unbuilt | Versioned scenario definitions, attempts bound to their actual targets and setup, acceptance evidence, and comparisons across environments. Work runs, recorded outcomes, scoped authority and node checks supply parts of the foundation. |
 | [18](#18-ontological-rationalization--built-and-normalized) | Ontological rationalization | built and normalized | Decoupled assurance from reachability; disambiguated provider collisions; unified 6-rung supervisory ladder; formal bound affordance calculus; normalized labor accounting (compensatory friction vs sovereign discretion). |
 
@@ -525,13 +525,15 @@ a signed, expiring artifact → apply enforces canExecute and verifies → roi
 measures before/after and writes the observation back
 ```
 
-What exists: the session history and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the capital allocator (`opportunities --budget N`), the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.
+What exists: the session history and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.
 
 The loop page draws each standing budget's ceiling with a tick for where the period lands at its pace so far ([L2](./interface-specs.md#l2-a-ceiling-with-a-forecast-tick)), and says what each opportunity's capability needs and what is already here ([S4](./interface-specs.md#s4-what-it-needs-and-is-it-met-here)).
 
 Attribution must reach the capability grain. Knowing total model spend does not tell an engineering lead whether Web Research or Code Refactoring consumed the budget. Joining consumption ledger records with capability IDs breaks down token and dollar costs per node. The opportunity engine can then model provider arbitrage: comparing hosted API consumption against local hardware amortization to show when moving embeddings or code analysis to a local model pays for dedicated hardware.
 
-## 15. The control plane — built, against a simulated environment
+## 15. The control plane — built, and declined beyond it
+
+> **Declined beyond what exists (2026-11-17).** Whether an agent may act is now decided on the call path by the runtime's own permission mode and sandbox, and by MCP gateways for teams. Ambit keeps `ambit can` as an answer an agent reads and the gate as a brake that only narrows, and builds no more enforcement: no adapter for a real deploy target, no runtime routed through the proxy by default. The section below is the record of what was built and why.
 
 The gate §9 describes stays a report until something consults it before acting. The interceptor is one of the three places that do: it sits in front of the tool call, and a call whose prerequisites are missing, whose foundation is failing, or whose caller is not permitted is refused with nothing on the machine changed.
 
@@ -539,7 +541,9 @@ The decision is real. It runs against the actual graph, through the same `canExe
 
 Production enforcement requires intercepting live tool calls across real transports. Pre-execution dry-run blast radius simulation (`simulate: true`) computes the cascade over dependent capabilities and combos at risk before execution. During active incidents, an audited emergency override (`break_glass: true` with a mandatory reason) allows privileged execution while recording a `break_glass` work event that carries the reason.
 
-## 16. Federation, fleet governance, and team agency — partly built
+## 16. Federation, fleet governance, and team agency — declined
+
+> **Declined (2026-11-17).** This is the enterprise-platform work that [focused mode](../AGENTS.md#focused-mode-since-2026-11-10) declines. The signed summaries and delegation records that exist stay as they are and are not extended. The section below is the record of what was designed and why.
 
 Ambit starts on one developer's workstation. In an engineering organization, capabilities, credentials, and infrastructure are distributed across dozens of machines and engineers.
 

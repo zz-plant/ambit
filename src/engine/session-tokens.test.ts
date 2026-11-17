@@ -1,6 +1,5 @@
 /**
- * Tokens kept per hour, Claude Code's read from its transcripts as they grow,
- * and the five-hour windows a subscription plan resets in.
+ * Tokens kept per hour, Claude Code's read from its transcripts as they grow.
  *
  * Every transcript here is a fixture in the documented shape, under a
  * temporary HOME, carrying what a real session holds beside its counts: a
@@ -9,10 +8,8 @@
  * a transcript read twice, grown, or read again whole at the session's end
  * counts each token once; a subagent's replay of the session's replies adds
  * nothing; rows from before hours were kept cover what they held; a price is
- * applied once, to what an hour grew by; windows follow ccusage's blocks rule
- * and say how long the current one has left by the clock they are given, and
- * never what is left of a limit; only counts, names, ids and times reach the
- * graph; and AMBIT_NO_LEDGER reads nothing.
+ * applied once, to what an hour grew by; only counts, names, ids and times
+ * reach the graph; and AMBIT_NO_LEDGER reads nothing.
  */
 import { appendFileSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
@@ -20,9 +17,8 @@ import type { Db } from './db.ts';
 import { readSessionLogs, transcriptTokens } from './session-logs.ts';
 import { ingestSpool } from './spool.ts';
 import { exportSync, importSync } from './sync.ts';
-import { beginRun, tokenUsage, usageWindows } from './telemetry.ts';
+import { beginRun, tokenUsage } from './telemetry.ts';
 import { cli, dir, getDb, join, migrate, seed } from './testing/cli.ts';
-import { loopView } from './views.ts';
 
 const WITH_GITHUB = {
   provider: { ollama: { models: { 'qwen3-coder': {} } } },
@@ -122,9 +118,6 @@ function totals(db: Db, run = RUN): Record<string, number> {
   for (const r of rowsOf(db, run)) out[r.unit] = (out[r.unit] ?? 0) + r.quantity;
   return out;
 }
-
-/** An ISO time `hours` before now, so a test that reads the real clock stays inside its windows. */
-const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
 
 // ── Kept per hour ────────────────────────────────────────────────────────────
 
@@ -348,10 +341,6 @@ test('rows written before hours were kept cover what they held, and only what li
       ['2026-10-05 13:00:00', 'input tokens', 4],
       ['2026-10-05 13:00:00', 'output tokens', 6],
     ]);
-    // In no window: those rows have no hour, and the report says how many.
-    const report = usageWindows(db, { now: Date.parse('2026-10-05T14:00:00.000Z') });
-    expect(report.windows?.map(w => w.tokens)).toEqual([410]);
-    expect(report.note).toContain('3175 tokens from sessions of the last 7 days were recorded');
   } finally {
     db.close();
   }
@@ -429,157 +418,6 @@ test("a Codex cursor from before hours were kept is read from the top, so the ru
   }
 });
 
-// ── Windows ──────────────────────────────────────────────────────────────────
-
-/** A Codex rollout under the temporary HOME, one turn at `at`. */
-function codexTurn(at: string, tokens: number) {
-  const folder = join(home(), '.codex', 'sessions', '2026', '10', '05');
-  mkdirSync(folder, { recursive: true });
-  const id = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
-  const use = {
-    input_tokens: tokens,
-    cached_input_tokens: 0,
-    output_tokens: 0,
-    total_tokens: tokens,
-  };
-  writeFileSync(
-    join(folder, `rollout-2026-10-05T13-00-00-${id}.jsonl`),
-    line({ timestamp: at, type: 'session_meta', payload: { id } }) +
-      line({ timestamp: at, type: 'turn_context', payload: { model: 'gpt-5-codex' } }) +
-      line({
-        timestamp: at,
-        type: 'event_msg',
-        payload: { type: 'token_count', info: { total_token_usage: use, last_token_usage: use } },
-      })
-  );
-}
-
-test("windows follow ccusage's rule: the first use's hour, five hours on a new one, an idle gap a new one", () => {
-  const path = transcriptPath();
-  writeFileSync(
-    path,
-    reply('a', '2026-10-05T09:10:00.000Z', { input: 1, cached: 0, output: 0 }) +
-      // Four hours and forty-five minutes in: the same window.
-      reply('b', '2026-10-05T13:55:00.000Z', { input: 2, cached: 0, output: 0 }) +
-      // Past five hours from 09:00: the next window, from this use's hour.
-      reply('c', '2026-10-05T14:00:30.000Z', { input: 4, cached: 0, output: 0 }) +
-      // Nothing for more than five hours: another window, from 22:00.
-      reply('d', '2026-10-05T22:30:00.000Z', { input: 8, cached: 0, output: 0 })
-  );
-  // Codex's windows are its own: its use at 13:30 starts one at 13:00.
-  codexTurn('2026-10-05T13:30:00.000Z', 16);
-  const db = graph();
-  try {
-    readSessionLogs(db, { env: env() });
-    const report = usageWindows(db, { days: 2, now: Date.parse('2026-10-06T01:00:00.000Z') });
-    expect(
-      report.windows?.map(w => [w.runtime, w.start, w.end, w.tokens, w.current, w.seconds_left])
-    ).toEqual([
-      ['Claude Code', '2026-10-05T22:00:00.000Z', '2026-10-06T03:00:00.000Z', 8, true, 7200],
-      ['Claude Code', '2026-10-05T14:00:00.000Z', '2026-10-05T19:00:00.000Z', 4, false, undefined],
-      ['Codex', '2026-10-05T13:00:00.000Z', '2026-10-05T18:00:00.000Z', 16, false, undefined],
-      ['Claude Code', '2026-10-05T09:00:00.000Z', '2026-10-05T14:00:00.000Z', 3, false, undefined],
-    ]);
-    expect(report.last_7_days).toEqual([
-      { runtime: 'Codex', tokens: 16, unpriced: true },
-      { runtime: 'Claude Code', tokens: 15, unpriced: true },
-    ]);
-
-    // The last day by default: only the windows that end inside it.
-    const day = usageWindows(db, { now: Date.parse('2026-10-06T20:00:00.000Z') });
-    expect(day.windows?.map(w => w.start)).toEqual(['2026-10-05T22:00:00.000Z']);
-    expect(day.windows?.[0].current).toBe(false);
-  } finally {
-    db.close();
-  }
-});
-
-test('a session that spans two windows is split between them, and the current one says how long it has left', () => {
-  const path = transcriptPath();
-  writeFileSync(
-    path,
-    reply('a', '2026-10-05T09:10:00.000Z', { input: 100, cached: 1000, output: 10 }) +
-      reply('b', '2026-10-05T12:30:00.000Z', { input: 200, cached: 2000, output: 20 }) +
-      reply('c', '2026-10-05T14:20:00.000Z', { input: 300, cached: 3000, output: 30 }) +
-      reply(
-        'd',
-        '2026-10-05T15:05:00.000Z',
-        { input: 400, cached: 4000, output: 40 },
-        {},
-        'claude-haiku-4-5'
-      )
-  );
-  const db = graph();
-  try {
-    readSessionLogs(db, { env: env() });
-    const now = Date.parse('2026-10-05T15:20:00.000Z');
-    const report = usageWindows(db, { now });
-    const [current, earlier] = report.windows ?? [];
-    expect(current).toEqual({
-      runtime: 'Claude Code',
-      start: '2026-10-05T14:00:00.000Z',
-      end: '2026-10-05T19:00:00.000Z',
-      current: true,
-      seconds_left: 3 * 3600 + 40 * 60,
-      tokens: 7770,
-      models: [
-        { model: 'claude-haiku-4-5', input: 400, cached: 4000, output: 40, unpriced: true },
-        { model: OPUS, input: 300, cached: 3000, output: 30, unpriced: true },
-      ],
-      unpriced: true,
-    });
-    expect(earlier).toMatchObject({
-      start: '2026-10-05T09:00:00.000Z',
-      end: '2026-10-05T14:00:00.000Z',
-      current: false,
-      tokens: 3330,
-      models: [{ model: OPUS, input: 300, cached: 3000, output: 30 }],
-    });
-    expect(earlier.seconds_left).toBeUndefined();
-    // A limit is something Ambit does not know, so nothing reads as one.
-    expect(JSON.stringify(report)).not.toMatch(/limit_|percent|remaining/);
-    expect(report.note).toContain("Ambit knows no plan's limit");
-  } finally {
-    db.close();
-  }
-});
-
-test('with nothing recorded the report says so, and draws no window', () => {
-  const db = graph();
-  try {
-    const report = usageWindows(db, { now: Date.parse('2026-10-05T15:20:00.000Z') });
-    expect(report.windows).toBeUndefined();
-    expect(report.note).toMatch(/^No tokens recorded in the last day\./);
-  } finally {
-    db.close();
-  }
-});
-
-test('ambit usage --windows answers from the ledger, and Time & cost shows a window only while one is under way', () => {
-  seed(WITH_GITHUB).close();
-  const path = transcriptPath();
-  writeFileSync(path, reply('old', ago(10), { input: 5, cached: 50, output: 5 }));
-  const db = graph();
-  try {
-    readSessionLogs(db, { env: env() });
-    expect(loopView(db).windows).toBeUndefined();
-    expect(loopView(db).tokens?.models[0]).toMatchObject({ model: OPUS, input: 5 });
-
-    appendFileSync(path, reply('new', ago(0.1), { input: 7, cached: 70, output: 7 }));
-    readSessionLogs(db, { env: env() });
-    const [window] = loopView(db).windows ?? [];
-    expect(window).toMatchObject({ runtime: 'Claude Code', current: true, tokens: 84 });
-    expect(window.seconds_left).toBeGreaterThan(0);
-    expect(window.seconds_left).toBeLessThanOrEqual(5 * 3600);
-  } finally {
-    db.close();
-  }
-  const answer = cli('usage', '--windows');
-  expect(answer.windows[0]).toMatchObject({ runtime: 'Claude Code', current: true, tokens: 84 });
-  expect(answer.windows).toHaveLength(2);
-  expect(cli('usage', '--windows', '7').days).toBe(7);
-});
-
 // ── Pricing, content, the switch, sync ───────────────────────────────────────
 
 const PRICE = [OPUS, '--input=5', '--cache-read=0.5', '--output=25'];
@@ -638,8 +476,6 @@ test('an hour is priced once, and an hour that grows is priced for what it grew 
     ]);
     const [model] = tokenUsage(db2)?.models ?? [];
     expect(model).toMatchObject({ input: 2_200_000, spend_dollars: 8.5, unpriced: true });
-    const [window] = usageWindows(db2, { now: hour + 60_000 }).windows ?? [];
-    expect(window).toMatchObject({ spend_dollars: 8.5, unpriced: true });
   } finally {
     db2.close();
   }

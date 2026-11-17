@@ -102,6 +102,35 @@ export function claudeRuleFor(
   return undefined;
 }
 
+/**
+ * Every permission rule Claude Code's user-level settings hold, deny first,
+ * then ask, then allow, each once, and the mode a session starts in. Read
+ * for `ambit authority`, which puts each rule beside Ambit's answer for the
+ * same call; neither is folded into the other (rule 20).
+ */
+export function claudePermissions(home: string): {
+  default_mode?: string;
+  rules: { says: 'deny' | 'ask' | 'allow'; rule: string }[];
+} {
+  const settings = claudeSettings(home);
+  const rules: { says: 'deny' | 'ask' | 'allow'; rule: string }[] = [];
+  const seen = new Set<string>();
+  for (const says of ['deny', 'ask', 'allow'] as const) {
+    for (const s of settings) {
+      const listed: unknown = s.permissions?.[says];
+      if (!Array.isArray(listed)) continue;
+      for (const rule of listed) {
+        if (typeof rule !== 'string' || !rule.trim() || seen.has(`${says}|${rule}`)) continue;
+        seen.add(`${says}|${rule}`);
+        rules.push({ says, rule: rule.trim() });
+      }
+    }
+  }
+  const mode = [...settings].reverse().find(s => typeof s.permissions?.defaultMode === 'string')
+    ?.permissions.defaultMode;
+  return { ...(mode ? { default_mode: mode } : {}), rules };
+}
+
 /** Whether a hook's command runs Ambit's gate, by name or from a checkout's cli.js. */
 function runsGate(command: unknown): boolean {
   return typeof command === 'string' && /\b(ambit(-cli)?|cli\.js)\b.*\bgate\b/.test(command);

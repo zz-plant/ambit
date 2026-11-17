@@ -20,7 +20,6 @@ The claim underneath is that what an agent setup can do is not written in any co
 - [Auditing which MCP servers a coding agent has](./audit-mcp-servers.md) — what is declared, what works, what may run without asking, and what was used but never declared.
 - [Ambit and MCP gateways](./compare.md) — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.
 - [Glossary](https://zz-plant.github.io/ambit/docs/glossary/) — every word the map and the CLI use, defined once, from the same file the app reads.
-- [Ambit and Jev](./jev.md) — how TypeSafe's Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.
 - [Deep dive](./deep-dive.md) — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the session history, delegation records, every MCP tool, and the map in full.
 - [llms.txt](../src/client/public/llms.txt) — the project on one page for an agent deciding whether to recommend it, served at [zz-plant.github.io/ambit/llms.txt](https://zz-plant.github.io/ambit/llms.txt).
 
@@ -28,14 +27,18 @@ The claim underneath is that what an agent setup can do is not written in any co
 
 - [From A to B: the seven steps](./loadout.md) — one person's setup from a pile of configs to work done without them, in seven steps, with the command for each.
 - [For agents](./agents.md) — the same journey from the agent's side: its sessions before and after Ambit, what it and the person each do as the ambit widens, and how to suggest it honestly.
-- [The ideas behind Ambit](./ideas.md) — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.
+- [The ideas behind Ambit](./ideas.md) — the claim, what is new in it, its nearest prior work, and what it does not claim.
+
+## Background and design notes
+
+None of these is needed to use Ambit. They are the reasoning behind it, and the record of directions that were designed and some that were declined. Ambit is in [focused mode](../AGENTS.md#focused-mode-since-2026-11-10), so read them as history and argument, not as a list of what comes next.
+
 - [Why Ambit](./why-ambit.md) — the argument for building it: what one agent stack looked like, why what it can do is composed, and why growing that reach needs governing.
 - [The affordance frontier](./affordance-frontier.md) — the theory under that argument, tested against robotics and brain-computer interfaces, with candidate applications in shared work, institutional access and economic agency.
-
-## Where it is going
-
-- [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided and what it still lacks, including the proposed layer for defined outcomes and their evidence. Nothing in it has a date or an owner.
-- [Interface specs](./interface-specs.md) — changes to the surfaces, including a proposed shorter path from a recommendation to a checked result. Each spec states its data, completion criteria and what has shipped.
+- [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided, what it still lacks, and which parts are declined. Nothing in it has a date or an owner.
+- [Interface specs](./interface-specs.md) — changes to the surfaces, each with its data, completion criteria and what has shipped.
+- [Federation](./federation.md) — signed summaries across environments, declined beyond what exists.
+- [Ambit and Jev](./jev.md) — how TypeSafe's Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.
 
 ## What changed, and what was said at the time
 

@@ -72,6 +72,7 @@
     "cli.js",
     "dist-cli",
     "plugins",
+    "skills",
     "dist/index.html",
     "dist/assets",
     "dist/favicon.svg",
