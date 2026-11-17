@@ -30,8 +30,7 @@ Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and [13 other agent
 
 - **What you already have.** Every MCP server each agent has, which of them pass their checks, and what may run without asking.
 - **What is one step away.** Capabilities whose prerequisites you already meet, each with a setup estimate, ranked by what keeps blocking your agents and by how much each step opens. Tools also compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions.
-- **What is configured but not working.** `ambit verify` runs a capability's declared check. One that fails is left out of plans and permissions until it passes.
-- **What your tool lists cost.** `ambit weigh` starts each local tool server your user-level configs declare and measures what its tool list takes from context every session.
+- **What is configured but not working.** `ambit verify` runs a capability's declared check, and `ambit verify --mcp --remote` asks each MCP server, local or remote, whether it answers. One that fails is left out of plans and permissions until it passes.
 - **What stops if a piece goes.** Three providers that share one API credential show up as one point of failure.
 
 Run it once to see what you have, then again after any change. A token that expired, a server that moved, or a binary that broke shows up as failing, and the next check proves the repair.
@@ -54,7 +53,7 @@ If it answers a question your config files could not, [a star](https://github.co
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. The container holds none of your configs, so the map it shows has nothing of yours on it: a way to try the code, not to map your setup. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
-npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows `./bootstrap.sh` does not run, `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, and a check written for `sh` stays unverified unless Git Bash or another `sh` is on the PATH. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout `npx ambit-cli` does, and links `ambit` into `~/.local/bin` when that directory is on your PATH (or prints the `ln -s` line when it is not). `./bootstrap.sh --dry-run` writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.
+npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows `./bootstrap.sh` does not run, `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, and a check written for `sh` stays unverified unless Git Bash or another `sh` is on the PATH. `./bootstrap.sh` discovers OpenCode, Claude Code (with the plugins it has turned on, and by name the servers a project it knows commits in `.mcp.json`), Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout `npx ambit-cli` does, and links `ambit` into `~/.local/bin` when that directory is on your PATH (or prints the `ln -s` line when it is not). `./bootstrap.sh --dry-run` writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
@@ -89,8 +88,7 @@ Ambit sits above the protocol layer and below workflow orchestration. Its CLI an
 | `ambit impact <id>` | What downstream stops working if this dependency fails |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
-| `ambit verify [id]` | Run a capability's declared check and record whether it passes |
-| `ambit weigh` | What each tool server's tool list costs in context every session, per runtime, and which ones no recorded session called |
+| `ambit verify [id]` | Run a capability's declared check and record whether it passes; `--mcp --remote` asks each MCP server, local or remote, whether it answers |
 | `ambit history [since <when> [<until>]]` | How the frontier, the edge of what you reach, moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
@@ -244,6 +242,10 @@ Both clients assume `ambit` is on your PATH. Homebrew and `npm install -g ambit-
   }
 }
 ```
+
+### Any agent that reads skills
+
+Codex CLI, Cursor, Gemini CLI, Copilot and most other agents read [Agent Skills](https://agentskills.io) folders. [`skills/ambit/SKILL.md`](./skills/ambit/SKILL.md) teaches one to ask `ambit can` before a tool it has not used, and which command answers which question, through the `ambit` command, with no MCP connection. Install it with `npx skills add zz-plant/ambit`, or copy the `skills/ambit` folder into `~/.agents/skills/`. The npm package ships it too.
 
 ### The one habit worth teaching
 

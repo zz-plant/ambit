@@ -17,6 +17,7 @@ import {
   claudeHookSnippet,
   decideCalls,
   gateToolCall,
+  runtimeRulesBeside,
   withoutEmpty,
 } from './gate.ts';
 import { cli, dir, ENGINE, getDb, join, seed } from './testing/cli.ts';
@@ -437,4 +438,61 @@ test('a plan is answered in one question, each line as ambit can would answer it
     e: false,
     f: { h: 'x' },
   });
+});
+
+test("ambit authority puts each Claude Code rule beside Ambit's answer, and says which holds", () => {
+  seed(WITH_GITHUB).close();
+  const home = mkdtempSync(join(tmpdir(), 'ambit-beside-'));
+  mkdirSync(join(home, '.claude'));
+  writeFileSync(
+    join(home, '.claude', 'settings.json'),
+    JSON.stringify({
+      permissions: {
+        defaultMode: 'acceptEdits',
+        allow: ['Bash(git status:*)', 'mcp__github', 'SomethingUnmapped'],
+        deny: ['Bash(git status:*)'],
+      },
+    })
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    const beside = runtimeRulesBeside(db, home);
+    expect(beside).toMatchObject({
+      runtime: 'claude-code',
+      default_mode: 'acceptEdits',
+      gate: 'off',
+    });
+    const by = (says: string, rule: string) =>
+      beside?.rules.find(r => r.says === says && r.rule === rule);
+    // Both read git status as observing, which the tree lets run.
+    expect(by('allow', 'Bash(git status:*)')).toMatchObject({ ambit: 'yes', agrees: true });
+    // A deny in the runtime holds whatever the graph says.
+    expect(by('deny', 'Bash(git status:*)')).toMatchObject({
+      ambit: 'yes',
+      agrees: false,
+      holds: "Claude Code's deny holds",
+    });
+    // A server-wide allow: the graph has no grant yet and asks, which only
+    // reaches the call through the gate.
+    expect(by('allow', 'mcp__github')).toMatchObject({
+      ambit: 'ask',
+      agrees: false,
+      holds: "Claude Code's allow holds while the gate is off",
+    });
+    expect(by('allow', 'SomethingUnmapped')?.ambit).toBeUndefined();
+    expect(beside?.disagree).toBe(2);
+  } finally {
+    db.close();
+  }
+});
+
+test('with no Claude Code settings, authority says nothing about them', () => {
+  seed(WITH_GITHUB).close();
+  const home = mkdtempSync(join(tmpdir(), 'ambit-beside-none-'));
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    expect(runtimeRulesBeside(db, home)).toBeUndefined();
+  } finally {
+    db.close();
+  }
 });

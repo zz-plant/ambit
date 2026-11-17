@@ -21,8 +21,6 @@ import { ambitCommand, cursorLedgerScript, typedCommand } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
-import { listPortStatus, portServer } from './port.ts';
-import { toggleServer } from './toggle.ts';
 import { inspectRepoStack, analyzeRepo } from './repo-inspect.ts';
 
 let testDir: string;
@@ -681,68 +679,6 @@ describe('ambit connect on the runtimes it only read before', () => {
   });
 });
 
-describe('ambit port (cross-runtime MCP server porter)', () => {
-  test('lists portable servers across detected runtimes and ports a server safely', () => {
-    // Setup Cursor with a filesystem MCP server
-    const cursor = join(testDir, '.cursor', 'mcp.json');
-    mkdirSync(dirname(cursor), { recursive: true });
-    writeFileSync(
-      cursor,
-      JSON.stringify({
-        mcpServers: {
-          files: {
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
-          },
-        },
-      })
-    );
-
-    // Setup Claude Code with empty servers
-    const claude = join(testDir, '.claude.json');
-    writeFileSync(claude, JSON.stringify({ mcpServers: {} }));
-
-    // List port status
-    const status = listPortStatus(testDir);
-    expect(status.servers.some(s => s.name === 'files')).toBe(true);
-    const filesServer = status.servers.find(s => s.name === 'files')!;
-    expect(filesServer.configured_in).toContain('cursor');
-    expect(filesServer.available_to_port).toContain('claude-code');
-
-    // Dry run does not write
-    const dry = portServer('files', { to: 'claude-code', home: testDir, dryRun: true });
-    expect(dry.ok).toBe(true);
-    expect(dry.results[0].action).toBe('added');
-    const claudeContentBefore = JSON.parse(readFileSync(claude, 'utf8'));
-    expect(claudeContentBefore.mcpServers.files).toBeUndefined();
-
-    // Actual port creates backup and configures destination
-    const res = portServer('files', { to: 'claude-code', home: testDir });
-    expect(res.ok).toBe(true);
-    expect(res.results[0].action).toBe('added');
-    expect(existsSync(claude + '.bak')).toBe(true);
-    const claudeContentAfter = JSON.parse(readFileSync(claude, 'utf8'));
-    expect(claudeContentAfter.mcpServers.files).toEqual({
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
-    });
-
-    // Second run reports already configured
-    const again = portServer('files', { to: 'claude-code', home: testDir });
-    expect(again.results[0].action).toBe('already_configured');
-  });
-
-  test('suggests nearest names on typo', () => {
-    const cursor = join(testDir, '.cursor', 'mcp.json');
-    mkdirSync(dirname(cursor), { recursive: true });
-    writeFileSync(cursor, JSON.stringify({ mcpServers: { playwright: { command: 'pw' } } }));
-
-    const res = portServer('playright', { to: 'claude-code', home: testDir });
-    expect(res.ok).toBe(false);
-    expect(res.error).toContain('Did you mean: playwright');
-  });
-});
-
 describe('ambit repo (repository stack intelligence)', () => {
   test('inspects package.json dependencies, database, and recommends superpowers', () => {
     const projectDir = join(testDir, 'my-app');
@@ -779,52 +715,29 @@ describe('ambit repo (repository stack intelligence)', () => {
     expect(analysis.superpowers.some(sp => sp.title.includes('Database'))).toBe(true);
     expect(analysis.superpowers.some(sp => sp.title.includes('Playwright'))).toBe(true);
   });
-});
 
-describe('ambit toggle (MCP server context bloat manager)', () => {
-  test('disables and re-enables MCP servers across JSON and TOML runtimes', () => {
-    // Setup Cursor config with heavy-tool
+  test("a server one runtime runs is offered to another by that runtime's own command, without its environment", () => {
+    const projectDir = join(testDir, 'pw-app');
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, 'package.json'),
+      JSON.stringify({ name: 'pw-app', devDependencies: { playwright: '^1.40.0' } })
+    );
     const cursor = join(testDir, '.cursor', 'mcp.json');
     mkdirSync(dirname(cursor), { recursive: true });
     writeFileSync(
       cursor,
       JSON.stringify({
         mcpServers: {
-          heavy: { command: 'node', args: ['server.js'] },
+          playwright: { command: 'npx', args: ['@playwright/mcp'], env: { PW_TOKEN: 'secret' } },
         },
       })
     );
-
-    // Setup Codex config with heavy-tool
-    const codex = join(testDir, '.codex', 'config.toml');
-    mkdirSync(dirname(codex), { recursive: true });
-    writeFileSync(codex, '[mcp_servers.heavy]\ncommand = "node"\nargs = ["server.js"]\n');
-
-    // Toggle off with dry-run writes nothing
-    const dry = toggleServer('heavy', { off: true, home: testDir, dryRun: true });
-    expect(dry.ok).toBe(true);
-    const cursorRawBefore = JSON.parse(readFileSync(cursor, 'utf8'));
-    expect(cursorRawBefore.mcpServers.heavy.disabled).toBeUndefined();
-
-    // Toggle off
-    const off = toggleServer('heavy', { off: true, home: testDir });
-    expect(off.ok).toBe(true);
-    const cursorRawAfter = JSON.parse(readFileSync(cursor, 'utf8'));
-    expect(cursorRawAfter.mcpServers.heavy.disabled).toBe(true);
-    expect(existsSync(cursor + '.bak')).toBe(true);
-
-    const codexTextAfter = readFileSync(codex, 'utf8');
-    expect(codexTextAfter).toContain('[disabled_mcp_servers.heavy]');
-    expect(codexTextAfter).not.toContain('[mcp_servers.heavy]');
-
-    // Toggle back on
-    const on = toggleServer('heavy', { on: true, home: testDir });
-    expect(on.ok).toBe(true);
-    const cursorRawRestored = JSON.parse(readFileSync(cursor, 'utf8'));
-    expect(cursorRawRestored.mcpServers.heavy.disabled).toBeUndefined();
-
-    const codexTextRestored = readFileSync(codex, 'utf8');
-    expect(codexTextRestored).toContain('[mcp_servers.heavy]');
-    expect(codexTextRestored).not.toContain('[disabled_mcp_servers.heavy]');
+    writeFileSync(join(testDir, '.claude.json'), JSON.stringify({ mcpServers: {} }));
+    const add = analyzeRepo(projectDir, testDir).superpowers.find(sp => sp.action_type === 'add');
+    expect(add?.title).toBe('Add Playwright MCP to claude-code');
+    expect(add?.command).toBe('claude mcp add --scope user playwright -- npx @playwright/mcp');
+    expect(add?.reason).toContain('set PW_TOKEN as that entry does');
+    expect(JSON.stringify(add)).not.toContain('secret');
   });
 });

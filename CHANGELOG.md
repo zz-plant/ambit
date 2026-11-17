@@ -6,6 +6,44 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.7.1...main)
 
+### What Claude Code's plugins bring is on the map
+
+A plugin is how many MCP servers arrive now, most of them remote, and Claude Code keeps none of them in `~/.claude.json`, which was the only file read. A setup whose services all came with plugins reached none of them. The seed now reads each plugin the user-level settings turn on (`enabledPlugins`, with `settings.local.json` having the last word), from where `plugins/installed_plugins.json` says it is installed: the servers in its `.mcp.json` or its manifest's `mcpServers`, and its skills. A server is named as the tool names Claude Code gives it, so a failure in `mcp__plugin_engineering_github__create_issue`, or a gate question about it, lands on `mcp:plugin-engineering-github`.
+
+Skills used to be read from every folder under `plugins/marketplaces`, so the skills of plugins nobody turned on counted. Only enabled plugins count now.
+
+A project Claude Code knows may commit its own `.mcp.json`. Its servers are now listed by name and kind, on once the person approved them in Claude Code (`enabledMcpjsonServers`, or `enableAllProjectMcpServers`), and off otherwise. The file came with a clone, so no command from it is kept, and nothing in Ambit starts or contacts what it names.
+
+### A remote server is asked whether it answers
+
+`ambit verify --mcp` started each local server and asked for its tools, and said nothing about a remote one, which is most of what a plugin brings. With `--remote`, or with a remote server named, it now sends each one `initialize`, and a GET for an event stream where that path answers 404 or 405, as the older SSE transport serves. A JSON-RPC answer, an error included, or a stream passes; a missing endpoint, a server error, a web page and a host that cannot be reached fail. A server that asks for a sign-in, refuses or redirects is reported and records no run: the request carries no sign-in, header or token from the config, so it proves nothing about the runtime's own. The query string is left off, a redirect is not followed, and a URL holding a credential or a variable is not contacted. Without `--remote`, the remote servers are named as not contacted. What an answer means is `classifyProbe` in `failures.ts`, the one place a failure is classified. SECURITY.md lists the request.
+
+### A server on the stateless protocol is answered, and weighed
+
+The 2026-07-28 revision of MCP drops the `initialize` handshake. Ambit's own server already answered a request that came with none, and a test now holds that. `ambit weigh` stopped at a server that refused `initialize` as a method it does not have; it now asks for the tools anyway.
+
+### `ambit authority` puts Claude Code's own rules beside the grants
+
+Whether an agent may act is mostly the runtime's to say now: its permission rules, the mode a session starts in, its sandbox. `ambit authority` now lists each of Claude Code's user-level permission rules beside what Ambit's gate would answer for the call it names, and where the two disagree, which one holds: a deny or an ask in Claude Code holds whatever Ambit says, and Ambit's ask or refusal holds over a Claude Code allow only while the gate is on. It changes neither.
+
+### A skill any agent can read
+
+`skills/ambit/SKILL.md` teaches an agent that reads Agent Skills, Codex CLI, Cursor, Gemini CLI and Copilot among them, to ask `ambit can` before a tool it has not used, and which command answers which question, through the `ambit` command with no MCP connection. `npx skills add zz-plant/ambit` installs it, and the npm package ships it.
+
+### What went away
+
+Ambit is in focused mode, and these are other tools' whole jobs.
+
+- `ambit port` and `ambit toggle`, which copied a server between runtimes and switched one on or off across them. Config sync is what vsync, mcp-sync and others do. `ambit repo`, which pointed at `ambit port`, now prints the target runtime's own command (`claude mcp add --scope user …`, `codex mcp add …`) with the same launch line and none of the environment, whose values can be tokens, and names the variables to set.
+- `ambit usage --windows`, the `windows` argument of `ambit_usage`, and the five-hour window figure on Time & cost. Quota windows are what ccusage and its neighbours track. Tokens are still kept per hour, and the month's figure stays.
+- `ambit opportunities --budget` and the `budget` argument of `ambit_opportunities`, which picked a combination of opportunities within a dollar amount. A call that passes `budget` is now refused with the arguments the tool does take.
+
+`ambit roi` and `ambit economics price` stay: the first is the hours-saved measure behind Time & cost, and the second is the only way a Claude Code user prices tokens for a budget on Hosted Inference.
+
+### `ambit weigh` says what Claude Code carries
+
+The figure is what a session carries when every tool definition is loaded at its start. Claude Code holds definitions back until the agent searches for them once they would fill much of the context, and the report, the glossary and the FAQ now say that there the figure is an upper bound. The README no longer leads with it.
+
 ### On Linux, the first run names Linux's folders
 
 A first run on Linux that found no config listed `~/Library/Application Support/…` for Claude Desktop, Cline, Roo Code and VS Code, folders a Linux machine does not have, though discovery already read `~/.config/…` there. `ambit connect` used the same first path, so connecting one of them before it had a config created the macOS folder. Both now use `~/.config/…` on Linux; macOS and Windows are unchanged.

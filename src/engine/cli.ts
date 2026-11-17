@@ -25,10 +25,7 @@ import {
   renderApply,
   renderConnect,
   renderDoctor,
-  renderPort,
   renderRepo,
-  renderToggle,
-  renderWindows,
   renderPlan,
   renderSpec,
   renderStatus,
@@ -86,7 +83,7 @@ import { loadTechTree, typedCommand } from './paths.ts';
 import { judgeGoal } from './judge.ts';
 import { judgeUnrouted, specDirHint, specGoal } from './spec.ts';
 import { humanDigest } from './attention.ts';
-import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
+import { workReport, usageReport, unmappedUse } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
 import { carryReport, weigh } from './weight.ts';
 import { declareModelPrice, economicsReport } from './economics.ts';
@@ -110,8 +107,6 @@ import {
   rollbackProposal,
 } from './governance.ts';
 import { runDoctor, setupGaps } from './doctor.ts';
-import { listPortStatus, portServer } from './port.ts';
-import { toggleServer } from './toggle.ts';
 import { analyzeRepo } from './repo-inspect.ts';
 import { gateNote } from './wiring.ts';
 import {
@@ -119,6 +114,7 @@ import {
   claudeHookSnippet,
   decideCall,
   gateToolCall,
+  runtimeRulesBeside,
   throughEntry,
 } from './gate.ts';
 import { statusLine } from './statusline.ts';
@@ -375,12 +371,6 @@ async function runCommand(
       // run already holds is not recorded again, so it only adds what an
       // earlier read missed.
       if (flags.has('--refresh')) emit(sessionLogReport(readSessionLogs(db, { refresh: true })));
-      // The five-hour windows a subscription plan resets in, the last day's
-      // unless a number of days is given.
-      else if (flags.has('--windows'))
-        emit(usageWindows(db, { days: parseInt(arg, 10) || 1 }), r =>
-          renderWindows(r, terminalPalette())
-        );
       else emit(usageReport(db, days()));
       break;
     case 'economics':
@@ -403,9 +393,7 @@ async function runCommand(
         break;
       }
       const by = (value('rank') ?? value('by')) as any;
-      const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
-      const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
-      emit(opportunitiesFor(db, by, Number.isFinite(budget as any) ? budget : undefined));
+      emit(opportunitiesFor(db, by));
       break;
     }
     case 'roi':
@@ -449,7 +437,9 @@ async function runCommand(
           emit(redirect && 'checks' in redirect ? redirect : runs);
         }
       } else if (flags.has('--mcp')) {
-        const ran = await verifyMcpServers(db, arg || undefined);
+        const ran = await verifyMcpServers(db, arg || undefined, undefined, {
+          remote: flags.has('--remote'),
+        });
         emit(ran);
         if (
           flags.has('--exit-code') &&
@@ -610,7 +600,12 @@ async function runCommand(
       } else if (arg) {
         const node = named(arg);
         emit('id' in node ? actionsReport(db, node.id) : node);
-      } else emit(authorityReport(db));
+      } else {
+        // The runtime's own rules beside the grants, since a call is decided
+        // by both and the narrower holds.
+        const beside = runtimeRulesBeside(db);
+        emit(beside ? { claude_code: beside, ...authorityReport(db) } : authorityReport(db));
+      }
       break;
     }
     case 'can': {
@@ -877,27 +872,6 @@ async function runCommand(
       emit({ ...result, ...(missing.length ? { still_missing: missing } : {}) }, r =>
         renderConnect(r, terminalPalette(), typedCommand)
       );
-      break;
-    }
-    case 'port': {
-      const palette = terminalPalette();
-      if (!arg) {
-        emit(listPortStatus(), r => renderPort(r, palette));
-      } else {
-        const to = value('to');
-        const from = value('from');
-        const dryRun = flags.has('--dry-run');
-        emit(portServer(arg, { to, from, dryRun }), r => renderPort(r, palette));
-      }
-      break;
-    }
-    case 'toggle': {
-      const palette = terminalPalette();
-      const off = flags.has('--off');
-      const on = flags.has('--on');
-      const to = value('to') || value('runtime');
-      const dryRun = flags.has('--dry-run');
-      emit(toggleServer(arg, { off, on, to, dryRun }), r => renderToggle(r, palette));
       break;
     }
     case 'repo': {

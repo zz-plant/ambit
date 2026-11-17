@@ -91,3 +91,24 @@ test('the skill says when to load it, and that the gate never allows', () => {
   expect(skill).toContain('sends nothing on its own');
   expect(skill).toContain('never allows');
 });
+
+test('the portable skill names only verbs the CLI has, and needs no MCP connection', () => {
+  const skill = readFileSync(join(ROOT, 'skills/ambit/SKILL.md'), 'utf8');
+  const front = skill.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+  // The Agent Skills format: the name is the folder's, the description under 1,024 characters.
+  expect(front).toMatch(/^name: ambit$/m);
+  expect((front.match(/^description: (.*)$/m)?.[1] ?? '').length).toBeLessThan(1024);
+  const verbs = new Set([
+    'mcp',
+    'briefing',
+    'status',
+    'seed',
+    'web',
+    ...Object.values(GROUPS).flat(),
+  ]);
+  const named = [...skill.matchAll(/`ambit ([a-z-]+)/g)].map(m => m[1]);
+  expect(named.length).toBeGreaterThan(5);
+  for (const verb of named) expect(verbs.has(verb), verb).toBe(true);
+  expect(skill).not.toMatch(/ambit_[a-z]/);
+  expect(skill).toContain('sends nothing on its own');
+});

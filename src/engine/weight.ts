@@ -75,6 +75,8 @@ interface ToolServer {
   /** The project a Claude Code local-scope server belongs to, where it is started. */
   cwd?: string;
   remote: boolean;
+  /** Where a remote server is reached, as its config writes it. */
+  url?: string;
   enabled: boolean;
 }
 
@@ -84,7 +86,9 @@ interface ToolServer {
  * object holding `path`, `args` and `env` (Zed's older one); `env`, or
  * `environment` (OpenCode).
  */
-function launchOf(raw: any): Pick<ToolServer, 'command' | 'args' | 'env' | 'remote' | 'enabled'> {
+function launchOf(
+  raw: any
+): Pick<ToolServer, 'command' | 'args' | 'env' | 'remote' | 'url' | 'enabled'> {
   const remote = Boolean(
     raw?.url ||
       raw?.serverUrl ||
@@ -108,7 +112,9 @@ function launchOf(raw: any): Pick<ToolServer, 'command' | 'args' | 'env' | 'remo
       for (const [k, v] of Object.entries(block)) env[k] = String(v);
     }
   }
-  return { command, args, env, remote, enabled };
+  // Gemini CLI's `httpUrl` is the streamable endpoint where it keeps both.
+  const url = [raw?.httpUrl, raw?.url, raw?.serverUrl].find(u => typeof u === 'string' && u);
+  return { command, args, env, remote, enabled, ...(url ? { url } : {}) };
 }
 
 /**
@@ -342,6 +348,12 @@ function listTools(server: ToolServer, timeoutMs: number): Promise<Answer> {
         const waiting = pending.get(message?.id);
         if (!waiting) continue;
         pending.delete(message.id);
+        // A server on the stateless revision of the protocol (2026-07-28) has
+        // no `initialize` and says so; its tools are still listed by asking.
+        if (waiting.method === 'initialize' && message.error?.code === -32601) {
+          page();
+          continue;
+        }
         if (message.error) {
           const said = String(message.error?.message ?? 'an error').slice(0, 120);
           finish({ ok: false, reason: `answered ${waiting.method} with ${said}` });
@@ -443,7 +455,7 @@ function carryById(db: Db): Map<string, ToolCarry> {
 }
 
 const ESTIMATE_NOTE =
-  'Each figure estimates a tool list as its server sends it, at four characters a token. A runtime that defers tool definitions until they are searched for carries less.';
+  'Each figure estimates a tool list as its server sends it, at four characters a token: what a session carries when every definition is loaded at its start. Claude Code holds definitions back until the agent searches for them once they would fill much of the context, so there the figure is an upper bound.';
 
 /**
  * What the configs carry, as last weighed: per runtime, per server, what was

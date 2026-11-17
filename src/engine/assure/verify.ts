@@ -5,6 +5,7 @@ import { deriveLifecycles, recentRuns, usable } from './lifecycle.ts';
 import { evaluatePromotions } from './promote.ts';
 import { attachObject } from '../objects.ts';
 import { listTools, toolServers } from '../weight.ts';
+import { probeServer, probeTarget, remoteServers } from '../remote-probe.ts';
 import type { CapabilityRow } from '../rows.ts';
 import {
   CHECK_RUN_SQL,
@@ -437,43 +438,105 @@ function checkableNames(db: Db): string[] {
   return [];
 }
 
+/** Records one MCP server check run, on a node the graph holds. */
+function recordServerRun(db: Db, id: string, passed: boolean, detail?: string) {
+  const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
+  if (!exists) return;
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, ?)"
+  ).run(id, passed ? 'passed' : 'failed', passed ? 1 : 0, detail || null);
+}
+
 /**
- * Smoke-test local MCP servers via `initialize` + `tools/list` so `ambit verify`
- * works for user-configured servers without hand-written shell probes.
+ * Smoke-tests MCP servers: each local one by starting it and asking
+ * `initialize` and `tools/list`, and with `remote`, or named, each remote one
+ * by one unsigned request to its URL (`remote-probe.ts`). A remote server
+ * that answers and asks for a sign-in has proved nothing either way, so it
+ * is reported and no run is recorded. Without `remote`, the remote servers
+ * are named as not contacted, since reaching one is a request to a host.
  */
 async function verifyMcpServers(
   db: Db,
   which?: string,
-  timeoutMs = 15_000
-): Promise<ReturnType<typeof settle> | { error: string }> {
-  const servers = toolServers().filter(
-    s => !s.remote && s.enabled && s.command && (!which || s.id === which || s.name === which)
-  );
-  if (!servers.length) {
+  timeoutMs = 15_000,
+  options: { remote?: boolean } = {}
+): Promise<
+  | (ReturnType<typeof settle> & {
+      not_contacted?: { name: string; host: string }[];
+      note?: string;
+    })
+  | { error: string }
+> {
+  const matches = (s: { id: string; name: string }) => !which || s.id === which || s.name === which;
+  const local = toolServers().filter(s => !s.remote && s.enabled && s.command && matches(s));
+  const remote = remoteServers().filter(matches);
+  const probing = Boolean(options.remote || which);
+  const hostOf = (url: string) => {
+    try {
+      return new URL(url).host;
+    } catch {
+      return url.slice(0, 60);
+    }
+  };
+  const notContacted =
+    !probing && remote.length
+      ? remote.map(s => ({ name: s.name, host: hostOf(s.url) }))
+      : undefined;
+  const note = notContacted
+    ? `${notContacted.length} remote server${notContacted.length === 1 ? ' was' : 's were'} not contacted. ambit verify --mcp --remote sends each one request, with no sign-in, and records whether it answers.`
+    : undefined;
+
+  if (!local.length && !(probing && remote.length)) {
+    if (which) return { error: `No enabled MCP server found for ${which}.` };
     return {
-      error: which
-        ? `No local enabled MCP server found for ${which}.`
-        : 'No local enabled MCP servers found to verify.',
+      error: notContacted
+        ? `No local enabled MCP servers found to verify. ${note}`
+        : 'No enabled MCP servers found to verify.',
     };
   }
-  const results = await Promise.all(
-    servers.map(async s => {
+  const localRuns = await Promise.all(
+    local.map(async s => {
       const started = Date.now();
       const ans = await listTools(s, timeoutMs);
       const status = ans.ok ? ('verified' as const) : ('failed' as const);
       const detail = ans.ok
         ? `${ans.listing.tools.length} tool${ans.listing.tools.length === 1 ? '' : 's'} listed`
         : ans.reason;
-      const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(s.id);
-      if (exists) {
-        db.prepare(
-          "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, ?)"
-        ).run(s.id, ans.ok ? 'passed' : 'failed', ans.ok ? 1 : 0, detail || null);
-      }
+      recordServerRun(db, s.id, ans.ok, detail);
       return { id: s.id, name: s.name, status, detail, ms: Date.now() - started };
     })
   );
-  return settle(db, results);
+  const remoteRuns = probing
+    ? await Promise.all(
+        remote.map(async s => {
+          const started = Date.now();
+          const target = probeTarget(s.url);
+          if ('refused' in target) {
+            return {
+              id: s.id,
+              name: s.name,
+              status: 'unverifiable' as const,
+              detail: `not contacted: ${target.refused}`,
+              ms: 0,
+            };
+          }
+          const { verdict, ran } = await probeServer(target.url, Math.min(timeoutMs, 10_000));
+          const detail = `${target.url.host} ${verdict.says}${target.dropped ? ', asked without its query string' : ''}`;
+          if (verdict.passes !== null) recordServerRun(db, s.id, verdict.passes, detail);
+          const status =
+            verdict.passes === true
+              ? ('verified' as const)
+              : verdict.passes === false
+                ? ('failed' as const)
+                : ('unverifiable' as const);
+          return { id: s.id, name: s.name, status, detail, ran, ms: Date.now() - started };
+        })
+      )
+    : [];
+  return {
+    ...settle(db, [...localRuns, ...remoteRuns]),
+    ...(notContacted ? { not_contacted: notContacted, note } : {}),
+  };
 }
 
 export { verifyCheck, evidenceFor, runVerification, verifyMcpServers, checkableNames };

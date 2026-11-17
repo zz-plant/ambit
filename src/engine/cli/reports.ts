@@ -32,7 +32,6 @@ import { seedSources } from '../discovery.ts';
 import type { ConnectResult } from '../connect.ts';
 import type { SetupStep } from '../wiring.ts';
 import { checkableNames, recovering } from '../assurance.ts';
-import type { usageWindows } from '../telemetry.ts';
 import {
   CHECK_RUN_SQL,
   COUNTED_SQL,
@@ -1186,13 +1185,6 @@ function renderCarry(report: any, c: Palette = C): string[] {
   return lines;
 }
 
-/** "2h 05m" from a count of seconds. */
-function span(seconds: number): string {
-  const minutes = Math.max(0, Math.round(seconds / 60));
-  const hours = Math.floor(minutes / 60);
-  return hours ? `${hours}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`;
-}
-
 /** A paragraph cut into lines of about `width`, each after `indent`. */
 function wrapped(text: string, indent: string, width = 76): string[] {
   const out: string[] = [];
@@ -1206,72 +1198,6 @@ function wrapped(text: string, indent: string, width = 76): string[] {
   }
   if (line) out.push(indent + line);
   return out;
-}
-
-/**
- * `ambit usage --windows` as a person reads it: each runtime's five-hour
- * windows, newest first and in local time, the current one with the time left
- * in it, each model's tokens by part, then each runtime's last seven days. A
- * cost is shown only where a price was declared, and "unpriced" otherwise. The
- * note closes it, since it says what no window states: a limit. `--json` gets
- * the report, its times in UTC.
- */
-function renderWindows(report: ReturnType<typeof usageWindows>, c: Palette = C): string[] {
-  const { windows, last_7_days: week } = report;
-  if (!windows || !week) return formatGeneric(report, c);
-  const when = new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  });
-  const clock = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  });
-  const count = (n: number) => Math.round(n).toLocaleString('en-US');
-  const cost = (w: { spend_dollars?: number; unpriced?: true }) =>
-    w.spend_dollars === undefined
-      ? 'unpriced'
-      : `$${w.spend_dollars.toFixed(2)} at declared prices${w.unpriced ? ', some unpriced' : ''}`;
-  const head = `Five-hour windows, last ${report.days === 1 ? '24 hours' : `${report.days} days`}`;
-  const lines = [
-    '',
-    `${GUTTER}${c.bold}${head}${c.reset}`,
-    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
-  ];
-  if (!windows.length) lines.push(`${GUTTER}No tokens were used in one.`);
-  for (const runtime of [...new Set(windows.map(w => w.runtime))]) {
-    lines.push(`${GUTTER}${c.bold}${runtime}${c.reset}`);
-    for (const w of windows.filter(x => x.runtime === runtime)) {
-      const range = `${when.format(new Date(w.start))} to ${clock.format(new Date(w.end))}`;
-      const now = w.current ? `  ${c.bold}now, ${span(w.seconds_left ?? 0)} left${c.reset}` : '';
-      lines.push(
-        `${GUTTER}  ${range}${now}  ${count(w.tokens)} tokens ${c.grey}· ${cost(w)}${c.reset}`
-      );
-      for (const m of w.models) {
-        const parts = [
-          `input ${count(m.input)}`,
-          `cache reads ${count(m.cached)}`,
-          `output ${count(m.output)}`,
-          ...(m.reasoning ? [`reasoning ${count(m.reasoning)}`] : []),
-        ];
-        lines.push(`${GUTTER}    ${c.grey}${m.model}  ${parts.join(' · ')}${c.reset}`);
-      }
-    }
-  }
-  if (week.length) {
-    lines.push('', `${GUTTER}${c.bold}Last 7 days${c.reset}`);
-    for (const r of week) {
-      lines.push(
-        `${GUTTER}  ${r.runtime}  ${count(r.tokens)} tokens ${c.grey}· ${cost(r)}${c.reset}`
-      );
-    }
-  }
-  lines.push('', ...wrapped(report.note, `${GUTTER}${c.grey}`).map(l => `${l}${c.reset}`), '');
-  return lines;
 }
 
 /** What `nextSteps` returns, as much of it as a person reads. */
@@ -1600,53 +1526,6 @@ function help(words: string[]): void {
   }
 }
 
-function renderPort(result: any, c: Palette = C): string[] {
-  if (result.error) return formatGeneric(result, c);
-  if (result.servers) {
-    const lines = [
-      '',
-      `${GUTTER}${c.bold}MCP Servers across agent runtimes${c.reset}`,
-      `${GUTTER}${c.grey}${result.summary}${c.reset}`,
-      `${GUTTER}${c.grey}${'─'.repeat(64)}${c.reset}`,
-    ];
-    for (const s of result.servers) {
-      const conf = s.configured_in.join(', ');
-      const avail = s.available_to_port.length
-        ? ` · ${c.grey}can port to: ${s.available_to_port.join(', ')}${c.reset}`
-        : ` · ${c.green}in all detected runtimes${c.reset}`;
-      lines.push(`  ${c.bold}${s.name.padEnd(20)}${c.reset} ${conf}${avail}`);
-    }
-    lines.push(
-      '',
-      `${GUTTER}To port a server to another agent:`,
-      `  ${c.accent}ambit port <server> --to=<runtime>${c.reset}`,
-      `  e.g. ambit port ${result.servers[0]?.name || 'playwright'} --to=claude-code`,
-      ''
-    );
-    return lines;
-  }
-
-  const lines = [''];
-  if (result.dry_run) {
-    lines.push(`${GUTTER}${c.yellow}[dry run] Would port ${result.server}:${c.reset}`);
-  }
-  for (const r of result.results || []) {
-    const act =
-      r.action === 'already_configured'
-        ? 'already configured in'
-        : r.action === 'updated'
-          ? 'updated in'
-          : 'ported to';
-    const mark = r.action === 'already_configured' ? `${c.grey}=` : `${c.green}✓`;
-    lines.push(`  ${mark} ${result.server} ${act} ${r.label} (${r.path})${c.reset}`);
-    if (r.backup) {
-      lines.push(`    ${c.grey}Backup saved to ${r.backup}${c.reset}`);
-    }
-  }
-  lines.push('');
-  return lines;
-}
-
 function renderRepo(report: any, c: Palette = C): string[] {
   if (report.error) return formatGeneric(report, c);
   const stack = report.repo;
@@ -1685,35 +1564,6 @@ function renderRepo(report: any, c: Palette = C): string[] {
   return lines;
 }
 
-function renderToggle(result: any, c: Palette = C): string[] {
-  if (result.error) return formatGeneric(result, c);
-  const lines = [''];
-  const dry = result.dry_run ? `${c.yellow}[dry run] ${c.reset}` : '';
-  const stateWord = result.state === 'disabled' ? 'Disabled' : 'Enabled';
-  const color = result.state === 'disabled' ? c.yellow : c.green;
-
-  lines.push(`${GUTTER}${dry}${color}${c.bold}${stateWord} ${result.server}${c.reset}`);
-
-  for (const r of result.results || []) {
-    if (r.state === 'unchanged') {
-      lines.push(`  ${c.grey}= ${r.label} (${r.path}) · already ${result.state}${c.reset}`);
-    } else {
-      lines.push(`  ${c.green}✓ ${r.label} (${r.path})${c.reset}`);
-      if (r.backup) {
-        lines.push(`    ${c.grey}Backup saved to ${r.backup}${c.reset}`);
-      }
-    }
-  }
-
-  const opposite = result.state === 'disabled' ? '--on' : '--off';
-  lines.push(
-    '',
-    `${GUTTER}${c.grey}To switch back: ambit toggle ${result.server} ${opposite}${c.reset}`,
-    ''
-  );
-  return lines;
-}
-
 export {
   briefReport,
   renderBrief,
@@ -1722,11 +1572,8 @@ export {
   renderNext,
   renderApply,
   renderDoctor,
-  renderPort,
   renderRepo,
-  renderToggle,
   renderCarry,
-  renderWindows,
   renderPlan,
   renderSpec,
   statusReport,

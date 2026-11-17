@@ -13,8 +13,8 @@
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { toolServers } from './weight.ts';
-import { runtimesFound } from './connect.ts';
+import { toolServers, type ToolServer } from './weight.ts';
+import { addCommand, runtimesFound } from './connect.ts';
 
 export interface RepoStack {
   name: string;
@@ -31,7 +31,7 @@ export interface RepoSuperpower {
   title: string;
   reason: string;
   command?: string;
-  action_type: 'port' | 'connect' | 'goal' | 'verify';
+  action_type: 'add' | 'connect' | 'goal' | 'verify';
 }
 
 export interface RepoReport {
@@ -164,6 +164,26 @@ export function inspectRepoStack(dir = process.cwd()): RepoStack {
   return stack;
 }
 
+/**
+ * What adding a server another runtime already runs takes in this one: the
+ * runtime's own command where it ships one, with the same launch line and
+ * none of the environment, whose values can be tokens and are not printed.
+ * Undefined where the runtime ships none or the server is remote.
+ */
+function addInto(runtime: string, server: ToolServer): string | undefined {
+  if (server.remote || !server.command) return undefined;
+  return addCommand(runtime, { name: server.name, command: server.command, args: server.args });
+}
+
+/** The reason line's tail: where the server's entry is now, and its environment if it has one. */
+function copyFrom(server: ToolServer): string {
+  const keys = Object.keys(server.env ?? {});
+  const from = server.runtimes.join(', ');
+  return keys.length
+    ? ` It is configured in ${from}; set ${keys.join(', ')} as that entry does.`
+    : ` It is configured in ${from}.`;
+}
+
 /** Analyze repository and recommend context-aware agent superpowers. */
 export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/'): RepoReport {
   const stack = inspectRepoStack(dir);
@@ -187,10 +207,10 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
       const missing = installedRuntimes.filter(rt => !dbServer.runtimes.includes(rt));
       if (missing.length) {
         superpowers.push({
-          title: `Port ${dbServer.name} to ${missing[0]}`,
-          reason: `Project uses ${stack.databases.join(', ')}. Porting ${dbServer.name} enables direct, schema-aware queries without bash scripts.`,
-          command: `ambit port ${dbServer.name} --to=${missing[0]}`,
-          action_type: 'port',
+          title: `Add ${dbServer.name} to ${missing[0]}`,
+          reason: `Project uses ${stack.databases.join(', ')}. ${dbServer.name} in ${missing[0]} enables direct, schema-aware queries without bash scripts.${copyFrom(dbServer)}`,
+          command: addInto(missing[0], dbServer),
+          action_type: 'add',
         });
       }
     } else {
@@ -213,10 +233,10 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
       const missing = installedRuntimes.filter(rt => !playwrightServer.runtimes.includes(rt));
       if (missing.length) {
         superpowers.push({
-          title: `Port Playwright MCP to ${missing[0]}`,
-          reason: `Project includes end-to-end browser tests. Porting Playwright to ${missing[0]} allows visual debugging and automated headless runs.`,
-          command: `ambit port ${playwrightServer.name} --to=${missing[0]}`,
-          action_type: 'port',
+          title: `Add Playwright MCP to ${missing[0]}`,
+          reason: `Project includes end-to-end browser tests. Playwright in ${missing[0]} allows visual debugging and automated headless runs.${copyFrom(playwrightServer)}`,
+          command: addInto(missing[0], playwrightServer),
+          action_type: 'add',
         });
       } else {
         superpowers.push({
@@ -243,10 +263,10 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
       const missing = installedRuntimes.filter(rt => !ghServer.runtimes.includes(rt));
       if (missing.length) {
         superpowers.push({
-          title: `Port GitHub MCP to ${missing[0]}`,
-          reason: `Git repository detected. Porting GitHub MCP lets ${missing[0]} read issues, inspect PRs, and review pull requests directly.`,
-          command: `ambit port ${ghServer.name} --to=${missing[0]}`,
-          action_type: 'port',
+          title: `Add GitHub MCP to ${missing[0]}`,
+          reason: `Git repository detected. GitHub MCP lets ${missing[0]} read issues, inspect PRs, and review pull requests directly.${copyFrom(ghServer)}`,
+          command: addInto(missing[0], ghServer),
+          action_type: 'add',
         });
       }
     }

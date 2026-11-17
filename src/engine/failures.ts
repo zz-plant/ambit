@@ -327,4 +327,128 @@ function recordRefusal(
   return recorded.recorded ? recorded.class : false;
 }
 
-export { classifySignal, attribute, captureFailure, recordRefusal, signalReport, type RawFailure };
+/**
+ * What one request to a remote MCP server came back with, as the network
+ * stated it: a status and its headers, whether the body was JSON-RPC, or the
+ * error code the connection failed with. `src/engine/remote-probe.ts` makes
+ * the request and reports this; what it means is decided below (rule 8).
+ */
+interface ProbeAnswer {
+  status?: number;
+  contentType?: string;
+  /** The body parsed as a JSON-RPC message, a result or an error. */
+  jsonrpc?: boolean;
+  /** The host a redirect named. */
+  redirectHost?: string;
+  /** Node's code for a connection that failed (`ENOTFOUND`, `ECONNREFUSED`). */
+  errorCode?: string;
+  timedOut?: boolean;
+}
+
+/** What a probe's answer means for the server: `passes` is null where it proves nothing either way. */
+interface ProbeVerdict {
+  outcome:
+    | 'answered'
+    | 'asks-sign-in'
+    | 'refused'
+    | 'redirects'
+    | 'not-found'
+    | 'not-mcp'
+    | 'server-error'
+    | 'unreachable'
+    | 'timed-out'
+    | 'unclassified';
+  passes: boolean | null;
+  says: string;
+}
+
+const UNREACHABLE: Record<string, string> = {
+  ENOTFOUND: 'its host name does not resolve',
+  EAI_AGAIN: 'its host name did not resolve',
+  ECONNREFUSED: 'nothing is listening there',
+  ECONNRESET: 'the connection was reset',
+  EHOSTUNREACH: 'its host cannot be reached',
+  ENETUNREACH: 'its network cannot be reached',
+  CERT_HAS_EXPIRED: 'its TLS certificate has expired',
+  DEPTH_ZERO_SELF_SIGNED_CERT: 'its TLS certificate is self-signed',
+  ERR_TLS_CERT_ALTNAME_INVALID: 'its TLS certificate names another host',
+  UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'its TLS certificate cannot be verified',
+};
+
+/**
+ * What a remote server's answer says about it. A JSON-RPC reply, or a stream
+ * of them, is a server that answers. A refusal to an unsigned request says the
+ * server is there and wants the sign-in its runtime holds, which this request
+ * never carries, so it proves nothing about that sign-in and is no pass. A
+ * missing endpoint, a server error, a page that is not MCP and a host that
+ * cannot be reached are failures. Anything else is said as it came and
+ * counted as neither.
+ */
+function classifyProbe(answer: ProbeAnswer): ProbeVerdict {
+  if (answer.timedOut) return { outcome: 'timed-out', passes: false, says: 'no answer in time' };
+  if (answer.errorCode) {
+    const why = UNREACHABLE[answer.errorCode];
+    return why
+      ? { outcome: 'unreachable', passes: false, says: why }
+      : {
+          outcome: 'unclassified',
+          passes: null,
+          says: `the request failed with ${answer.errorCode}`,
+        };
+  }
+  const status = answer.status ?? 0;
+  const type = (answer.contentType || '').toLowerCase();
+  if (status === 401) {
+    return {
+      outcome: 'asks-sign-in',
+      passes: null,
+      says: 'answers and asks for a sign-in, which this check does not send',
+    };
+  }
+  if (status === 403) {
+    return { outcome: 'refused', passes: null, says: 'answers 403 to a request with no sign-in' };
+  }
+  if (status >= 300 && status < 400) {
+    return {
+      outcome: 'redirects',
+      passes: null,
+      says: answer.redirectHost ? `redirects to ${answer.redirectHost}` : `redirects (${status})`,
+    };
+  }
+  if (status >= 500) {
+    return { outcome: 'server-error', passes: false, says: `server error (${status})` };
+  }
+  // A JSON-RPC error is an answer too: a server on the stateless revision of
+  // the protocol refuses `initialize`, and one that wants a session first
+  // says so in JSON-RPC with a 400.
+  if (answer.jsonrpc || (status < 300 && type.includes('text/event-stream'))) {
+    return { outcome: 'answered', passes: true, says: 'answers as an MCP server' };
+  }
+  if (status === 404 || status === 410) {
+    return {
+      outcome: 'not-found',
+      passes: false,
+      says: `no MCP endpoint at that path (${status})`,
+    };
+  }
+  if (type.includes('text/html')) {
+    return { outcome: 'not-mcp', passes: false, says: 'answers with a web page, not MCP' };
+  }
+  return {
+    outcome: 'unclassified',
+    passes: null,
+    says: `answers ${status}${type ? ` ${type.split(';')[0]}` : ''}`,
+  };
+}
+
+export {
+  classifySignal,
+  classifyProbe,
+  attribute,
+  captureFailure,
+  recordRefusal,
+  signalReport,
+  type ProbeAnswer,
+  type ProbeVerdict,
+  type RawFailure,
+};

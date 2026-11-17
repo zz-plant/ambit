@@ -32,7 +32,7 @@ import { attribute } from './failures.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { type Act, builtInTool, commandExercises, commandReads } from './tool-names.ts';
-import { claudeRuleFor, gateHookEntry } from './wiring.ts';
+import { claudePermissions, claudeRuleFor, gateHookEntry, gateInstalled } from './wiring.ts';
 
 export interface ToolCall {
   tool_name?: string;
@@ -245,6 +245,64 @@ export function decideCall(
       call.tool_name as string,
       answers.map(a => a.capability)
     ),
+  };
+}
+
+const RULE_VERDICT = { allow: 'yes', ask: 'ask', deny: 'no' } as const;
+
+/**
+ * Claude Code's own permission rules, each beside what Ambit's gate answers
+ * for the call it names, and where the two disagree, which one holds.
+ *
+ * Whether an agent may act is now mostly the runtime's to say: its rules, the
+ * mode a session starts in, its sandbox. A grant in Ambit that says otherwise
+ * is a second rulebook the person has to keep in step by hand, so this shows
+ * the two side by side and changes neither. The narrower answer holds: a deny
+ * or an ask in Claude Code holds whatever Ambit says, and Ambit's ask or no
+ * holds over a Claude Code allow only while the gate is on.
+ */
+export function runtimeRulesBeside(db: Db, home = process.env.HOME || '/') {
+  const { default_mode, rules } = claudePermissions(home);
+  if (!rules.length && !default_mode) return undefined;
+  const gate = gateInstalled(home);
+  const rows = rules.map(({ says, rule }) => {
+    // `mcp__github` and `mcp__github__*` cover every tool of a server.
+    const bare = rule.replace(/__\*$/, '');
+    const words = /^mcp__/.test(bare) && !/^mcp__.+?__./.test(bare) ? `${bare}__*` : rule;
+    const call = callFromWords(words);
+    // What the gate would answer for the call: deny, ask, or nothing, which
+    // leaves it to the runtime and so reads as yes.
+    const answer = call ? gateToolCall(db, call) : undefined;
+    if (!answer?.capabilities.length) return { rule, says, ambit: undefined, agrees: undefined };
+    const ambit = answer.decision === 'deny' ? 'no' : answer.decision === 'ask' ? 'ask' : 'yes';
+    const agrees = RULE_VERDICT[says] === ambit;
+    let holds: string | undefined;
+    if (!agrees) {
+      const runtimeNarrower = VERDICT_ORDER[RULE_VERDICT[says]] > VERDICT_ORDER[ambit];
+      holds = runtimeNarrower
+        ? `Claude Code's ${says} holds`
+        : gate
+          ? `Ambit's ${ambit === 'no' ? 'refusal' : 'ask'} holds, through the gate`
+          : `Claude Code's ${says} holds while the gate is off`;
+    }
+    return {
+      rule,
+      says,
+      ambit,
+      capabilities: answer.capabilities,
+      ...(agrees ? { agrees } : { agrees, holds }),
+    };
+  });
+  const disagree = rows.filter(r => r.agrees === false).length;
+  return {
+    runtime: 'claude-code',
+    ...(default_mode ? { default_mode } : {}),
+    gate: gate ? 'on' : 'off',
+    rules: rows,
+    disagree,
+    ...(rows.some(r => r.ambit === undefined)
+      ? { unnamed: 'A rule with no Ambit answer names a call the graph files under nothing.' }
+      : {}),
   };
 }
 

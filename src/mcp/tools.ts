@@ -272,7 +272,6 @@ const BASE_TOOLS: ToolDef[] = [
       properties: {
         days: num('Days window'),
         unmapped: bool('Include unmapped'),
-        windows: bool('Token windows'),
       },
     },
     annotations: READS,
@@ -344,7 +343,6 @@ const BASE_TOOLS: ToolDef[] = [
       type: 'object',
       properties: {
         by: str('Rank criterion'),
-        budget: num('Budget cap dollars'),
       },
     },
     annotations: READS,

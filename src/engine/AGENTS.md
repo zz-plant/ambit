@@ -46,7 +46,10 @@ src/engine/techtree.json   The curated tree itself: authored content, the same f
 src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code,
                            Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro config readers:
                            every runtime besides OpenCode and Claude Code
-src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
+src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts:
+                           ~/.claude.json, the servers and skills of each plugin the settings
+                           turn on, and each known project's committed `.mcp.json`, by name and
+                           kind only, with no command kept
 src/engine/local-models.ts The models Ollama and LM Studio keep on disk, by folder and file name
                            only: never a model file, a manifest's contents, or a socket
 ```
@@ -65,7 +68,11 @@ src/engine/assure/         lifecycle.ts (what the evidence puts it in, `usable`,
                            verify.ts (running a declared check) · decide.ts (canExecute)
                            reports.ts (the authority model as a person reads it)
                            promote.ts (a grant that widens on evidence, narrows on one failure)
-src/engine/failures.ts     Failures the runtime already reported, classified and attributed
+src/engine/failures.ts     Failures the runtime already reported, classified and attributed;
+                           `classifyProbe`, what a remote server's answer to a probe means
+src/engine/remote-probe.ts Whether a remote MCP server answers: one unsigned request to the URL
+                           a user-level config or an enabled plugin names, made only by a typed
+                           `ambit verify --mcp --remote`
 src/engine/skills.ts       Skills the agent wrote, registered with the check that proves them
 src/engine/objects.ts      What may be done to what, and what is proved there
 src/engine/observed.ts     What a person actually approves, from approvals and refusals
