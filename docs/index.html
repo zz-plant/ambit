@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/docs.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit docs: map and audit your MCP servers and agent configs","description":"Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute.","url":"https://zz-plant.github.io/ambit/docs/","dateModified":"2026-11-10","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit docs: map and audit your MCP servers and agent configs","description":"Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute.","url":"https://zz-plant.github.io/ambit/docs/","dateModified":"2026-11-17","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -68,7 +68,6 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <li><a href="/ambit/docs/audit-mcp-servers/">Auditing which MCP servers a coding agent has</a> — what is declared, what works, what may run without asking, and what was used but never declared.</li>
 <li><a href="/ambit/docs/compare/">Ambit and MCP gateways</a> — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.</li>
 <li><a href="https://zz-plant.github.io/ambit/docs/glossary/">Glossary</a> — every word the map and the CLI use, defined once, from the same file the app reads.</li>
-<li><a href="/ambit/docs/jev/">Ambit and Jev</a> — how TypeSafe&#39;s Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.</li>
 <li><a href="/ambit/docs/deep-dive/">Deep dive</a> — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the session history, delegation records, every MCP tool, and the map in full.</li>
 <li><a href="https://github.com/zz-plant/ambit/blob/main/src/client/public/llms.txt">llms.txt</a> — the project on one page for an agent deciding whether to recommend it, served at <a href="https://zz-plant.github.io/ambit/llms.txt">zz-plant.github.io/ambit/llms.txt</a>.</li>
 </ul>
@@ -76,14 +75,17 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <ul>
 <li><a href="/ambit/docs/loadout/">From A to B: the seven steps</a> — one person&#39;s setup from a pile of configs to work done without them, in seven steps, with the command for each.</li>
 <li><a href="/ambit/docs/agents/">For agents</a> — the same journey from the agent&#39;s side: its sessions before and after Ambit, what it and the person each do as the ambit widens, and how to suggest it honestly.</li>
-<li><a href="/ambit/docs/ideas/">The ideas behind Ambit</a> — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.</li>
+<li><a href="/ambit/docs/ideas/">The ideas behind Ambit</a> — the claim, what is new in it, its nearest prior work, and what it does not claim.</li>
+</ul>
+<h2 id="background-and-design-notes"><a class="anchor" href="#background-and-design-notes" aria-hidden="true" tabindex="-1">#</a>Background and design notes</h2>
+<p>None of these is needed to use Ambit. They are the reasoning behind it, and the record of directions that were designed and some that were declined. Ambit is in <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#focused-mode-since-2026-11-10">focused mode</a>, so read them as history and argument, not as a list of what comes next.</p>
+<ul>
 <li><a href="/ambit/docs/why-ambit/">Why Ambit</a> — the argument for building it: what one agent stack looked like, why what it can do is composed, and why growing that reach needs governing.</li>
 <li><a href="/ambit/docs/affordance-frontier/">The affordance frontier</a> — the theory under that argument, tested against robotics and brain-computer interfaces, with candidate applications in shared work, institutional access and economic agency.</li>
-</ul>
-<h2 id="where-it-is-going"><a class="anchor" href="#where-it-is-going" aria-hidden="true" tabindex="-1">#</a>Where it is going</h2>
-<ul>
-<li><a href="/ambit/docs/roadmap/">Roadmap</a> — design rationale, section by section: what each part decided and what it still lacks, including the proposed layer for defined outcomes and their evidence. Nothing in it has a date or an owner.</li>
-<li><a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md">Interface specs</a> — changes to the surfaces, including a proposed shorter path from a recommendation to a checked result. Each spec states its data, completion criteria and what has shipped.</li>
+<li><a href="/ambit/docs/roadmap/">Roadmap</a> — design rationale, section by section: what each part decided, what it still lacks, and which parts are declined. Nothing in it has a date or an owner.</li>
+<li><a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md">Interface specs</a> — changes to the surfaces, each with its data, completion criteria and what has shipped.</li>
+<li><a href="https://github.com/zz-plant/ambit/blob/main/docs/federation.md">Federation</a> — signed summaries across environments, declined beyond what exists.</li>
+<li><a href="/ambit/docs/jev/">Ambit and Jev</a> — how TypeSafe&#39;s Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.</li>
 </ul>
 <h2 id="what-changed-and-what-was-said-at-the-time"><a class="anchor" href="#what-changed-and-what-was-said-at-the-time" aria-hidden="true" tabindex="-1">#</a>What changed, and what was said at the time</h2>
 <ul>

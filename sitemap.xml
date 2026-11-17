@@ -2,19 +2,19 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://zz-plant.github.io/ambit/</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/</loc>
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/guide/</loc>
-    <lastmod>2026-11-11</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/faq/</loc>
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/loadout/</loc>
@@ -34,7 +34,7 @@
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/mcp-config-locations/</loc>
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/mcp-outage/</loc>
@@ -42,7 +42,7 @@
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/audit-mcp-servers/</loc>
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/compare/</loc>
@@ -50,7 +50,7 @@
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/glossary/</loc>
-    <lastmod>2026-11-03</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/jev/</loc>
@@ -58,7 +58,7 @@
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/deep-dive/</loc>
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/why-ambit/</loc>
@@ -70,11 +70,11 @@
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/roadmap/</loc>
-    <lastmod>2026-11-06</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/security/</loc>
-    <lastmod>2026-11-09</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/contributing/</loc>
@@ -82,6 +82,6 @@
   </url>
   <url>
     <loc>https://zz-plant.github.io/ambit/docs/changelog/</loc>
-    <lastmod>2026-11-11</lastmod>
+    <lastmod>2026-11-17</lastmod>
   </url>
 </urlset>

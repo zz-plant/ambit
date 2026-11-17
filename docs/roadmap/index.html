@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/roadmap.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit roadmap and design rationale","description":"Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks.","url":"https://zz-plant.github.io/ambit/docs/roadmap/","dateModified":"2026-11-06","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit roadmap and design rationale","item":"https://zz-plant.github.io/ambit/docs/roadmap/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit roadmap and design rationale","description":"Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks.","url":"https://zz-plant.github.io/ambit/docs/roadmap/","dateModified":"2026-11-17","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit roadmap and design rationale","item":"https://zz-plant.github.io/ambit/docs/roadmap/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -223,16 +223,16 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left">Human agency accounting normalized into Compensatory Friction (mechanical shims and glue to automate away) versus Sovereign Discretion (judgment, ethics and fiduciary sign-off to preserve). Spend recorded from session logs against declared prices.</td>
 </tr>
 <tr>
-<td align="left"><a href="#15-the-control-plane--built-against-a-simulated-environment">15</a></td>
+<td align="left"><a href="#15-the-control-plane--built-and-declined-beyond-it">15</a></td>
 <td align="left">The control plane</td>
-<td align="left">built, against a simulated environment</td>
-<td align="left">A runtime that routes through the proxy by default: it has its own entry point and no <code>ambit</code> verb, so nothing reaches it unless a caller chooses to. The Docker adapter, chosen explicitly, runs an approved step in an isolated container and deploys nothing anywhere; an adapter for a real deploy target (Kubernetes, a deploy API) is unbuilt.</td>
+<td align="left">built, and declined beyond it</td>
+<td align="left">Declined in focused mode: the runtimes&#39; own permission modes and sandboxes, and MCP gateways, own the call path now, so nothing here is to be extended. What exists stays as it is: its own entry point and no <code>ambit</code> verb, and a Docker adapter, chosen explicitly, that runs an approved step in an isolated container and deploys nothing anywhere.</td>
 </tr>
 <tr>
-<td align="left"><a href="#16-federation-fleet-governance-and-team-agency--partly-built">16</a></td>
+<td align="left"><a href="#16-federation-fleet-governance-and-team-agency--declined">16</a></td>
 <td align="left">Federation, fleet governance, and team agency</td>
-<td align="left">partly built</td>
-<td align="left">Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt. Only delegation records are hash-chained, and a machine&#39;s last-seen time moves only when <code>ambit incidents</code> runs.</td>
+<td align="left">declined</td>
+<td align="left">Declined in focused mode: multi-tenant synchronization, GitOps governance, role-based access control and compliance exports are enterprise-platform work, which <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#focused-mode-since-2026-11-10">AGENTS.md</a> declines. The signed summaries and delegation records that exist stay as they are.</td>
 </tr>
 <tr>
 <td align="left"><a href="#17-defined-outcomes--proposed">17</a></td>
@@ -637,14 +637,20 @@ durable fixes → propose carries the observed case → the approval broker mint
 a signed, expiring artifact → apply enforces canExecute and verifies → roi
 measures before/after and writes the observation back
 </code></pre>
-<p>What exists: the session history and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the capital allocator (<code>opportunities --budget N</code>), the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.</p>
+<p>What exists: the session history and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.</p>
 <p>The loop page draws each standing budget&#39;s ceiling with a tick for where the period lands at its pace so far (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l2-a-ceiling-with-a-forecast-tick">L2</a>), and says what each opportunity&#39;s capability needs and what is already here (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#s4-what-it-needs-and-is-it-met-here">S4</a>).</p>
 <p>Attribution must reach the capability grain. Knowing total model spend does not tell an engineering lead whether Web Research or Code Refactoring consumed the budget. Joining consumption ledger records with capability IDs breaks down token and dollar costs per node. The opportunity engine can then model provider arbitrage: comparing hosted API consumption against local hardware amortization to show when moving embeddings or code analysis to a local model pays for dedicated hardware.</p>
-<h2 id="15-the-control-plane--built-against-a-simulated-environment"><a class="anchor" href="#15-the-control-plane--built-against-a-simulated-environment" aria-hidden="true" tabindex="-1">#</a>15. The control plane — built, against a simulated environment</h2>
+<h2 id="15-the-control-plane--built-and-declined-beyond-it"><a class="anchor" href="#15-the-control-plane--built-and-declined-beyond-it" aria-hidden="true" tabindex="-1">#</a>15. The control plane — built, and declined beyond it</h2>
+<blockquote>
+<p><strong>Declined beyond what exists (2026-11-17).</strong> Whether an agent may act is now decided on the call path by the runtime&#39;s own permission mode and sandbox, and by MCP gateways for teams. Ambit keeps <code>ambit can</code> as an answer an agent reads and the gate as a brake that only narrows, and builds no more enforcement: no adapter for a real deploy target, no runtime routed through the proxy by default. The section below is the record of what was built and why.</p>
+</blockquote>
 <p>The gate §9 describes stays a report until something consults it before acting. The interceptor is one of the three places that do: it sits in front of the tool call, and a call whose prerequisites are missing, whose foundation is failing, or whose caller is not permitted is refused with nothing on the machine changed.</p>
 <p>The decision is real. It runs against the actual graph, through the same <code>canExecute</code> §9 describes and the same authority table, and it writes the same audit trail. The simulated environment behind it costs so little because the gate never learns what it is gating, which is also why replacing it is not a rewrite. <a href="/ambit/docs/guide/#the-control-plane">The README</a> describes what it does today.</p>
 <p>Production enforcement requires intercepting live tool calls across real transports. Pre-execution dry-run blast radius simulation (<code>simulate: true</code>) computes the cascade over dependent capabilities and combos at risk before execution. During active incidents, an audited emergency override (<code>break_glass: true</code> with a mandatory reason) allows privileged execution while recording a <code>break_glass</code> work event that carries the reason.</p>
-<h2 id="16-federation-fleet-governance-and-team-agency--partly-built"><a class="anchor" href="#16-federation-fleet-governance-and-team-agency--partly-built" aria-hidden="true" tabindex="-1">#</a>16. Federation, fleet governance, and team agency — partly built</h2>
+<h2 id="16-federation-fleet-governance-and-team-agency--declined"><a class="anchor" href="#16-federation-fleet-governance-and-team-agency--declined" aria-hidden="true" tabindex="-1">#</a>16. Federation, fleet governance, and team agency — declined</h2>
+<blockquote>
+<p><strong>Declined (2026-11-17).</strong> This is the enterprise-platform work that <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#focused-mode-since-2026-11-10">focused mode</a> declines. The signed summaries and delegation records that exist stay as they are and are not extended. The section below is the record of what was designed and why.</p>
+</blockquote>
 <p>Ambit starts on one developer&#39;s workstation. In an engineering organization, capabilities, credentials, and infrastructure are distributed across dozens of machines and engineers.</p>
 <p>The loop in §14 extends to fleets:</p>
 <pre><code>local session history → signed summary export → team portfolio sync →

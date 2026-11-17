@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/guide.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit guide: install, CLI and MCP setup","description":"Install Ambit, map your AI agent setup, and ask what it can do, what to set up next and what breaks, from the terminal or over MCP in Claude Code and OpenCode.","url":"https://zz-plant.github.io/ambit/docs/guide/","dateModified":"2026-11-11","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit guide: install, CLI and MCP setup","item":"https://zz-plant.github.io/ambit/docs/guide/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit guide: install, CLI and MCP setup","description":"Install Ambit, map your AI agent setup, and ask what it can do, what to set up next and what breaks, from the terminal or over MCP in Claude Code and OpenCode.","url":"https://zz-plant.github.io/ambit/docs/guide/","dateModified":"2026-11-17","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit guide: install, CLI and MCP setup","item":"https://zz-plant.github.io/ambit/docs/guide/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -64,8 +64,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <ul>
 <li><strong>What you already have.</strong> Every MCP server each agent has, which of them pass their checks, and what may run without asking.</li>
 <li><strong>What is one step away.</strong> Capabilities whose prerequisites you already meet, each with a setup estimate, ranked by what keeps blocking your agents and by how much each step opens. Tools also compose: a vector store plus local embeddings gives you semantic retrieval, which neither config mentions.</li>
-<li><strong>What is configured but not working.</strong> <code>ambit verify</code> runs a capability&#39;s declared check. One that fails is left out of plans and permissions until it passes.</li>
-<li><strong>What your tool lists cost.</strong> <code>ambit weigh</code> starts each local tool server your user-level configs declare and measures what its tool list takes from context every session.</li>
+<li><strong>What is configured but not working.</strong> <code>ambit verify</code> runs a capability&#39;s declared check, and <code>ambit verify --mcp --remote</code> asks each MCP server, local or remote, whether it answers. One that fails is left out of plans and permissions until it passes.</li>
 <li><strong>What stops if a piece goes.</strong> Three providers that share one API credential show up as one point of failure.</li>
 </ul>
 <p>Run it once to see what you have, then again after any change. A token that expired, a server that moved, or a binary that broke shows up as failing, and the next check proves the repair.</p>
@@ -102,7 +101,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left">Register Ambit over MCP and the agent can ask what it is able to do before it tries. <a href="#connect-it-to-your-agent">Connect it to your agent</a> has the snippet.</td>
 </tr>
 </tbody></table>
-<p>npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows <code>./bootstrap.sh</code> does not run, <code>ambit weigh</code> cannot start a server launched through a <code>.cmd</code> such as <code>npx</code>, and a check written for <code>sh</code> stays unverified unless Git Bash or another <code>sh</code> is on the PATH. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout <code>npx ambit-cli</code> does, and links <code>ambit</code> into <code>~/.local/bin</code> when that directory is on your PATH (or prints the <code>ln -s</code> line when it is not). <code>./bootstrap.sh --dry-run</code> writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.</p>
+<p>npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows <code>./bootstrap.sh</code> does not run, <code>ambit weigh</code> cannot start a server launched through a <code>.cmd</code> such as <code>npx</code>, and a check written for <code>sh</code> stays unverified unless Git Bash or another <code>sh</code> is on the PATH. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code (with the plugins it has turned on, and by name the servers a project it knows commits in <code>.mcp.json</code>), Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout <code>npx ambit-cli</code> does, and links <code>ambit</code> into <code>~/.local/bin</code> when that directory is on your PATH (or prints the <code>ln -s</code> line when it is not). <code>./bootstrap.sh --dry-run</code> writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.</p>
 <div align="center">
 <img src="/ambit/docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
 <br><sub>My Setup lists every server, agent, and model found on the machine: whether it is on, what its check said, and which capabilities on the map it provides</sub>
@@ -179,11 +178,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left"><code>ambit verify [id]</code></td>
-<td align="left">Run a capability&#39;s declared check and record whether it passes</td>
-</tr>
-<tr>
-<td align="left"><code>ambit weigh</code></td>
-<td align="left">What each tool server&#39;s tool list costs in context every session, per runtime, and which ones no recorded session called</td>
+<td align="left">Run a capability&#39;s declared check and record whether it passes; <code>--mcp --remote</code> asks each MCP server, local or remote, whether it answers</td>
 </tr>
 <tr>
 <td align="left"><code>ambit history [since &lt;when&gt; [&lt;until&gt;]]</code></td>
@@ -293,6 +288,8 @@ printf &#39;%s  %s\n&#39; &quot;$(printf &#39;%s&#39; &quot;$input&quot; | npx c
   }
 }
 </code></pre>
+<h3 id="any-agent-that-reads-skills"><a class="anchor" href="#any-agent-that-reads-skills" aria-hidden="true" tabindex="-1">#</a>Any agent that reads skills</h3>
+<p>Codex CLI, Cursor, Gemini CLI, Copilot and most other agents read <a href="https://agentskills.io">Agent Skills</a> folders. <a href="https://github.com/zz-plant/ambit/blob/main/skills/ambit/SKILL.md"><code>skills/ambit/SKILL.md</code></a> teaches one to ask <code>ambit can</code> before a tool it has not used, and which command answers which question, through the <code>ambit</code> command, with no MCP connection. Install it with <code>npx skills add zz-plant/ambit</code>, or copy the <code>skills/ambit</code> folder into <code>~/.agents/skills/</code>. The npm package ships it too.</p>
 <h3 id="the-one-habit-worth-teaching"><a class="anchor" href="#the-one-habit-worth-teaching" aria-hidden="true" tabindex="-1">#</a>The one habit worth teaching</h3>
 <blockquote>
 <p>Before running a tool you have not used this session, call <code>ambit_can</code> with
