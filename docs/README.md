@@ -37,6 +37,7 @@ None of these is needed to use Ambit. They are the reasoning behind it, and the 
 - [The affordance frontier](./affordance-frontier.md) — the theory under that argument, tested against robotics and brain-computer interfaces, with candidate applications in shared work, institutional access and economic agency.
 - [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided, what it still lacks, and which parts are declined. Nothing in it has a date or an owner.
 - [Interface specs](./interface-specs.md) — changes to the surfaces, each with its data, completion criteria and what has shipped.
+- [The control plane](./control-plane.md) — the interceptor that runs a step only if the graph says it may, and its opt-in Docker adapter, kept as it is.
 - [Federation](./federation.md) — signed summaries across environments, declined beyond what exists.
 - [Ambit and Jev](./jev.md) — how TypeSafe's Jev and its local clones sit on the map, how a goal routes through one, and where its probabilities stop.
 

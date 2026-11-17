@@ -27,7 +27,9 @@ On the demo's setup, 15 of the 46 capabilities on the map are reached, 12 of the
 
 **At the start.** You read the briefing before your first tool call. In about 1,200 tokens it says what works, what is failing, what waits on the person, what blocked work lately, and what is worth reaching next. For each next step it says what you would also reach with it, and what it would make a next step, by the same simulation `ambit_simulate` runs. It also says what changed since the last briefing, including a capability that emerged from a combination with nothing new installed.
 
-**Before a tool you have not used.** You ask `ambit_can`. A yes means act, an ask means put it to the person, and a no means do not retry it under another name. A no is recorded as a deficit, so it counts toward what is worth fixing.
+**Before a tool you have not used.** You ask `ambit_can`, or with no MCP connection, `ambit can "<the tool>" --exit-code --record` in a shell, which is what [the Ambit skill](../skills/ambit/SKILL.md) teaches an agent that reads Agent Skills. Name the tool as your runtime does: `Bash(git push origin main)`, `mcp__github__create_issue`. A yes means act, an ask means put it to the person, and a no means do not retry it under another name. A no is recorded as a deficit, so it counts toward what is worth fixing.
+
+**When a server stops answering.** `ambit verify --mcp <server>` asks it directly, local or remote, and records whether it answered, so the next session knows without calling it. A remote server is sent one request with no sign-in, so say that before you run it.
 
 **When something missing stops you.** `ambit_plan` says what would close the gap, and `ambit_propose` drafts the change, with `purpose` set to the work it is for. The person reads the proposal, signs it or not, and applies it. A check proves the result, and the next briefing says what you can now do. A tool that fails along the way goes to `ambit_record_failure`. In the demo, agents have asked for Vector Store this way.
 

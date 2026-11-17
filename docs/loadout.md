@@ -70,7 +70,7 @@ Every capability reached moves the frontier, the edge of what the setup reaches,
 
 **The edge is what works.** The frontier leaves out anything that has failed its check, so you can lean on what is inside it. A capability whose check fails stays on the map, marked as failing, and is out of every plan until it passes again.
 
-**Every tool server has a weight.** Every tool server a runtime starts puts its whole tool list into the agent's context before the first message, called or not, so each server added is carried into every session. `ambit weigh` measures each local server's list in tokens and adds up each runtime's total. Once the session history has a few weeks of calls, it also names the servers carried and never called. My Setup prints the same figures beside each tool server.
+**Every tool server has a weight.** Every tool server a runtime starts puts its whole tool list into the agent's context before the first message, called or not, so each server added is carried into every session. `ambit weigh` measures each local server's list in tokens and adds up each runtime's total, the most a session carries; a runtime that holds definitions back until the agent searches for them, as Claude Code does once they would fill much of the context, carries less. Once the session history has a few weeks of calls, it also names the servers carried and never called. My Setup prints the same figures beside each tool server.
 
 A list of the tools you own says little about what you can do: the reach is in how they combine and how well they answer.
 

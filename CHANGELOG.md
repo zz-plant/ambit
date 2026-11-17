@@ -40,6 +40,14 @@ Ambit is in focused mode, and these are other tools' whole jobs.
 
 `ambit roi` and `ambit economics price` stay: the first is the hours-saved measure behind Time & cost, and the second is the only way a Claude Code user prices tokens for a budget on Hosted Inference.
 
+### `ambit repo` says what to add, in plain words
+
+Its output promised "agent superpowers" and an agent "10x faster", which says nothing a person can check. It now names what the project uses and what to add for it, each with the reason in one sentence and the command to type, and the summary counts only the additions that have a command. The JSON keeps its `superpowers` field, since scripts read it.
+
+### The skill files what it is refused
+
+`skills/ambit/SKILL.md` told an agent that a refusal from `ambit can` was already recorded, which is true over MCP and not in a shell, where only `--record` files it. The command it teaches now carries the flag.
+
 ### `ambit weigh` says what Claude Code carries
 
 The figure is what a session carries when every tool definition is loaded at its start. Claude Code holds definitions back until the agent searches for them once they would fill much of the context, and the report, the glossary and the FAQ now say that there the figure is an upper bound. The README no longer leads with it.

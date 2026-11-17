@@ -2,9 +2,9 @@
 
 # Ambit
 
-**A Civilization-style tech tree of every MCP server your AI agents have: what they can do, and what one more step would unlock.**
+**Every MCP server your AI agents have, on one local map: what they can do together, what one more step would open, and which pieces actually work.**
 
-Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and [13 other agents](#get-started) into one local map. What you, your agents and your machines can jointly do is your *ambit*: this shows where its edge is and how to move it.
+Ambit reads the MCP configs of Claude Code and its plugins, Codex, Cursor, OpenCode and [12 other agents](#get-started) into one local graph, drawn as a tree of capabilities in eras. What you, your agents and your machines can jointly do is your *ambit*: this shows where its edge is and how to move it.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
@@ -35,7 +35,7 @@ Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and [13 other agent
 
 Run it once to see what you have, then again after any change. A token that expired, a server that moved, or a binary that broke shows up as failing, and the next check proves the repair.
 
-Your agents can ask the same questions over MCP: what they can do before they try, and at a limit, what would lift it, drafted as a change you approve. Ambit is itself an MCP server that reads your other MCP servers, speaking the protocol of the tools it reads. The graph is a local SQLite file, with no telemetry.
+Your agents can ask the same questions, over MCP or through a skill: what they can do before they try, and at a limit, what would lift it, drafted as a change you approve. The graph is a local SQLite file, with no telemetry.
 
 Three facts stay apart: configured, working, and allowed. A configured server may fail its check, and a working one may still not be permitted to run without asking. Ambit reports each separately, and never lets one stand in for another.
 
@@ -51,9 +51,11 @@ If it answers a question your config files could not, [a star](https://github.co
 | **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. It ends on one thing to do, `npx ambit-cli web`: the same readout on the map, served on localhost. `npm install -g ambit-cli` puts `ambit` on your path. |
 | **From a checkout** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the same map from source. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. The container holds none of your configs, so the map it shows has nothing of yours on it: a way to try the code, not to map your setup. |
-| **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
+| **From your agent** | Register Ambit over MCP, or install its skill in any agent that reads Agent Skills, and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has both. |
 
-npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows `./bootstrap.sh` does not run, `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, and a check written for `sh` stays unverified unless Git Bash or another `sh` is on the PATH. `./bootstrap.sh` discovers OpenCode, Claude Code (with the plugins it has turned on, and by name the servers a project it knows commits in `.mcp.json`), Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout `npx ambit-cli` does, and links `ambit` into `~/.local/bin` when that directory is on your PATH (or prints the `ln -s` line when it is not). `./bootstrap.sh --dry-run` writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.
+**What it reads.** The MCP configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro; from Claude Code, also the servers and skills of each plugin you have turned on, and by name the servers a project commits in its `.mcp.json`; the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`; and the names of the models Ollama and LM Studio keep on disk. [Where each AI agent keeps its MCP config](./docs/mcp-config-locations.md) gives every path.
+
+**Where it runs.** npm installs the tagged release on macOS, Linux and Windows, and Homebrew on macOS and Linux. On Windows `./bootstrap.sh` does not run, `ambit weigh` cannot start a server launched through a `.cmd` such as `npx`, and a check written for `sh` stays unverified unless Git Bash or another `sh` is on the PATH. In a checkout, `./bootstrap.sh` builds the graph, prints the same readout `npx ambit-cli` does, and links `ambit` into `~/.local/bin` when that directory is on your PATH (or prints the `ln -s` line when it is not); `--dry-run` writes nothing and reports whether there is an OpenCode config, a running Ollama and a skills directory.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
@@ -64,14 +66,17 @@ npm installs the tagged release on macOS, Linux and Windows, and Homebrew on mac
 
 ## Where Ambit sits in the stack
 
-Ambit sits above the protocol layer and below workflow orchestration. Its CLI and MCP server neither route an agent's calls nor run them. Its one hook on the call path, `ambit gate` for Claude Code, can only deny a call or ask about it. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself from a checkout, and only with its opt-in Docker adapter.
+Ambit sits beside the agent, above the protocol and below workflow orchestration. Its CLI and MCP server neither route an agent's calls nor run them. Its one hook on the call path, `ambit gate` for Claude Code, can only deny a call or ask about it. The one part that can run a step is [the control plane](#the-control-plane), a reference implementation you start yourself from a checkout.
 
 | If you want to | Use | What Ambit adds |
 | :--- | :--- | :--- |
 | Find a tool by name or description | Smithery, the MCP registries, tool-RAG | Which ones your setup already has what it needs for, and what each would open |
 | Order the steps of one task | A workflow engine such as LangGraph | Nothing inside the task; what the setup can do before one starts |
 | Install a binary | Nix, Homebrew | No installing; what is missing, in order, as a change you approve |
-| Allow or refuse each call as it happens | [An MCP gateway](./docs/compare.md) | No place on the call path; Ambit's gate only answers Claude Code's hook, with deny or ask |
+| Allow or refuse each call as it happens | Your runtime's permission mode, or [an MCP gateway](./docs/compare.md) | No place on the call path; `ambit authority` shows Claude Code's rules beside your grants, and the gate only adds a deny or an ask |
+| Keep one server list in every runtime | A config sync tool such as vsync or mcp-sync | Which of those servers work, and what they add up to |
+| Track tokens, cost and plan quota | [ccusage](https://github.com/ryoppippi/ccusage) and the tools around it | Tokens per model in Time & cost, beside what the setup can do |
+| Scan tool descriptions for poisoning | A scanner such as [Snyk Agent Scan](https://github.com/snyk/agent-scan) | Nothing on that; what each tool may do without asking |
 | See what the whole setup can do, which pieces work, and what to add next | Ambit | |
 
 [The ideas behind Ambit](./docs/ideas.md) says what is new and where it comes from, [From A to B](./docs/loadout.md) walks one setup through seven steps, and [Building alone](./docs/solo.md) is the launch checklist for a one-person company.
@@ -87,7 +92,7 @@ Ambit sits above the protocol layer and below workflow orchestration. Its CLI an
 | `ambit repo [dir]` | What to add for the project you are in, from its dependencies and the servers you already run |
 | `ambit impact <id>` | What downstream stops working if this dependency fails |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
-| `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
+| `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation, and where Claude Code's own rules disagree |
 | `ambit verify [id]` | Run a capability's declared check and record whether it passes; `--mcp --remote` asks each MCP server, local or remote, whether it answers |
 | `ambit history [since <when> [<until>]]` | How the frontier, the edge of what you reach, moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
@@ -331,19 +336,7 @@ The terminal and the map use the same words.
 
 ## The control plane
 
-The control plane is an interceptor that can stand between an agent and the shell: a step routed through it runs only if the graph says it may.
-
-Ambit answers whether a step may run wherever it is asked, and the answer binds in three places: `ambit apply`, always; this interceptor, for execution routed through it; and Claude Code's tool calls, once the `ambit gate` hook is installed. Other runtimes choose whether to ask `ambit_can`.
-
-**It runs from a checkout.** The interceptor is a reference implementation and not part of the `ambit` command, so npm and Homebrew do not install it. In a clone, `npm run demo:incident` replays the walkthrough at the end of this section on a throwaway graph, and `node --experimental-sqlite src/control_plane/cli.ts --help` lists its commands. `exec <envDir> <dbPath> '<request>'` routes one step through the gate against the graph at `dbPath`. The others serve the walkthrough: `setup-env` writes its fixture actors and capabilities into the graph it is given, replacing any row with the same id, and `verify-node` sets a lifecycle with no check run, so point both at a new file and never at the graph `ambit where` prints.
-
-Host-level agent tooling is a real attack surface, so the interceptor can stand between an agent and the shell. Before a tool call routed through it reaches your machine, the proxy in `src/control_plane/proxy.ts` verifies three conditions: prerequisite capabilities are present, the capability is verified and functioning, and the caller has explicit authorization. A call that fails any condition is refused (`AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2`) and leaves system state unchanged. Blocked calls generate a draft proposal and an HMAC challenge; `ambit approve <proposal-id> --by=<person>` creates a signed authorization artifact verified by the executor, which expires or invalidates if the proposal is modified. Spans record each evaluation, challenge, and receipt.
-
-The decision runs against the graph you name. What sits on the other side of the gate is chosen when the control plane starts, and every span names it. The default, `simulatedAdapter`, is a fixture: it merges the change into a JSON file and runs nothing.
-
-`AMBIT_ADAPTER=docker`, or `--adapter=docker` on `src/control_plane/cli.ts`, puts a Docker adapter there instead, and an approved step's `payload.command` runs in a throwaway container. The approval names the command: the step a person signs shows it, and a retry carrying a different one is refused. Break-glass runs nothing there, since an agent cannot authorise its own command. Each step gets its own container from an image you pulled yourself (`alpine:3.20` unless `AMBIT_DOCKER_IMAGE` names another), with no network, a read-only root, every Linux capability dropped, an unprivileged user, and limits on memory, CPU and processes. The container is removed afterwards and its output, capped, comes back in the result; a step that exits non-zero ends the run as failed. A step reaches the network only when you started the control plane with `AMBIT_DOCKER_NETWORK=bridge` and a grant for the `network` action on its capability answers ALLOW. Nothing from the host is mounted unless `AMBIT_DOCKER_WORKDIR` names a directory, which is mounted read-only, and never your home directory, its dot-directories or the Docker socket. If Docker cannot run the step, the control plane refuses before anything runs and does not fall back to the simulator.
-
-Neither adapter deploys anything anywhere. Another one (Kubernetes, a deploy API) implements the same three-method `EnvironmentAdapter`, and nothing above the gate changes. [`INCIDENT_TRACE_001`](./docs/incidents/INCIDENT_TRACE_001.md) walks a deploy agent blocked mid-flight and then remediated, and `npm run demo:incident` replays it in 90 seconds; with `AMBIT_ADAPTER=docker` the authorized deploy runs `echo` in a container.
+A step routed through the control plane runs only if the graph says it may: prerequisites present, the capability passing its check, and the caller authorized. It is a reference implementation that runs from a checkout, not part of the `ambit` command, and by default it runs nothing: its executor merges a change into a JSON file. An opt-in Docker adapter runs an approved step in a throwaway container with no network. It is kept as it is and not extended, since the runtimes' own permission modes and MCP gateways now own the call path. [The control plane](./docs/control-plane.md) describes it in full.
 
 ---
 
@@ -364,14 +357,14 @@ Ambit reads developer toolchains and writes to agent configs, so the properties 
 - [Deep dive](./docs/deep-dive.md): the reference for the model under everything above, the map in full, and where Ambit sits in the revisable-delegation loop.
 - [Where each AI agent keeps its MCP config](./docs/mcp-config-locations.md) · [What breaks if an MCP server goes down](./docs/mcp-outage.md) · [Auditing an agent's MCP servers](./docs/audit-mcp-servers.md) · [Ambit and MCP gateways](./docs/compare.md): the questions people search for, answered with the commands above.
 - [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) · [Support](./SUPPORT.md) · [Contributing](./CONTRIBUTING.md): the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.
-- [Everything else](./docs/): the argument, the theory, Jev, the design notes, the changelog, the incident traces.
+- [Everything else](./docs/): the argument, the theory, the control plane, Jev, the design notes, the changelog, the incident traces.
 - [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt): the project in one page, for an agent that is deciding whether to recommend it.
 
 ---
 
 ## Contributing
 
-New capability models, runtime readers, visualization work and edge-case reports are all welcome. [CONTRIBUTING.md lists three kinds of small, self-contained change](./CONTRIBUTING.md#what-is-worth-contributing) worth starting with; an issue carries [good first issue](https://github.com/zz-plant/ambit/labels/good%20first%20issue) once somebody files one against them. [CONTRIBUTING.md](./CONTRIBUTING.md) gets you from a clone to a passing pull request and [lists every check CI runs](./CONTRIBUTING.md#the-checks-ci-runs).
+Ambit is in [focused mode](./AGENTS.md#focused-mode-since-2026-11-10): it takes fixes, reports of where it read a setup wrong, and work that makes the capabilities it already has more reliable, and declines new integrations added for completeness. [CONTRIBUTING.md lists three kinds of small, self-contained change](./CONTRIBUTING.md#what-is-worth-contributing) worth starting with; an issue carries [good first issue](https://github.com/zz-plant/ambit/labels/good%20first%20issue) once somebody files one against them. [CONTRIBUTING.md](./CONTRIBUTING.md) gets you from a clone to a passing pull request and [lists every check CI runs](./CONTRIBUTING.md#the-checks-ci-runs).
 
 ---
 
@@ -380,8 +373,8 @@ New capability models, runtime readers, visualization work and edge-case reports
 Ambit is a personal project. It has one maintainer, so the fastest help is telling it where it got your setup wrong.
 
 - Share an `ambit share --redact` snapshot of your map. Paths never enter the file and `--redact` replaces every name the tree did not supply with its category, so a real setup can be shown without naming it.
-- Report unsupported runtimes or inaccurate capability models via [issue templates](https://github.com/zz-plant/ambit/issues/new/choose).
-- To hear when a new runtime reader or capability lands, choose **Watch → Custom → Releases**.
+- Report a runtime whose config Ambit misread, or a capability model that is wrong, via [issue templates](https://github.com/zz-plant/ambit/issues/new/choose).
+- To hear when a release lands, choose **Watch → Custom → Releases**.
 
 ---
 

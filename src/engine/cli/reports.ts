@@ -1531,7 +1531,7 @@ function renderRepo(report: any, c: Palette = C): string[] {
   const stack = report.repo;
   const lines = [
     '',
-    `${GUTTER}${c.bold}Repository stack in ${stack.name}${c.reset}`,
+    `${GUTTER}${c.bold}What ${stack.name} uses${c.reset}`,
     `${GUTTER}${c.grey}${'─'.repeat(50)}${c.reset}`,
   ];
   if (stack.languages?.length)
@@ -1546,7 +1546,7 @@ function renderRepo(report: any, c: Palette = C): string[] {
     lines.push(`  ${c.grey}Infra:       ${c.reset}${stack.infra.join(', ')}`);
 
   if (report.superpowers?.length) {
-    lines.push('', `${GUTTER}${c.bold}Recommended agent superpowers for this project:${c.reset}`);
+    lines.push('', `${GUTTER}${c.bold}What to add for it${c.reset}`);
     report.superpowers.forEach((sp: any, i: number) => {
       lines.push(`  ${c.accent}${i + 1}. ${sp.title}${c.reset}`);
       lines.push(`     ${sp.reason}`);
@@ -1557,7 +1557,7 @@ function renderRepo(report: any, c: Palette = C): string[] {
   } else {
     lines.push(
       '',
-      `  ${c.green}✓ Your agent setup already carries tools matching this project stack.${c.reset}`
+      `  ${c.green}✓ Each part of this stack Ambit looks for already has a server here.${c.reset}`
     );
   }
   lines.push('');

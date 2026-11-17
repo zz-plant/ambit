@@ -1,15 +1,14 @@
 /**
- * Workspace / Repository stack intelligence and tailored agent recommendations.
+ * What to add for the project in a folder.
  *
- * Developers rarely want generic, abstract tech-tree milestones like
- * "Typed Judgment: TypeSafe's Jev". They want to know:
- * "What tools, MCP servers, or capabilities should I give my agent to make it
- * 10x faster and safer when working on THIS specific repository?"
- *
- * `ambit repo` inspects the current repository (package.json, Cargo.toml,
- * pyproject.toml, docker-compose, git, databases) and cross-references with
- * the agent's installed tools to recommend high-leverage superpowers and
- * cross-runtime tool ports.
+ * The tree's next steps are the same in every folder. A person working in one
+ * repository asks something narrower: which tool would this project's agent
+ * use, and which of them is already here or set up in another runtime.
+ * `ambit repo` reads the folder's manifests as data (package.json, Cargo.toml,
+ * pyproject.toml, go.mod, Docker files, git, database files) and answers from
+ * the servers the configs declare: add one another runtime already runs, or
+ * the goal that reaches one nobody runs yet. The field is still called
+ * `superpowers` in the JSON, since scripts read it.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -184,7 +183,7 @@ function copyFrom(server: ToolServer): string {
     : ` It is configured in ${from}.`;
 }
 
-/** Analyze repository and recommend context-aware agent superpowers. */
+/** What the project in `dir` uses, and what to add for it. */
 export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/'): RepoReport {
   const stack = inspectRepoStack(dir);
   const servers = toolServers(home);
@@ -208,15 +207,15 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
       if (missing.length) {
         superpowers.push({
           title: `Add ${dbServer.name} to ${missing[0]}`,
-          reason: `Project uses ${stack.databases.join(', ')}. ${dbServer.name} in ${missing[0]} enables direct, schema-aware queries without bash scripts.${copyFrom(dbServer)}`,
+          reason: `The project uses ${stack.databases.join(', ')}. With ${dbServer.name}, an agent in ${missing[0]} reads the schema and queries it without a shell script.${copyFrom(dbServer)}`,
           command: addInto(missing[0], dbServer),
           action_type: 'add',
         });
       }
     } else {
       superpowers.push({
-        title: 'Database MCP Server',
-        reason: `Project uses ${stack.databases.join(', ')}. Connect a database tool so agents can inspect schema and run safe read-only queries.`,
+        title: 'A database MCP server',
+        reason: `The project uses ${stack.databases.join(', ')}, and no server here reaches a database. One lets an agent read the schema and run read-only queries.`,
         command: 'ambit goal data-access',
         action_type: 'goal',
       });
@@ -234,22 +233,22 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
       if (missing.length) {
         superpowers.push({
           title: `Add Playwright MCP to ${missing[0]}`,
-          reason: `Project includes end-to-end browser tests. Playwright in ${missing[0]} allows visual debugging and automated headless runs.${copyFrom(playwrightServer)}`,
+          reason: `The project has end-to-end browser tests. With Playwright, an agent in ${missing[0]} can drive a browser to reproduce and check them.${copyFrom(playwrightServer)}`,
           command: addInto(missing[0], playwrightServer),
           action_type: 'add',
         });
       } else {
         superpowers.push({
-          title: 'Playwright MCP Server',
-          reason: `Project uses browser testing and ${playwrightServer.name} is configured in ${playwrightServer.runtimes.join(', ')}.`,
+          title: 'Playwright MCP server, in place',
+          reason: `The project has browser tests, and ${playwrightServer.name} is configured in ${playwrightServer.runtimes.join(', ')}.`,
           action_type: 'verify',
         });
       }
     } else {
       superpowers.push({
-        title: 'Playwright MCP Server',
+        title: 'A Playwright MCP server',
         reason:
-          'Project uses browser testing. Add Playwright MCP to let agents take screenshots and reproduce UI issues automatically.',
+          'The project has browser tests, and no server here drives a browser. Playwright lets an agent take screenshots and reproduce a broken page.',
         command: 'ambit goal browser-automation',
         action_type: 'goal',
       });
@@ -264,7 +263,7 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
       if (missing.length) {
         superpowers.push({
           title: `Add GitHub MCP to ${missing[0]}`,
-          reason: `Git repository detected. GitHub MCP lets ${missing[0]} read issues, inspect PRs, and review pull requests directly.${copyFrom(ghServer)}`,
+          reason: `The project is a git repository. With the GitHub server, an agent in ${missing[0]} reads issues and reviews pull requests where it works.${copyFrom(ghServer)}`,
           command: addInto(missing[0], ghServer),
           action_type: 'add',
         });
@@ -277,16 +276,17 @@ export function analyzeRepo(dir = process.cwd(), home = process.env.HOME || '/')
     const dockerServer = servers.find(s => s.name.toLowerCase().includes('docker'));
     if (!dockerServer) {
       superpowers.push({
-        title: 'Docker Management MCP',
+        title: 'A Docker MCP server',
         reason:
-          'Project contains Docker configuration. A Docker MCP tool allows agents to check container status and inspect service logs.',
+          'The project has Docker configuration, and no server here reaches Docker. One lets an agent check which containers run and read their logs.',
         command: 'ambit goal containerization',
         action_type: 'goal',
       });
     }
   }
 
-  const summary = `${stack.name} (${[...stack.languages, ...stack.frameworks, ...stack.databases].join(', ') || 'workspace'}) · ${superpowers.length} recommended agent superpowers`;
+  const toAdd = superpowers.filter(s => s.command).length;
+  const summary = `${stack.name} (${[...stack.languages, ...stack.frameworks, ...stack.databases].join(', ') || 'workspace'}) · ${toAdd ? `${toAdd} to add` : 'nothing to add'}`;
 
   return {
     repo: stack,

@@ -5,7 +5,7 @@ description: Use when the user asks which MCP servers or agent tools they have, 
 
 # Ambit
 
-Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, Kiro) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
+Ambit reads the agent configs on this machine (Claude Code and its plugins, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, Kiro) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
 
 ## When the person types /ambit
 
@@ -28,11 +28,11 @@ Run it as `npx ambit-cli <command>` when `ambit` is not installed (Node 22.18 or
 | The user says, or you notice | Run | Then tell them |
 | :--- | :--- | :--- |
 | "Which MCP servers do I have?", or they use more than one runtime | `ambit status` | What is reached and proven, what is failing, and the next step it names |
-| A tool keeps failing with an auth error, or a server stopped answering | `ambit status`, then `ambit impact <id>` | What is configured but failing, and what else stops with it |
+| A tool keeps failing with an auth error, or a server stopped answering | `ambit verify --mcp <server>`, then `ambit impact <id>` | Whether it answers, and what else stops with it. A remote server is sent one request with no sign-in, so say so first |
 | They are about to revoke or rotate a token | `ambit credentials` | Everything that rests on each credential |
 | "What should I add next?", or the same missing ability keeps blocking you | `ambit next` | The ranked next step, why, and its setup time |
 | "What tools should my agent have for this project?" | `ambit repo` | The stack it found, and what to add for it |
-| They approve the same permission prompts all day | `ambit authority` | What may run without asking, and grants proven enough to stop asking |
+| They approve the same permission prompts all day | `ambit authority` | What may run without asking, and where their Claude Code rules and Ambit's grants disagree |
 | They are building a product alone: what to set up before launch, or how to keep an agent off production | `ambit goal "launch my saas"` | The steps left before real users, in order, and what an agent may do to hosting, the database and payments without asking |
 
 Lead with one command and what it found. That is usually the whole case for the tool.

@@ -10,7 +10,19 @@ A list shows what is configured; Ambit shows what the list adds up to. It record
 
 ### Do I need Claude Code for this?
 
-No. Ambit reads each of these runtimes from its standard config path: OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, and Kiro. [Where each AI agent keeps its MCP config](./mcp-config-locations.md) gives every path. It also reads the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the names of the models in Ollama's folder (`~/.ollama/models`, or `$OLLAMA_MODELS`) and LM Studio's (`~/.lmstudio/models`, or `~/.cache/lm-studio/models` from older versions; `AMBIT_LMSTUDIO_MODELS` names a folder you moved). A model file is never opened, and a model server is never asked. A server that two clients both list is one capability with two providers, not two capabilities. Adding a reader for another client is one of the most useful contributions; [CONTRIBUTING.md](../CONTRIBUTING.md) points at where they live.
+No. Ambit reads each of these runtimes from its standard config path: OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, and Kiro. [Where each AI agent keeps its MCP config](./mcp-config-locations.md) gives every path. It also reads the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the names of the models in Ollama's folder (`~/.ollama/models`, or `$OLLAMA_MODELS`) and LM Studio's (`~/.lmstudio/models`, or `~/.cache/lm-studio/models` from older versions; `AMBIT_LMSTUDIO_MODELS` names a folder you moved). A model file is never opened, and a model server is never asked. A server that two clients both list is one capability with two providers, not two capabilities. When a runtime changes where or how it keeps its config, a report or a fix to its reader is the most useful contribution; [CONTRIBUTING.md](../CONTRIBUTING.md) points at where the readers live.
+
+### Can my agent use it if it is not Claude Code?
+
+Yes, two ways. Any agent that speaks MCP can register `ambit mcp --profile=agent` as a server. Any agent that reads Agent Skills, Codex CLI, Cursor, Gemini CLI and Copilot among them, can install [the Ambit skill](../skills/ambit/SKILL.md) with `npx skills add zz-plant/ambit`, or by copying `skills/ambit` into `~/.agents/skills/`; it reaches Ambit through the `ambit` command and needs no MCP connection. Either way the agent asks `ambit can` before a tool it has not used, and can never grant or approve anything.
+
+### Does it replace Claude Code's permission prompts or auto mode?
+
+No. Claude Code's own rules and permission mode decide what runs without asking. `ambit authority` lists those rules beside your grants in Ambit, and says which one holds where they disagree. The `ambit-gate` plugin can only add a deny or an ask on top of what Claude Code would do, never an allow, so turning it on can make Claude Code stricter and never looser.
+
+### Does it track tokens and quota like ccusage?
+
+Partly. Ambit reads the token counts in the session logs Claude Code, Codex, OpenCode and Amp keep, and Time & cost shows them per model, priced where you declared a price. It does not follow a plan's five-hour windows or show what is left of a limit; [ccusage](https://github.com/ryoppippi/ccusage) and the tools around it do that as their whole job.
 
 ### I use Jev. Where does it fit?
 
@@ -22,11 +34,13 @@ Use Jev to decide what to try, and `ambit_can` to decide whether it may run. Jev
 
 ### How do I list every MCP server I have?
 
-Run `ambit status`: it reads every runtime's config at once and names each server, whether it passes its check, and the next step. Without Ambit, read each file by hand; [Where each AI agent keeps its MCP config](./mcp-config-locations.md) has the path and key for all sixteen.
+Run `ambit status`: it reads every runtime's config at once and names each server, whether it passes its check, and the next step. That includes the servers that came with a Claude Code plugin you turned on, which are not in any file you edited, and, by name, the servers a project commits in its `.mcp.json`. Without Ambit, read each file by hand; [Where each AI agent keeps its MCP config](./mcp-config-locations.md) has the path and key for all sixteen.
 
 ### Why isn't my MCP server working, or not showing up?
 
 Three faults look the same from the agent's side: the server is not declared, it is declared and fails to start, or it works and the agent is not permitted to call it. `ambit status` separates them. My Setup lists what was declared, a failing check marks a server that starts and fails, and `ambit authority` shows what may run without asking. `ambit verify <id>` runs the check again, and `ambit impact <id>` shows what stops with it.
+
+`ambit verify --mcp <server>` asks the server itself. A local one is started and asked for its tools; a remote one is sent one request with no sign-in. Either way the answer says whether it is there: a missing command, an endpoint that moved, a host that is gone and a server error each read as failing. A remote server that answers and asks for a sign-in has proved nothing either way, since your runtime's own sign-in is never sent, so a call from your agent is still the test of that. `ambit verify --mcp --remote` asks every one.
 
 ### How much of my context window do my MCP tools use?
 

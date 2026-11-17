@@ -16,10 +16,10 @@ If `ambit` is not on the PATH, run each command as `npx -y ambit-cli <command>` 
 ## Before a tool you have not used this session
 
 ```bash
-ambit can "<the tool's name>" --exit-code
+ambit can "<the tool's name>" --exit-code --record
 ```
 
-Name the tool as your runtime names it: `Bash(git push origin main)`, `mcp__github__create_issue`, or a capability such as `shell-execution`. Exit 0 means go ahead, 1 means put it to the user first, 2 means do not; a refusal is already recorded, so do not retry the same call under another name.
+Name the tool as your runtime names it: `Bash(git push origin main)`, `mcp__github__create_issue`, or a capability such as `shell-execution`. Exit 0 means go ahead, 1 means put it to the user first, 2 means do not. `--record` files a refusal as a deficit, so a block that recurs moves up what is worth fixing; do not retry the same call under another name.
 
 Before a task, `ambit briefing --task="<the task in a sentence>"` says which capabilities it touches, whether each passed its last check, whether acting on it is allowed, and which providers to use.
 
@@ -27,8 +27,8 @@ Before a task, `ambit briefing --task="<the task in a sentence>"` says which cap
 
 | The user says, or you notice | Run | Then tell them |
 | :--- | :--- | :--- |
-| "Which MCP servers do I have?" | `ambit status` | What is reached, what is proven, what is failing, and the next step it names |
-| A tool fails with an auth error, or a server stopped answering | `ambit verify --mcp <server>`, then `ambit impact <id>` | Whether it answers, and what else stops with it |
+| "Which MCP servers do I have?" | `ambit status` | What is reached, what is proven, what is failing, and the next step it names. Servers that came with a Claude Code plugin count too |
+| A tool fails with an auth error, or a server stopped answering | `ambit verify --mcp <server>`, then `ambit impact <id>` | Whether it answers, and what else stops with it. A remote server is sent one request with no sign-in, so say so first |
 | They fixed something that was failing | `ambit verify --failing` | What passes again |
 | They are about to revoke or rotate a token | `ambit credentials` | Everything that rests on each credential |
 | "What should I add next?", or the same missing ability keeps blocking you | `ambit next` | The ranked next step, why, and its setup time |

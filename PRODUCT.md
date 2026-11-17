@@ -20,7 +20,7 @@ Agents are a fourth reader of the same graph, over MCP. They never see the UI, b
 
 ## Product Purpose
 
-Ambit computes what a person, their agents and their machines can jointly do, which no configuration file states, and helps them widen it. It reads the configs of every agent runtime on a machine into one capability graph, places that graph on a curated tree of capabilities in eras, and answers four questions: what is one step away, what is worth setting up next, what actually works, and what breaks if a dependency fails. A session history adds where the person's own time goes.
+Ambit computes what a person, their agents and their machines can jointly do, which no configuration file states, and helps them widen it. It is in focused mode (AGENTS.md): a small developer tool that has to earn its place, so a surface serves the capability graph, the checks, the configured/working/authorized split and the MCP server, and leaves quota tracking, config sync, scanning and call-path enforcement to the tools built for them. It reads the configs of every agent runtime on a machine into one capability graph, places that graph on a curated tree of capabilities in eras, and answers four questions: what is one step away, what is worth setting up next, what actually works, and what breaks if a dependency fails. A session history adds where the person's own time goes.
 
 Success is a person who takes a next step with confidence and sees it reached and then verified, and an agent that knows what it may do before it tries.
 
@@ -61,7 +61,7 @@ The word *ambit* is unfamiliar to most readers. It is defined wherever a reader 
 
 - The hosted demo at `https://zz-plant.github.io/ambit/?demo=1`, built from a fixture (`demo-data.json`, `src/client/utils/demoSnapshot.ts`, `src/client/utils/demoRun.ts`), with a failing check and a recovering one so every state shows.
 - README images in `docs/assets/`: `capability-graph-demo.gif`, `screenshot-tree.png`, `screenshot-config.png`.
-- Releases: `ambit-cli` on npm (0.6.0), the Homebrew tap `zz-plant/tap/ambit`, the MCP registry entry, and a Glama score badge.
+- Releases: `ambit-cli` on npm (0.7.1), the Homebrew tap `zz-plant/tap/ambit`, the MCP registry entry, and a Glama score badge.
 - Long-form writing: `docs/deep-dive.md`, `docs/loadout.md`, `docs/solo.md`, `docs/why-ambit.md`, `docs/faq.md`, `docs/compare.md`, and the three search pages on MCP config locations, outages and auditing servers.
 - **Absent, and not to be invented:** customers, testimonials, case studies, user or install counts, benchmarks, press, and pricing. Ambit is free and MIT-licensed.
 
