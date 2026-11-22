@@ -39,9 +39,9 @@ const OUT = join(ROOT, 'src', 'client', 'utils', 'demo-data.json');
 /**
  * The setup the demo depicts.
  *
- * Entirely invented, and deliberately so: the demo is served from GitHub Pages
- * to anyone, and a fixture captured from a real machine would publish that
- * person's servers, agents and hostnames. It is broad enough to light every era
+ * Entirely invented, and deliberately so: the demo is served to anyone, and a
+ * fixture captured from a real machine would publish that person's servers,
+ * agents and hostnames. It is broad enough to light every era
  * column and to leave the frontier one step short in places, because a graph
  * with nothing left to reach demonstrates nothing.
  */

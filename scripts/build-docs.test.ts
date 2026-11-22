@@ -39,12 +39,12 @@ test('heading anchors follow the rule GitHub uses, repeats numbered', () => {
 
 test('a link becomes a page, a copied image, or the file on GitHub', () => {
   expect(rewriteHref('./faq.md#i-use-jev-where-does-it-fit', 'docs/jev.md')).toBe(
-    '/ambit/docs/faq/#i-use-jev-where-does-it-fit'
+    `${BASE}docs/faq/#i-use-jev-where-does-it-fit`
   );
-  expect(rewriteHref('../README.md', 'docs/faq.md')).toBe('/ambit/docs/guide/');
-  expect(rewriteHref('./docs/', 'README.md')).toBe('/ambit/docs/');
+  expect(rewriteHref('../README.md', 'docs/faq.md')).toBe(`${BASE}docs/guide/`);
+  expect(rewriteHref('./docs/', 'README.md')).toBe(`${BASE}docs/`);
   expect(rewriteHref('docs/assets/screenshot-tree.png', 'README.md')).toBe(
-    '/ambit/docs/assets/screenshot-tree.png'
+    `${BASE}docs/assets/screenshot-tree.png`
   );
   expect(rewriteHref('./AGENTS.md#rules', 'README.md')).toBe(
     'https://github.com/zz-plant/ambit/blob/main/AGENTS.md#rules'

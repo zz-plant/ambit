@@ -46,8 +46,8 @@ export default defineConfig({
       },
     },
   ],
-  // GitHub Pages serves the demo under /ambit/; a host that serves the root
-  // sets AMBIT_SITE_BASE=/ and every asset path follows.
+  // The site is served from the root; AMBIT_SITE_BASE names a prefix when a
+  // build is published under one, and every asset path follows.
   base: BASE,
   root: 'src/client',
   server: {

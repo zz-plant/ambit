@@ -172,7 +172,7 @@ ${headers}
 ${edgeSvg}
 ${nodeSvg}
 </svg></main>
-<footer>Rendered locally by <a href="https://zz-plant.github.io/ambit/">Ambit</a>, a map of what an AI agent setup can do, from an allow-listed slice of the graph — names, states, and edges only. No commands, URLs, paths, or descriptions from the graph are in this file.</footer>
+<footer>Rendered locally by <a href="https://ambit.kanav.net/">Ambit</a>, a map of what an AI agent setup can do, from an allow-listed slice of the graph — names, states, and edges only. No commands, URLs, paths, or descriptions from the graph are in this file.</footer>
 </body></html>`;
 
   return {

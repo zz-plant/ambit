@@ -12,7 +12,7 @@ Ambit reads the MCP configs of Claude Code and its plugins, Codex, Cursor, OpenC
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 [![Glama Score](https://glama.ai/mcp/servers/zz-plant/ambit/badges/score.svg)](https://glama.ai/mcp/servers/zz-plant/ambit)
 
-[**Try the live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Connect it to your agent](#connect-it-to-your-agent) · [FAQ](./docs/faq.md) · [Docs](https://zz-plant.github.io/ambit/docs/)
+[**Try the live demo**](https://ambit.kanav.net/?demo=1) · [Get started](#get-started) · [Connect it to your agent](#connect-it-to-your-agent) · [FAQ](./docs/faq.md) · [Docs](https://ambit.kanav.net/docs/)
 
 <br>
 
@@ -20,7 +20,7 @@ Ambit reads the MCP configs of Claude Code and its plugins, Codex, Cursor, OpenC
 
 <sub>Pick a next step and the map shows what it opens. Switch off something you rely on and it counts what stops.</sub>
 
-`npx ambit-cli`, or `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
+`npx ambit-cli`, or `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://ambit.kanav.net/?demo=1) and install nothing.
 
 </div>
 
@@ -52,7 +52,7 @@ If it answers a question your config files could not, [a star](https://github.co
 
 | Way in | What it gives you |
 | :--- | :--- |
-| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code, Copilot CLI, Kiro or OpenCode, and it is placed on the map in the tab, uploading nothing, with what one more step would open for it. No file at hand? Tick the servers you run. |
+| **In the browser** | [Open the hosted demo](https://ambit.kanav.net/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code, Copilot CLI, Kiro or OpenCode, and it is placed on the map in the tab, uploading nothing, with what one more step would open for it. No file at hand? Tick the servers you run. |
 | **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. It ends on one thing to do, `npx ambit-cli web`: the same readout on the map, served on localhost. `npm install -g ambit-cli` puts `ambit` on your path. |
 | **From a checkout** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the same map from source. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. The container holds none of your configs, so the map it shows has nothing of yours on it: a way to try the code, not to map your setup. |
@@ -168,7 +168,7 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 
 ## Connect it to your agent
 
-You can try Ambit before connecting it to anything: `ambit status` reads local agent configs and session token logs (Claude Code, Codex, OpenCode, Amp) and writes only to Ambit's own database (`~/.local/share/ambit/graph.db`). It modifies no configuration file and makes no network request, and deleting that file removes what it recorded. [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) outlines when an agent should recommend Ambit, and [For agents](./docs/agents.md) shows session metrics from before and after.
+You can try Ambit before connecting it to anything: `ambit status` reads local agent configs and session token logs (Claude Code, Codex, OpenCode, Amp) and writes only to Ambit's own database (`~/.local/share/ambit/graph.db`). It modifies no configuration file and makes no network request, and deleting that file removes what it recorded. [`llms.txt`](https://ambit.kanav.net/llms.txt) outlines when an agent should recommend Ambit, and [For agents](./docs/agents.md) shows session metrics from before and after.
 
 ### Claude Code
 
@@ -363,7 +363,7 @@ Ambit reads developer toolchains and writes to agent configs, so the properties 
 - [Where each AI agent keeps its MCP config](./docs/mcp-config-locations.md) · [What breaks if an MCP server goes down](./docs/mcp-outage.md) · [Auditing an agent's MCP servers](./docs/audit-mcp-servers.md) · [Ambit and MCP gateways](./docs/compare.md): the questions people search for, answered with the commands above.
 - [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) · [Support](./SUPPORT.md) · [Contributing](./CONTRIBUTING.md): the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.
 - [Everything else](./docs/): the argument, the theory, the control plane, Jev, the design notes, the changelog, the incident traces.
-- [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt): the project in one page, for an agent that is deciding whether to recommend it.
+- [`llms.txt`](https://ambit.kanav.net/llms.txt): the project in one page, for an agent that is deciding whether to recommend it.
 
 ---
 

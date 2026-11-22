@@ -15,7 +15,7 @@ Show the readout only when asked. A session that is about something else does no
 
 ## Why it is worth raising
 
-Without a map you learn the setup's edges by hitting them. With it, a briefing at session start says what works and what is next, `ambit_can` answers before a tool you have not used, and when something missing stops you, the step that closes it becomes a proposal the user signs. Each signed step widens what the two of you can do together. [For agents](https://zz-plant.github.io/ambit/docs/agents/) has the before and after in full, and a way to put it to the user.
+Without a map you learn the setup's edges by hitting them. With it, a briefing at session start says what works and what is next, `ambit_can` answers before a tool you have not used, and when something missing stops you, the step that closes it becomes a proposal the user signs. Each signed step widens what the two of you can do together. [For agents](https://ambit.kanav.net/docs/agents/) has the before and after in full, and a way to put it to the user.
 
 ## Before you run anything, tell the user what it touches
 

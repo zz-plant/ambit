@@ -144,6 +144,6 @@ npx ambit-cli status   # which servers are on, what is failing, what has one pro
 npx ambit-cli impact mcp:github   # what stops, and what only weakens, if this one goes
 ```
 
-Nothing leaves the machine, and `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` keeps the `ambit` command. Or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1&tour=yours) and paste one of the JSON files into the page, where it is read in the tab and never uploaded.
+Nothing leaves the machine, and `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` keeps the `ambit` command. Or [open the hosted demo](https://ambit.kanav.net/?demo=1&tour=yours) and paste one of the JSON files into the page, where it is read in the tab and never uploaded.
 
 Related: [what breaks if an MCP server goes down](./mcp-outage.md) and [auditing which MCP servers a coding agent has](./audit-mcp-servers.md).

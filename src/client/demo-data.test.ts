@@ -57,7 +57,7 @@ test('the demo has a history to scrub, on fixed dates, ending where its map is',
 });
 
 test('nothing from a real machine is in a file served to the public', () => {
-  // The demo is on GitHub Pages. A fixture captured from someone's laptop
+  // The demo is public. A fixture captured from someone's laptop
   // would publish their servers, agents and hostnames.
   const text = JSON.stringify(demoData);
   for (const marker of ['/Users/', '/home/', 'Library/', '.ssh', 'localhost:']) {

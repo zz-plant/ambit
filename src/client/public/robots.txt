@@ -1,7 +1,6 @@
-# Crawlers read robots.txt only at a host's root, and this site is served
-# under /ambit/, so this file takes effect only if the site moves to its own
-# domain. Until then the sitemap is submitted to search consoles directly.
+# Crawlers read robots.txt only at a host's root, and the site is served from
+# one, so this file is live.
 User-agent: *
 Allow: /
 
-Sitemap: https://zz-plant.github.io/ambit/sitemap.xml
+Sitemap: https://ambit.kanav.net/sitemap.xml

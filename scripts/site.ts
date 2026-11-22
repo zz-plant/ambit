@@ -2,14 +2,14 @@
  * Where the published site lives: the origin a crawler or a link card sees, and
  * the path prefix under it.
  *
- * Both default to GitHub Pages, which serves the demo under /ambit/. A build
- * for a host that serves the root sets AMBIT_SITE_BASE=/ and AMBIT_SITE_ORIGIN
- * to that host. The page, the docs, the sitemap and the absolute links inside
- * them all read these two, so no build can name a host it is not on.
+ * Both default to the production site. A build for another host, or a mirror
+ * under a path, sets AMBIT_SITE_ORIGIN and AMBIT_SITE_BASE. The page, the docs,
+ * the sitemap and the absolute links inside them all read these two, so no
+ * build can name a host it is not on.
  */
 
-const DEFAULT_ORIGIN = 'https://zz-plant.github.io';
-const DEFAULT_BASE = '/ambit/';
+const DEFAULT_ORIGIN = 'https://ambit.kanav.net';
+const DEFAULT_BASE = '/';
 
 /** A prefix with one leading and one trailing slash, which every link built from it assumes. */
 function prefix(raw: string | undefined): string {

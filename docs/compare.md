@@ -39,4 +39,4 @@ Ambit has a gate too, and it is the guardrail, not the center. `ambit can` retur
 
 They compose. A gateway decides call by call; Ambit says which calls are worth allowing without asking, from evidence that a capability has passed its check and been used without trouble. A person sets the threshold once, and the grant widens when the evidence reaches it and narrows again on one failing check.
 
-To try Ambit, [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1), or run `npx ambit-cli` on your machine (`brew install zz-plant/tap/ambit` keeps the command). [Where each AI agent keeps its MCP config](./mcp-config-locations.md) lists what it reads.
+To try Ambit, [open the hosted demo](https://ambit.kanav.net/?demo=1), or run `npx ambit-cli` on your machine (`brew install zz-plant/tap/ambit` keeps the command). [Where each AI agent keeps its MCP config](./mcp-config-locations.md) lists what it reads.

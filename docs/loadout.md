@@ -1,6 +1,6 @@
 # From A to B: the seven steps
 
-Ambit reads the agent configs on a machine into one map of what the setup can do. This page walks one setup from A, a pile of configs and an agent supervised call by call, to B, a class of work done without you, in seven steps with one command each. Your agents, tools, credentials and machines are your setup, and what you and they can do together is your [ambit](./ideas.md). Every number below is the hosted demo's, so each can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
+Ambit reads the agent configs on a machine into one map of what the setup can do. This page walks one setup from A, a pile of configs and an agent supervised call by call, to B, a class of work done without you, in seven steps with one command each. Your agents, tools, credentials and machines are your setup, and what you and they can do together is your [ambit](./ideas.md). Every number below is the hosted demo's, so each can be checked by [opening it](https://ambit.kanav.net/?demo=1).
 
 ## Point A
 

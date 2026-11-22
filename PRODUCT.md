@@ -6,7 +6,7 @@
 
 web
 
-The web UI runs from one build in two settings: the hosted demo, at `ambit.kanav.net` on Cloudflare Workers with a mirror under `/ambit/` on GitHub Pages (static, sample data, `?demo=1`), and `ambit web` on the person's own machine, served on loopback against their own graph. The CLI and the MCP server are sibling surfaces over the same engine; this record governs the web UI and the copy all three share.
+The web UI runs from one build in two settings: the hosted demo at `ambit.kanav.net` on Cloudflare Workers (static, sample data, `?demo=1`), and `ambit web` on the person's own machine, served on loopback against their own graph. The CLI and the MCP server are sibling surfaces over the same engine; this record governs the web UI and the copy all three share.
 
 ## Users
 

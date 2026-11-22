@@ -18,22 +18,22 @@ You can also open the repository in [Codespaces](https://codespaces.new/zz-plant
 
 ## Iterate on the site
 
-From a fresh worktree, run `npm ci` and then `npm run dev:fixture`. Open the URL Vite prints, normally [localhost:3100/ambit/](http://localhost:3100/ambit/). Vite waits for the API before listening and reloads client edits. The API on port 3101 reads a temporary SQLite graph and OpenCode config. You can try the My Setup switches and discard the session with Ctrl+C. Set both `AMBIT_WEB_PORT` and `AMBIT_API_PORT` if another worktree uses those ports. Use `npm run dev` for your own setup.
+From a fresh worktree, run `npm ci` and then `npm run dev:fixture`. Open the URL Vite prints, normally [localhost:3100/](http://localhost:3100/). Vite waits for the API before listening and reloads client edits. The API on port 3101 reads a temporary SQLite graph and OpenCode config. You can try the My Setup switches and discard the session with Ctrl+C. Set both `AMBIT_WEB_PORT` and `AMBIT_API_PORT` if another worktree uses those ports. Use `npm run dev` for your own setup.
 
-The [fixture's Briefing](http://localhost:3100/ambit/?view=setup&tab=briefing&guide=off) shows what an agent receives when it connects. Briefing and Environment require the local API.
+The [fixture's Briefing](http://localhost:3100/?view=setup&tab=briefing&guide=off) shows what an agent receives when it connects. Briefing and Environment require the local API.
 
-The [hosted demo](https://zz-plant.github.io/ambit/?demo=1&view=map&guide=off) and [its plain-text index](https://zz-plant.github.io/ambit/llms.txt) work without a local server. For a local preview of the published docs, run `npm run build` and `npx vite preview`, then open `/ambit/docs/` on the URL Vite prints.
+The [hosted demo](https://ambit.kanav.net/?demo=1&view=map&guide=off) and [its plain-text index](https://ambit.kanav.net/llms.txt) work without a local server. For a local preview of the published docs, run `npm run build` and `npx vite preview`, then open `/docs/` on the URL Vite prints.
 
 Use the same screenshot cases at each stage. Chrome is found at the default macOS path or via `CHROME_PATH` pointing to the executable.
 
 ```bash
 npm run shots -- --help
 npm run shots -- --only map-rest --size phone --strict
-npm run shots -- --url http://localhost:3100/ambit/ --live --only live-setup --strict --out output/shots/dev
-npm run shots -- --url https://zz-plant.github.io/ambit/ --only map-rest --size phone --strict --out output/shots/prod
+npm run shots -- --url http://localhost:3100/ --live --only live-setup --strict --out output/shots/dev
+npm run shots -- --url https://ambit.kanav.net/ --only map-rest --size phone --strict --out output/shots/prod
 ```
 
-Without `--url`, the runner makes and serves a temporary production build. With `--url`, it visits the running site as served. Open `index.html` in the output directory for the contact sheet or read `report.json` for the target, frame findings, and each page's published revision when present. `--strict` fails when a frame is flagged. After the [Pages workflow](https://github.com/zz-plant/ambit/actions/workflows/pages.yml) completes, add `--expect-revision <full-commit-sha>` to fail if any page is still serving a different build or has no revision. The same files can be published to Cloudflare Workers; [the Workers runbook](./docs/runbooks/workers-static-assets.md) has the setup, a pull request preview, and the cutover from Pages.
+Without `--url`, the runner makes and serves a temporary production build. With `--url`, it visits the running site as served. Open `index.html` in the output directory for the contact sheet or read `report.json` for the target, frame findings, and each page's published revision when present. `--strict` fails when a frame is flagged. The demo is deployed to Cloudflare Workers by [the Workers workflow](https://github.com/zz-plant/ambit/actions/workflows/workers.yml); after it deploys a merge, add `--expect-revision <full-commit-sha>` to fail if any page is still serving a different build or has no revision. [The runbook](./docs/runbooks/workers-static-assets.md) has the setup and what the workflow needs before it can deploy.
 
 ## The checks CI runs
 

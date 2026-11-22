@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ambit-web",
   // A static site: there is no Worker script, so a request that matches no file
-  // is a 404, which is what GitHub Pages answers today.
+  // is a 404.
   "compatibility_date": "2026-11-21",
   "assets": {
     "directory": "./dist",

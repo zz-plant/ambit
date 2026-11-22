@@ -48,7 +48,7 @@ Two of the answers need something from you first:
 
 ## Seeing it on the map
 
-The [hosted demo](https://zz-plant.github.io/ambit/?demo=1&tour=outage) opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press **Simulate an outage** to ask it of that one: what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.
+The [hosted demo](https://ambit.kanav.net/?demo=1&tour=outage) opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press **Simulate an outage** to ask it of that one: what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.
 
 ## Acting on the answer
 

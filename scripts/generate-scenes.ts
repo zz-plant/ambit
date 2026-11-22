@@ -335,7 +335,7 @@ function docCard(page: Page): string {
       ${lines.map((l, i) => `<tspan x="80" y="${top + i * 76}">${xml(l)}</tspan>`).join('\n      ')}
     </text>
     <text x="80" y="${titleY}" font-family="${FONT}" font-size="28" font-weight="500" fill="${SUB}">${xml(wrap(page.title.split(': ')[0], 44, 1)[0])}</text>
-    <text x="80" y="586" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">zz-plant.github.io/ambit/docs/${xml(page.slug ? `${page.slug}/` : '')}</text>
+    <text x="80" y="586" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">ambit.kanav.net/docs/${xml(page.slug ? `${page.slug}/` : '')}</text>
   </svg>`;
 }
 

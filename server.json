@@ -7,7 +7,7 @@
     "source": "github"
   },
   "version": "0.7.1",
-  "websiteUrl": "https://zz-plant.github.io/ambit/",
+  "websiteUrl": "https://ambit.kanav.net/",
   "packages": [
     {
       "registryType": "npm",

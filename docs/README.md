@@ -2,7 +2,7 @@
 
 Ambit reads the MCP configs of Claude Code, Cursor, OpenCode and thirteen more agents into one local map: every server, which ones work, what one more step would open, and what breaks if a piece goes. Run it once to see what you have, and again after any change: a piece whose check has stopped passing shows up as failing.
 
-- **Try it**: [the live demo](https://zz-plant.github.io/ambit/?demo=1), a sample setup, with nothing to install.
+- **Try it**: [the live demo](https://ambit.kanav.net/?demo=1), a sample setup, with nothing to install.
 - **Install it, or connect it to Claude Code or OpenCode**: [Get started](../README.md).
 - **See what it reads, and what leaves your machine**: [the FAQ](./faq.md).
 - **Audit what your agent already has**: [Auditing an MCP server setup](./audit-mcp-servers.md).
@@ -19,9 +19,9 @@ The claim underneath is that what an agent setup can do is not written in any co
 - [What stops when an MCP server or credential expires](./mcp-outage.md) — single points of failure in an agent setup, and how to find them before an agent does.
 - [Auditing which MCP servers a coding agent has](./audit-mcp-servers.md) — what is declared, what works, what may run without asking, and what was used but never declared.
 - [Ambit and MCP gateways](./compare.md) — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.
-- [Glossary](https://zz-plant.github.io/ambit/docs/glossary/) — every word the map and the CLI use, defined once, from the same file the app reads.
+- [Glossary](https://ambit.kanav.net/docs/glossary/) — every word the map and the CLI use, defined once, from the same file the app reads.
 - [Deep dive](./deep-dive.md) — the long-form reference: nodes, how a setup reaches further, assurance checks, authority contracts, the session history, delegation records, every MCP tool, and the map in full.
-- [llms.txt](../src/client/public/llms.txt) — the project on one page for an agent deciding whether to recommend it, served at [zz-plant.github.io/ambit/llms.txt](https://zz-plant.github.io/ambit/llms.txt).
+- [llms.txt](../src/client/public/llms.txt) — the project on one page for an agent deciding whether to recommend it, served at [ambit.kanav.net/llms.txt](https://ambit.kanav.net/llms.txt).
 
 ## Why it exists
 
