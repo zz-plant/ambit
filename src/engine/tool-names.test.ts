@@ -67,6 +67,12 @@ test('a program is found past runners, prefixes, paths and a shell it is handed 
   ]) {
     expect(commandExercises(command)).toEqual([{ means: 'combo:hosting', act: 'execute' }]);
   }
+  // Cloudflare's `cf` package installs both names; either one is the host's program.
+  for (const program of ['cf', 'cloudflare']) {
+    expect(commandExercises(`${program} deploy`)).toEqual([
+      { means: 'combo:hosting', act: 'execute' },
+    ]);
+  }
   expect(commandExercises('sudo -E env PGHOST=x /usr/bin/psql -c "select 1"')).toEqual([
     { means: 'combo:data-access', act: 'execute' },
   ]);

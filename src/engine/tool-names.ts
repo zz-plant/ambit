@@ -117,6 +117,8 @@ const PROGRAMS: Record<string, string> = {
   gh: 'combo:version-control',
   glab: 'combo:version-control',
   wrangler: 'combo:hosting',
+  cf: 'combo:hosting',
+  cloudflare: 'combo:hosting',
   vercel: 'combo:hosting',
   netlify: 'combo:hosting',
   flyctl: 'combo:hosting',
