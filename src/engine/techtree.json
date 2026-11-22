@@ -1649,7 +1649,7 @@
         "command": [
           "sh",
           "-c",
-          "command -v vercel >/dev/null 2>&1 || command -v wrangler >/dev/null 2>&1 || command -v netlify >/dev/null 2>&1 || command -v flyctl >/dev/null 2>&1 || command -v fly >/dev/null 2>&1 || command -v railway >/dev/null 2>&1 || command -v coolify >/dev/null 2>&1"
+          "command -v vercel >/dev/null 2>&1 || command -v wrangler >/dev/null 2>&1 || command -v cf >/dev/null 2>&1 || command -v cloudflare >/dev/null 2>&1 || command -v netlify >/dev/null 2>&1 || command -v flyctl >/dev/null 2>&1 || command -v fly >/dev/null 2>&1 || command -v railway >/dev/null 2>&1 || command -v coolify >/dev/null 2>&1"
         ],
         "timeout_seconds": 10
       },

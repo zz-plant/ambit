@@ -11,8 +11,11 @@
   "scripts": {
     "dev": "node --experimental-strip-types scripts/dev.ts",
     "dev:fixture": "node --experimental-strip-types scripts/dev.ts --fixture",
-    "build": "npm run typecheck && vite build && npm run docs:build",
+    "build": "npm run typecheck && vite build && npm run docs:build && npm run site:origin",
     "docs:build": "node --experimental-strip-types scripts/build-docs.ts",
+    "site:origin": "node --experimental-strip-types scripts/rewrite-site-origin.ts",
+    "deploy:worker": "npm run build && wrangler deploy",
+    "preview:worker": "npm run build && wrangler versions upload",
     "test": "vitest run",
     "check": "node --experimental-strip-types scripts/check.ts",
     "demo:incident": "python3 scripts/demo_incident_trace.py",
@@ -61,6 +64,7 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitest": "^5.0.1",
+    "wrangler": "^4.166.0",
     "yaml": "^2.9.1",
     "zustand": "^5.0.15"
   },

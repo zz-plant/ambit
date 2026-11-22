@@ -1,0 +1,158 @@
+name: Workers
+
+# The demo is published to GitHub Pages by pages.yml. This is the Cloudflare
+# Workers Static Assets path: a version URL for a pull request, and a
+# production deploy when someone dispatches one on main.
+#
+# It stays dormant until the repository has CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID secrets, so it cannot fail a pull request before then.
+# A production deploy also needs AMBIT_SITE_ORIGIN as a repository variable, so
+# its canonical links name the host the site is on.
+# docs/runbooks/workers-static-assets.md has the setup and the cutover.
+
+on:
+  pull_request:
+    paths:
+      - 'src/client/**'
+      - 'src/shared/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'CONTRIBUTING.md'
+      - 'CHANGELOG.md'
+      - 'scripts/build-docs.ts'
+      - 'scripts/site.ts'
+      - 'scripts/rewrite-site-origin.ts'
+      - 'vite.config.ts'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/workers.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # The preview link is a comment on the pull request. The production job
+    # needs nothing beyond the checkout.
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      # Fork pull requests get no secrets, and a repository without them has not
+      # opted in. Either way the run says so and stops, rather than failing.
+      - name: Credentials
+        id: credentials
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No CLOUDFLARE_API_TOKEN secret, so the Workers preview is skipped."
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.credentials.outputs.ready == 'true'
+      - uses: actions/setup-node@v7
+        if: steps.credentials.outputs.ready == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: steps.credentials.outputs.ready == 'true'
+
+      # A Worker serves the root, and a preview of a page whose canonical points
+      # somewhere else would compete with the page it previews. Both follow the
+      # production origin once it is set.
+      - name: Build
+        if: steps.credentials.outputs.ready == 'true'
+        env:
+          AMBIT_SITE_BASE: /
+          AMBIT_SITE_ORIGIN: ${{ vars.AMBIT_SITE_ORIGIN }}
+          AMBIT_SITE_REVISION: ${{ github.sha }}
+        run: npm run build
+
+      - name: Upload a version
+        id: upload
+        if: steps.credentials.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          name="pr-${{ github.event.pull_request.number }}"
+          out=$(npx wrangler versions upload --preview-alias "$name" 2>&1)
+          printf '%s\n' "$out"
+          url=$(printf '%s\n' "$out" | grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' | head -n1 || true)
+          if [ -z "$url" ]; then
+            echo "::error::wrangler uploaded a version but printed no URL."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # One comment, edited on each push, so a long pull request does not fill
+      # its conversation with preview links. The marker is how it finds its own
+      # comment: other workflows comment as the same bot.
+      - name: Comment the version URL
+        if: steps.upload.outputs.url != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ steps.upload.outputs.url }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          marker='<!-- ambit-workers-preview -->'
+          body=$(printf '%s\nWorkers version: %s\n' "$marker" "$URL")
+          id=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" \
+            --jq ".[] | select(.body | contains(\"$marker\")) | .id" | head -n1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$id" -f body="$body" >/dev/null
+          else
+            gh api -X POST "repos/${{ github.repository }}/issues/$PR/comments" -f body="$body" >/dev/null
+          fi
+
+  production:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Credentials and origin
+        env:
+          SITE_ORIGIN: ${{ vars.AMBIT_SITE_ORIGIN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Set the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets first."
+            exit 1
+          fi
+          if [ -z "$SITE_ORIGIN" ]; then
+            echo "::error::Set the AMBIT_SITE_ORIGIN repository variable to the host the site is published under, for example https://ambit.kanav.net, so canonical links name it."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Build
+        env:
+          AMBIT_SITE_BASE: /
+          AMBIT_SITE_ORIGIN: ${{ vars.AMBIT_SITE_ORIGIN }}
+          AMBIT_SITE_REVISION: ${{ github.sha }}
+        run: npm run build
+
+      - name: Deploy
+        run: npx wrangler deploy

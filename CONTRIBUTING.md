@@ -33,7 +33,7 @@ npm run shots -- --url http://localhost:3100/ambit/ --live --only live-setup --s
 npm run shots -- --url https://zz-plant.github.io/ambit/ --only map-rest --size phone --strict --out output/shots/prod
 ```
 
-Without `--url`, the runner makes and serves a temporary production build. With `--url`, it visits the running site as served. Open `index.html` in the output directory for the contact sheet or read `report.json` for the target, frame findings, and each page's published revision when present. `--strict` fails when a frame is flagged. After the [Pages workflow](https://github.com/zz-plant/ambit/actions/workflows/pages.yml) completes, add `--expect-revision <full-commit-sha>` to fail if any page is still serving a different build or has no revision.
+Without `--url`, the runner makes and serves a temporary production build. With `--url`, it visits the running site as served. Open `index.html` in the output directory for the contact sheet or read `report.json` for the target, frame findings, and each page's published revision when present. `--strict` fails when a frame is flagged. After the [Pages workflow](https://github.com/zz-plant/ambit/actions/workflows/pages.yml) completes, add `--expect-revision <full-commit-sha>` to fail if any page is still serving a different build or has no revision. The same files can be published to Cloudflare Workers; [the Workers runbook](./docs/runbooks/workers-static-assets.md) has the setup, a pull request preview, and the cutover from Pages.
 
 ## The checks CI runs
 
