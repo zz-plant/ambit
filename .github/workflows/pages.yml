@@ -18,6 +18,8 @@ on:
       - 'CONTRIBUTING.md'
       - 'CHANGELOG.md'
       - 'scripts/build-docs.ts'
+      - 'scripts/site.ts'
+      - 'scripts/rewrite-site-origin.ts'
       - 'vite.config.ts'
       - 'package.json'
       - 'package-lock.json'

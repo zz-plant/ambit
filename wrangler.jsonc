@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ambit-web",
+  // A static site: there is no Worker script, so a request that matches no file
+  // is a 404, which is what GitHub Pages answers today.
+  "compatibility_date": "2026-11-21",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash"
+  },
+  // The production host. `custom_domain` has the deploy write the DNS record and
+  // the certificate for a zone in this account.
+  "routes": [{ "pattern": "ambit.kanav.net", "custom_domain": true }],
+  // A version URL per upload, so a pull request can be opened before it ships.
+  "preview_urls": true
+}

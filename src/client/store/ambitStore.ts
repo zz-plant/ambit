@@ -166,10 +166,32 @@ const errorMessage = (e: unknown) =>
   (e instanceof Error && e.message) ||
   'Could not reach the local server. Check that ambit web is still running, then try again.';
 
-/** Served from GitHub Pages, where no engine can be listening. */
+/** Hosts that serve the map as static files, and so have no engine to ask. */
+const STATIC_HOST = /(^|\.)(github\.io|workers\.dev)$/;
+
+/**
+ * The host this build was published for, from the meta tag the page carries.
+ * `scripts/rewrite-site-origin.ts` points it at the configured origin, so a
+ * build on any custom domain knows it is the static one. A build served from
+ * loopback names another host and still looks for an engine.
+ */
+/** What this module asks of a document: one meta tag's content. */
+type MetaTag = { getAttribute?: (name: string) => string | null };
+type MetaDocument = { document?: { querySelector?: (selector: string) => MetaTag | null } };
+
+export function builtHost(): string {
+  const doc = (globalThis as MetaDocument).document;
+  const meta = doc?.querySelector?.('meta[name="ambit-site-origin"]');
+  const origin = meta?.getAttribute?.('content') ?? '';
+  const host = /^[a-z]+:\/\/([^/]+)/i.exec(origin);
+  return host ? host[1].toLowerCase() : '';
+}
+
+/** Served from static files, on GitHub Pages, Workers, or the origin the build names. */
 export const isHostedDemo = (
-  host = (globalThis as { location?: { hostname?: string } }).location?.hostname ?? ''
-) => host === 'github.io' || host.endsWith('.github.io');
+  host = (globalThis as { location?: { hostname?: string } }).location?.hostname ?? '',
+  built = builtHost()
+) => (built !== '' && host === built) || STATIC_HOST.test(host);
 
 /**
  * Whether there is an engine behind the page. Probed once and remembered: the
@@ -183,8 +205,8 @@ export const isHostedDemo = (
  * its welcome screen instead of an error.
  */
 export function backendAvailable(): Promise<boolean> {
-  // The hosted demo is GitHub Pages, which never has an engine behind it, and
-  // asking anyway logged a 404 for /api/health in every visitor's console.
+  // The hosted demo is static files, which never have an engine behind them,
+  // and asking anyway logged a 404 for /api/health in every visitor's console.
   if (!backendProbe && isHostedDemo()) {
     backendProbe = Promise.resolve(false);
     useAmbitStore.setState({ backend: 'static' });

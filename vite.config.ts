@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
 import { setTimeout } from 'node:timers/promises';
 import { hasApi } from './scripts/lib/api-health.ts';
+import { BASE } from './scripts/site.ts';
 
 /** The released version, for the page's structured data, read from the one place it is written. */
 const VERSION = JSON.parse(
@@ -45,8 +46,9 @@ export default defineConfig({
       },
     },
   ],
-  // GitHub Pages serves the demo under /ambit/.
-  base: '/ambit/',
+  // GitHub Pages serves the demo under /ambit/; a host that serves the root
+  // sets AMBIT_SITE_BASE=/ and every asset path follows.
+  base: BASE,
   root: 'src/client',
   server: {
     // The API accepts a page's Origin only on a port it was told about, and

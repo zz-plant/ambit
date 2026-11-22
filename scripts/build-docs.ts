@@ -22,10 +22,10 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, normalize, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Marked, type Tokens } from 'marked';
+import { BASE, ORIGIN } from './site.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const ORIGIN = 'https://zz-plant.github.io';
-export const BASE = '/ambit/';
+export { BASE, ORIGIN };
 const REPO = 'https://github.com/zz-plant/ambit/blob/main/';
 
 export interface Page {

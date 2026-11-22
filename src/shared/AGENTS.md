@@ -59,6 +59,10 @@ scripts/render-images.ts   The saved images, from the page's own code in a headl
                            DevTools client it shares with record-hero-gif.ts
 scripts/build-docs.ts      The docs as static pages under /ambit/docs/, and the sitemap written
                            from the same list; `npm run build` runs it after Vite
+scripts/site.ts            The origin and path prefix the site is published under, from
+                           AMBIT_SITE_ORIGIN and AMBIT_SITE_BASE, defaulting to GitHub Pages
+scripts/rewrite-site-origin.ts  The hand-written absolute URLs in dist/, pointed at that origin
+                           and prefix; a build on the default host writes nothing
 scripts/adapters/          Deeper runtime readers than mcp-clients.ts: hermes.ts · surface.ts (a
                            published capability surface) · telemetry.ts (work events piped to
                            /api/telemetry)
