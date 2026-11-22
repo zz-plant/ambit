@@ -173,7 +173,7 @@ export function ZoomHud({
             : lensNote
               ? lensNote
               : lens === 'authority'
-                ? 'Nothing reached has an authority mode yet. Install Ambit and run ambit seed on your machine to read them from your configs.'
+                ? 'Nothing reached has a grant yet. Install Ambit and run ambit seed on your machine to read grants from your configs.'
                 : 'Nothing recorded yet. This lens shades each capability by how often you had to step in, and fills once the Claude Code plugin or OpenCode telemetry plugin records your sessions.';
           // The lens keeps its own name, and the reason it is off is its
           // description: a disabled button cannot take focus, so the reason

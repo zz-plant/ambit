@@ -531,7 +531,7 @@ export default function CivTree({
               // and the standard map draws a failing check with them. Said
               // here, a reader who met them as failing reads them right.
               ...(m === 'forbidden' && {
-                hint: 'Forbidden: a grant refuses it. Stripes mark what refuses, which on the standard map is a failing check.',
+                hint: 'Forbidden: a grant refuses it. Stripes mark what refuses; on the standard map that is a failing check.',
               }),
             })
           )

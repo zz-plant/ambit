@@ -34,7 +34,7 @@ const PAGE_KEYS = [
   { key: '?', desc: 'Open this help' },
   {
     key: 'Esc',
-    desc: 'Close one thing a press: this guide, the tour’s Proposals card or search first, then a highlight, a simulation, and last the selection',
+    desc: 'Each press closes one thing: this guide, the tour’s Proposals card or search first, then a highlight, a simulation, and last the selection',
   },
 ];
 

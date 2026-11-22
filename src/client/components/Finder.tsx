@@ -170,7 +170,7 @@ export function FinderView(p: FinderViewProps) {
         <div className="visually-hidden" aria-live="polite" aria-atomic="true">
           {p.query.trim()
             ? p.rows.length === 0
-              ? 'No results found'
+              ? 'Nothing matches'
               : `${p.rows.length} ${p.rows.length === 1 ? 'match' : 'matches'}`
             : ''}
         </div>

@@ -78,8 +78,7 @@ export function CouncilFigure({
         <p className={`council-verdict${split ? ' is-split' : ''}`}>
           {split ? (
             <>
-              <strong>Tradeoffs.</strong> {names(advisors, 'for')} in favor,{' '}
-              {names(advisors, 'against')} flagged a risk.
+              {names(advisors, 'for')} in favor, {names(advisors, 'against')} flagged a risk.
             </>
           ) : against ? (
             <>
