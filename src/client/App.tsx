@@ -509,7 +509,9 @@ export default function App() {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setToast(`Saved ${file.name}.`);
     } catch {
-      setToast('The image could not be drawn in this browser.');
+      setToast(
+        'The image could not be drawn in this browser. Save the whole map as an SVG instead; it needs no canvas.'
+      );
     }
   };
 

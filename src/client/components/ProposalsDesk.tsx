@@ -235,14 +235,14 @@ export function ProposalsDesk() {
     setApprovingId(proposalId);
     setDecisionError(null);
     const result = await approveProposal(proposalId, WEB_ACTOR);
-    if (!result.ok) setDecisionError(result.error || 'Could not record the approval.');
+    if (!result.ok) setDecisionError(result.error || 'Could not record the approval. Try again.');
     setApprovingId(null);
   };
 
   const recordRejection = async (id: string, reason?: string, reasonKind?: RejectionKind) => {
     setDecisionError(null);
     const result = await rejectProposal(id, reason?.trim() || undefined, reasonKind);
-    if (!result.ok) setDecisionError(result.error || 'Could not record the decision.');
+    if (!result.ok) setDecisionError(result.error || 'Could not record the decision. Try again.');
     else setDeclining(null);
   };
 
@@ -360,7 +360,7 @@ export function ProposalsDesk() {
         <div className="gov-empty">
           {proposals.length === 0
             ? 'Nothing waiting. A change drafted by an agent or by ambit propose appears here for you to decide.'
-            : 'Nothing here yet.'}
+            : 'No proposal matches this filter.'}
         </div>
       ) : (
         <div className="gov-list">

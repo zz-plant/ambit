@@ -27,6 +27,8 @@ test('the headline asks what you can do and what one step would open, and the wo
   // Breakage is in the lede, after reach, as the half that makes widening safe.
   expect(html).not.toMatch(/<h1[^>]*>[^<]*break/i);
   expect(html).toContain('That reach is your <em>ambit</em>');
+  // A line break after the em renders as "ambit ." on the front door.
+  expect(html).toContain('<em>ambit</em>.</p>');
   expect(html.indexOf('next step would open')).toBeLessThan(html.indexOf('stops if a piece goes'));
 });
 

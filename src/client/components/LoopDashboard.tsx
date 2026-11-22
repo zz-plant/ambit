@@ -400,7 +400,7 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
           <li key={r.capability} className={`fig-bar-row ${r.kept ? 'is-kept' : ''}`}>
             <span className="fig-bar-name">
               {r.capability}
-              {r.kept && <span className="fig-tag">kept</span>}
+              {r.kept && <span className="fig-tag">worth keeping</span>}
             </span>
             <span className="fig-bar-track">
               <span
@@ -1217,7 +1217,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
           <figure className="fig fig--kpi fig--wide">
             <figcaption className="fig-caption">
               <span className="fig-caption-title">Hours spent stepping in</span>
-              <span className="fig-caption-note">shaded: the saving</span>
+              <span className="fig-caption-note">shaded: what you would save</span>
             </figcaption>
             {/* A ledger with runs and no interventions drew "0h saved, $0 a
                 year", which reads as a measurement of a machine that costs

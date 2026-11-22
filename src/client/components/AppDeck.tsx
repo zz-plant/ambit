@@ -445,8 +445,8 @@ export default function AppDeck(p: AppDeckProps) {
           type="button"
           className="app-deck-btn"
           onClick={p.onShowDocs}
-          title="Every term on the map, defined, and what each view does (?)"
-          aria-label="Help: every term, and what the map shows (?)"
+          title="Help: every term on the map, defined, and what each view does (?)"
+          aria-label="Help: every term on the map, defined, and what each view does"
         >
           <Icon strokeLinejoin="round" className="app-deck-icon">
             <path d="M2 3.5 C2 2.7 2.7 2 3.5 2 H7.5 V14 H3.5 C2.7 14 2 13.3 2 12.5 Z M14 3.5 C14 2.7 13.3 2 12.5 2 H8.5 V14 H12.5 C13.3 14 14 13.3 14 12.5 Z" />

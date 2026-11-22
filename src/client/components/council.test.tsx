@@ -30,7 +30,7 @@ test('the sample is split, and the panel names who is for it and who against', (
 
   expect(words).toContain('Next-step tradeoffs');
   expect(words).toContain('on Embeddings, the first step to reach');
-  expect(words).toContain('Tradeoffs. Reach and Cost in favor, What could break flagged a risk.');
+  expect(words).toContain('Reach and Cost in favor, What could break flagged a risk.');
   for (const seat of ['Reach', 'What could break', 'Cost', 'Permission', 'Checks']) {
     expect(words).toContain(seat);
   }

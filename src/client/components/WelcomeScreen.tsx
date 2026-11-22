@@ -189,10 +189,9 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
         <p className="app-welcome-lede">
           Ambit reads the MCP configs of {RUNTIMES_READ} AI coding agents and MCP clients, including{' '}
           {RUNTIMES[0]}, {RUNTIMES[1]}, {RUNTIMES[2]} and {RUNTIMES[3]}, and reports three facts
-          about every piece: configured, working, and whether it runs without asking. Then it draws
-          what the pieces add up to as one map of what your setup can reach, with which next step
-          would open the most and what stops if a piece goes away. That reach is your <em>ambit</em>
-          .
+          about every piece: configured, working, and whether it runs without asking. It draws what
+          the pieces add up to as one map of what your setup can reach, with which next step would
+          open the most and what stops if a piece goes away. That reach is your <em>ambit</em>.
         </p>
 
         {owner && (
