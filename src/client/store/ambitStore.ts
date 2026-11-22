@@ -187,7 +187,7 @@ export function builtHost(): string {
   return host ? host[1].toLowerCase() : '';
 }
 
-/** Served from static files, on GitHub Pages, Workers, or the origin the build names. */
+/** Served from static files, on the origin the build names or a known static host. */
 export const isHostedDemo = (
   host = (globalThis as { location?: { hostname?: string } }).location?.hostname ?? '',
   built = builtHost()
@@ -195,7 +195,7 @@ export const isHostedDemo = (
 
 /**
  * Whether there is an engine behind the page. Probed once and remembered: the
- * published demo is static files on GitHub Pages, and every optional call —
+ * published demo is static files, and every optional call —
  * the infrastructure scan, the config graph — used to fail in the console of
  * exactly the audience most likely to open it.
  *

@@ -2,7 +2,7 @@
  * What `npm run render:images` drives: the graph the page would show, loaded
  * the page's way, and the files its Image menu saves of the whole map, made
  * by the same function. Served by Vite in a checkout at
- * /ambit/dev/render.html (`?demo` for the demo) and never built into dist.
+ * /dev/render.html (`?demo` for the demo) and never built into dist.
  *
  * It draws nothing to look at. `window.ambitRender()` makes the files and
  * answers with their names and lengths as base64; `window.ambitSlice(i, from,

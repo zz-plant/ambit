@@ -15,7 +15,7 @@ They nest: the ambit is the reach, the frontier is its edge, the capability grap
 | Capability graph | Reference | The nodes and dependencies used to compute reach |
 | Affordance frontier | Theory | The broader object, including physical, social, institutional and economic action |
 
-The [glossary](https://zz-plant.github.io/ambit/docs/glossary/) defines the product's terms.
+The [glossary](https://ambit.kanav.net/docs/glossary/) defines the product's terms.
 
 ## Three aims, one project
 
@@ -56,4 +56,4 @@ Work runs and outcome records exist. Versioned scenarios with acceptance evidenc
 - Enforcement covers `apply`, routed control-plane execution and Claude Code with the gate hook installed. Other runtimes choose whether to consult it.
 - Reach and check results measure aspects of the assembled system, not model intelligence.
 
-To see these on a sample setup, [open the demo](https://zz-plant.github.io/ambit/?demo=1). [Why Ambit](./why-ambit.md) gives the argument, [the affordance frontier](./affordance-frontier.md) the theory, and [the reference](./deep-dive.md) the software.
+To see these on a sample setup, [open the demo](https://ambit.kanav.net/?demo=1). [Why Ambit](./why-ambit.md) gives the argument, [the affordance frontier](./affordance-frontier.md) the theory, and [the reference](./deep-dive.md) the software.

@@ -353,8 +353,9 @@ async function serveStatic(
   res: ServerResponse,
   headers: Record<string, string>
 ): Promise<boolean> {
-  // The build sets base '/ambit/' for GitHub Pages, so asset URLs carry that
-  // prefix; strip it when serving dist locally.
+  // A build published under a path prefix carries it in every asset URL; strip
+  // it when serving dist locally. The production site is at the root, where
+  // this is a no-op.
   const stripped = pathname.replace(/^\/ambit/, '') || '/';
   const relative = normalize(stripped === '/' ? '/index.html' : stripped).replace(
     /^(\.\.[/\\])+/,

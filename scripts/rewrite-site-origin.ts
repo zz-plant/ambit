@@ -2,7 +2,7 @@
 /**
  * The built site's absolute URLs, pointed at the host it is being published to.
  *
- * Three files name the GitHub Pages address by hand: index.html writes its
+ * Three files name the production address by hand: index.html writes its
  * canonical link, its Open Graph tags and its structured data; public/llms.txt
  * and public/robots.txt are copied byte for byte. Everything else is generated
  * from scripts/site.ts. A build for another host runs this after both build
@@ -39,7 +39,7 @@ export interface Rewrite {
 
 /**
  * Replace the default origin and prefix with the configured ones, in every text
- * file under `dir`. A build on GitHub Pages rewrites nothing, because the two
+ * file under `dir`. A build at the default origin rewrites nothing, because the two
  * are the same string.
  */
 export function rewriteSiteOrigin(dir = join(ROOT, 'dist')): Rewrite {

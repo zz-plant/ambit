@@ -1,5 +1,5 @@
 /**
- * The specimen page, served by Vite in a checkout at /ambit/dev/specimen.html
+ * The specimen page, served by Vite in a checkout at /dev/specimen.html
  * and never built into dist, since the build reads index.html alone. `?still`
  * draws each node as a saved file does, and `?scale=` sets the size; three
  * times a node is the default, a size a screenshot can judge a filter at.

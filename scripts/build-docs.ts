@@ -5,7 +5,7 @@
  * The site was one URL: the map, rendered by JavaScript, with about two
  * hundred words on it. Everything a search engine or an agent could quote
  * lived on GitHub, whose pages rank for GitHub. Each document below becomes a
- * static page under /ambit/docs/, with its own title, description and
+ * static page under /docs/, with its own title, description and
  * canonical URL, and the sitemap is written from the same list, so a page
  * cannot be published without being listed or listed without being published.
  *
@@ -31,7 +31,7 @@ const REPO = 'https://github.com/zz-plant/ambit/blob/main/';
 export interface Page {
   /** The markdown file, relative to the repository root. */
   src: string;
-  /** Where it is published under /ambit/docs/; '' is the docs index. */
+  /** Where it is published under /docs/; '' is the docs index. */
   slug: string;
   title: string;
   /** At most about 155 characters, which is what a result snippet shows. */

@@ -244,7 +244,7 @@ if (cmd === 'web') {
         `    git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web\n`
       );
       console.log(
-        `  ${D}ambit share writes the map as one HTML file; the hosted demo is https://zz-plant.github.io/ambit/?demo=1${R}\n`
+        `  ${D}ambit share writes the map as one HTML file; the hosted demo is https://ambit.kanav.net/?demo=1${R}\n`
       );
       process.exit(1);
     }

@@ -21,7 +21,7 @@ export const WEB_ACTOR = 'human:web';
  * Where the product lives, as a screenshot of it should say. A cropped image
  * loses the address bar, so the map and the saved image carry this instead.
  */
-export const SITE_HOST = 'zz-plant.github.io/ambit';
+export const SITE_HOST = 'ambit.kanav.net';
 
 /**
  * Copy text to the clipboard with robust fallback.
