@@ -6,7 +6,7 @@
 
 web
 
-The web UI runs in two places from one build: the hosted demo on GitHub Pages (static, sample data, `?demo=1`) and `ambit web` on the person's own machine, served on loopback against their own graph. The CLI and the MCP server are sibling surfaces over the same engine; this record governs the web UI and the copy all three share.
+The web UI runs from one build in two settings: the hosted demo, at `ambit.kanav.net` on Cloudflare Workers with a mirror under `/ambit/` on GitHub Pages (static, sample data, `?demo=1`), and `ambit web` on the person's own machine, served on loopback against their own graph. The CLI and the MCP server are sibling surfaces over the same engine; this record governs the web UI and the copy all three share.
 
 ## Users
 
@@ -59,7 +59,7 @@ The word *ambit* is unfamiliar to most readers. It is defined wherever a reader 
 
 ## Evidence on Hand
 
-- The hosted demo at `https://zz-plant.github.io/ambit/?demo=1`, built from a fixture (`demo-data.json`, `src/client/utils/demoSnapshot.ts`, `src/client/utils/demoRun.ts`), with a failing check and a recovering one so every state shows.
+- The hosted demo at `https://ambit.kanav.net/?demo=1`, built from a fixture (`demo-data.json`, `src/client/utils/demoSnapshot.ts`, `src/client/utils/demoRun.ts`), with a failing check and a recovering one so every state shows.
 - README images in `docs/assets/`: `capability-graph-demo.gif`, `screenshot-tree.png`, `screenshot-config.png`.
 - Releases: `ambit-cli` on npm (0.7.1), the Homebrew tap `zz-plant/tap/ambit`, the MCP registry entry, and a Glama score badge.
 - Long-form writing: `docs/deep-dive.md`, `docs/loadout.md`, `docs/solo.md`, `docs/why-ambit.md`, `docs/faq.md`, `docs/compare.md`, and the three search pages on MCP config locations, outages and auditing servers.
