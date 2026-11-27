@@ -58,7 +58,9 @@ test('every hook and server runs an ambit verb the CLI has, or a script the plug
       continue;
     }
     // The gate's guard: it steps aside when ambit is not installed, and the
-    // session-start half says so once instead of failing on every call.
+    // session-start half says so once instead of failing on every call. The
+    // briefing takes the installed command when there is one, since npx spends
+    // about a second resolving the package before the briefing starts.
     if (c.startsWith('sh -c ')) {
       expect(c, c).toContain('command -v ambit');
       const verb = c.match(/exec ambit (\S+?)'?$/)?.[1];

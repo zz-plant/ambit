@@ -274,8 +274,9 @@ function exportSync(db: Db, path?: string) {
       'sandboxes',
       'when each device and service was last seen',
       'what each tool server weighed',
-      // How far this machine's session logs were read. The runs and tokens
-      // they fed travel; the cursor names files only this machine has.
+      // How far this machine's session logs were read, and what their folders
+      // held. The runs and tokens they fed travel; the cursors and listings
+      // name files only this machine has.
       'session log cursors',
     ],
   };

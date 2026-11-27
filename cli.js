@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { connect, createServer } from 'node:net';
 import { existsSync, readFileSync } from 'node:fs';
+import module from 'node:module';
 
 /**
  * How the engine is launched.
@@ -48,6 +49,57 @@ const mcpEntry = existsSync(resolve(ROOT, 'src', 'mcp', 'server.ts'))
   ? resolve(ROOT, 'src', 'mcp', 'server.ts')
   : resolve(ROOT, 'dist-cli', 'mcp', 'server.js');
 
+/**
+ * A hook's module: the TypeScript in a checkout, and in an install the one file
+ * `npm run build:hooks` bundles from the compiled copy, or the compiled copy
+ * when no bundle was built. Claude Code waits on the gate before every tool
+ * call and on the status line after every message, and the compiled gate
+ * loads 64 files where the bundle loads one, which cut its start by a third.
+ */
+function hookEntry(name) {
+  if (existsSync(srcEngine)) return resolve(ROOT, 'src', 'engine', `${name}.ts`);
+  const bundle = resolve(ROOT, 'dist-cli', 'engine', `${name}.bundle.js`);
+  return existsSync(bundle) ? bundle : resolve(ROOT, 'dist-cli', 'engine', `${name}.js`);
+}
+
+/**
+ * Node's notice that SQLite and type stripping are experimental, held back as
+ * `--disable-warning=ExperimentalWarning` holds it back for a child: the person
+ * passed no flag and chose no module, so it reads as something being wrong.
+ * Every other warning still reaches Node's own printer.
+ */
+function quietExperimental() {
+  const printers = process.listeners('warning');
+  process.removeAllListeners('warning');
+  process.on('warning', w => {
+    if (w.name !== 'ExperimentalWarning') for (const print of printers) print(w);
+  });
+}
+
+/**
+ * An engine command, run in this process. It used to start a second Node with
+ * the engine as its script, and that start was 35 to 50 ms of every command.
+ * `main` reads its words from `process.argv` and leaves its exit code in
+ * `process.exitCode`, as it does when engine.ts is the script, and this process
+ * then ends on its own, so a pipe gets all of what was written to it.
+ */
+async function runEngine(words) {
+  quietExperimental();
+  process.argv = [process.argv[0], engineEntry, ...words];
+  const entry = existsSync(srcEngine)
+    ? resolve(ROOT, 'src', 'engine', 'cli.ts')
+    : resolve(ROOT, 'dist-cli', 'engine', 'cli.js');
+  const { main } = await import(pathToFileURL(entry).href);
+  await main();
+}
+
+// Node keeps what it compiled of each module on disk and reuses it on the next
+// start, which takes about a tenth off a command. Node 22.18 has it, and
+// NODE_DISABLE_COMPILE_CACHE turns it off.
+try {
+  module.enableCompileCache?.();
+} catch {}
+
 // `--help` or `-h` after a command asks about it, and never runs it: `ambit
 // verify --help` ran every declared check, `ambit mcp --help` started a server
 // that waited on stdin, and `ambit web --help` opened the map. The engine
@@ -84,10 +136,7 @@ if (cmd === 'statusline') {
   let line = '';
   try {
     process.removeAllListeners('warning');
-    const entry = existsSync(srcEngine)
-      ? resolve(ROOT, 'src', 'engine', 'statusline.ts')
-      : resolve(ROOT, 'dist-cli', 'engine', 'statusline.js');
-    const { statusLine } = await import(pathToFileURL(entry).href);
+    const { statusLine } = await import(pathToFileURL(hookEntry('statusline')).href);
     line = statusLine(args);
   } catch {}
   // Claude Code cancels a run when the next one starts, closing the pipe.
@@ -108,10 +157,7 @@ if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
   let out = '';
   try {
     process.removeAllListeners('warning');
-    const entry = existsSync(srcEngine)
-      ? resolve(ROOT, 'src', 'engine', 'gate-hook.ts')
-      : resolve(ROOT, 'dist-cli', 'engine', 'gate-hook.js');
-    const { gateHook } = await import(pathToFileURL(entry).href);
+    const { gateHook } = await import(pathToFileURL(hookEntry('gate-hook')).href);
     out = gateHook();
   } catch {}
   process.stdout.on('error', () => {});
@@ -131,12 +177,7 @@ if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
  * answered here and never reach the engine, and the engine's list names them
  * all the same, so `ambit help web` finds it.
  */
-if (cmd === 'help') {
-  const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...args], {
-    stdio: 'inherit',
-  });
-  process.exit(engineHelp.status ?? 0);
-}
+if (cmd === 'help') await runEngine(['help', ...args]);
 
 // The version a bug report asks for. It answers here, before the engine
 // starts, because an unknown flag reached the engine and began a first-run
@@ -150,13 +191,10 @@ if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
 // anything. Showing where you actually are teaches more in one screen, and
 // the help is still one flag away.
 if (!cmd) {
-  const run = (c, args = []) =>
-    spawnSync('node', [...NODE_FLAGS, engineEntry, c, ...args], { stdio: 'inherit' });
   // The short screen; `ambit status` is the whole report, and the screen ends
   // by saying so.
   console.log('');
-  const shown = run('status', ['--brief']);
-  process.exit(shown.status ?? 0);
+  await runEngine(['status', '--brief']);
 }
 
 /**
@@ -313,10 +351,6 @@ if (cmd === 'mcp') {
 }
 
 // `web` from an install keeps running as the server's parent, so it must not
-// fall through to the engine, which knows no such verb.
-if (cmd !== 'web') {
-  const result = spawnSync('node', [...NODE_FLAGS, engineEntry, cmd, ...args], {
-    stdio: 'inherit',
-  });
-  process.exit(result.status || 0);
-}
+// fall through to the engine, which knows no such verb. Help and the bare
+// command were run above.
+if (cmd && cmd !== 'web' && cmd !== 'help') await runEngine([cmd, ...args]);

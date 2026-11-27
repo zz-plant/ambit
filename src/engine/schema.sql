@@ -320,6 +320,21 @@ CREATE TABLE IF NOT EXISTS session_log_cursors (
     read_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- What each folder the session-log reading walks held when it was last listed
+-- (src/engine/session-logs.ts): the folders under it and the log files in it.
+-- A folder whose modification time is still `mtime_ms` is not listed again,
+-- so an unchanged folder costs one stat. `path` is a digest of the folder's
+-- path, so the graph holds no project's name. It describes this machine's
+-- folders and stays behind with the cursors; losing it costs one listing of
+-- each folder.
+CREATE TABLE IF NOT EXISTS session_log_dirs (
+    path TEXT PRIMARY KEY,
+    mtime_ms REAL NOT NULL,
+    listed_ms INTEGER NOT NULL,
+    dirs TEXT NOT NULL,
+    files TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_work_runs_started ON work_runs(started_at);
 CREATE INDEX IF NOT EXISTS idx_work_events_run ON work_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_capability_use_run ON capability_use(run_id, capability_id);

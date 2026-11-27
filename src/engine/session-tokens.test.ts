@@ -11,7 +11,8 @@
  * applied once, to what an hour grew by; only counts, names, ids and times
  * reach the graph; and AMBIT_NO_LEDGER reads nothing.
  */
-import { appendFileSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { expect, test } from 'vitest';
 import type { Db } from './db.ts';
 import { readSessionLogs, transcriptTokens } from './session-logs.ts';
@@ -297,6 +298,68 @@ test("a subagent's transcript counts its own replies, and not the session's it r
       input: 100,
       cached: 1000,
       output: 50,
+    });
+  } finally {
+    db.close();
+  }
+});
+
+test('a folder unchanged since it was listed is not listed again, and a subagent that starts later is still read', () => {
+  const path = transcriptPath();
+  writeFileSync(
+    path,
+    reply('r1', '2026-10-05T09:10:00.000Z', { input: 100, cached: 1000, output: 50 })
+  );
+  const agents = join(path.replace(/\.jsonl$/, ''), 'subagents');
+  mkdirSync(agents, { recursive: true });
+  // Folders last changed a minute ago, so a listing of them can be trusted.
+  const old = new Date(Date.now() - 60_000);
+  for (const folder of [agents, dirname(agents), dirname(path)]) utimesSync(folder, old, old);
+  const db = graph();
+  const listings = () =>
+    db
+      .prepare('SELECT path, listed_ms, files FROM session_log_dirs ORDER BY path')
+      .all<{ path: string; listed_ms: number; files: string }>();
+  try {
+    readSessionLogs(db, { env: env() });
+    // The project's folder, the session's, and its subagents'.
+    const first = listings();
+    expect(first).toHaveLength(3);
+    readSessionLogs(db, { env: env() });
+    expect(listings()).toEqual(first);
+    // Filed by digest: no project's name or path reaches the graph.
+    expect(everything(db)).not.toMatch(/SECRET/);
+
+    // A subagent's file moves its folder's time, so that folder is listed again.
+    writeFileSync(
+      join(agents, 'agent-a1.jsonl'),
+      reply(
+        's1',
+        '2026-10-05T09:12:00.000Z',
+        { input: 7, cached: 70, output: 9 },
+        { isSidechain: true },
+        'claude-haiku-4-5'
+      )
+    );
+    readSessionLogs(db, { env: env() });
+    expect(totals(db)).toEqual({
+      'cache read tokens': 1070,
+      'input tokens': 107,
+      'output tokens': 59,
+    });
+
+    // Aged and listed again, a listing is trusted: what it says is what the
+    // read believes, until a read from the top lists every folder again.
+    utimesSync(agents, old, old);
+    readSessionLogs(db, { env: env() });
+    db.exec(`UPDATE session_log_dirs SET files = '[]'`);
+    expect(readSessionLogs(db, { env: env() }).logs).toEqual([]);
+    const refreshed = readSessionLogs(db, { env: env(), refresh: true });
+    expect(refreshed.logs[0]).toMatchObject({ files: 2, tokens: 0 });
+    expect(totals(db)).toEqual({
+      'cache read tokens': 1070,
+      'input tokens': 107,
+      'output tokens': 59,
     });
   } finally {
     db.close();
