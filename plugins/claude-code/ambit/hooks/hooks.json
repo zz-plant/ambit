@@ -2,7 +2,13 @@
   "hooks": {
     "SessionStart": [
       {
-        "hooks": [{ "type": "command", "command": "npx -y ambit-cli briefing", "timeout": 10 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v ambit >/dev/null 2>&1 || exec npx -y ambit-cli briefing; exec ambit briefing'",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [

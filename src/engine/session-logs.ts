@@ -42,10 +42,12 @@
  * active session's tokens arrive as its transcript grows.
  *
  * A cursor per file (`session_log_cursors`) keeps the reading cheap: a file
- * whose size and modification time have not changed is not opened, so a
- * command that finds nothing new costs a `stat` per log file and one query. A
- * grown transcript or rollout resumes at the byte it stopped at. The cursor
- * describes this machine's files and stays out of `ambit sync`.
+ * whose size and modification time have not changed is not opened, and a
+ * listing per folder (`session_log_dirs`) means a folder whose modification
+ * time has not moved is not listed again, so a command that finds nothing new
+ * costs a `stat` per log file and per folder, and two queries. A grown
+ * transcript or rollout resumes at the byte it stopped at. The cursors and
+ * listings describe this machine's files and stay out of `ambit sync`.
  * AMBIT_NO_LEDGER=1 stops the reading. Nothing here writes to any of these
  * files or opens a socket.
  */
@@ -66,7 +68,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { zstdDecompressSync } from 'node:zlib';
 import type { Db } from './db.ts';
 import { type HourlyTokens, hourOf, recordTokens, type TokenCounts, UNTIMED } from './economics.ts';
-import type { SessionLogCursorRow } from './rows.ts';
+import type { SessionLogCursorRow, SessionLogDirRow } from './rows.ts';
 import { beginRun } from './telemetry.ts';
 import { TOKEN_SOURCES } from './vocabulary.ts';
 
@@ -202,23 +204,109 @@ function dirsFrom(value: string | undefined, ...fallback: (string | undefined)[]
   return fallback.filter((d): d is string => !!d);
 }
 
+/** Which files a walk keeps, and the name its folder listings are filed under. */
+interface Keep {
+  tag: string;
+  keep: (name: string) => boolean;
+}
+const TRANSCRIPTS: Keep = { tag: 'jsonl', keep: n => n.endsWith('.jsonl') };
+const ROLLOUTS: Keep = {
+  tag: 'codex',
+  keep: n => n.endsWith('.jsonl') || n.endsWith('.jsonl.zst'),
+};
+const THREADS: Keep = { tag: 'amp', keep: n => n.endsWith('.json') };
+
 /**
- * Every file under `dir` whose name passes `keep`, never following a link: a
- * symlinked directory is neither walked nor counted, so a cycle cannot recurse
- * and a link cannot pull a file from elsewhere into the read.
+ * What the folders a read walks held when each was last listed. Adding,
+ * removing or renaming an entry moves its folder's modification time, and a
+ * file growing does not, so a folder whose time has not moved holds what it
+ * held, and every log in it is still `stat`ed for its size. A listing is
+ * trusted once its folder's time is two seconds older than the listing (git's
+ * rule for a racy index), since a file system that keeps coarse times can add
+ * an entry without moving the time. `reuse` is off for a read from the top.
  */
-function walk(dir: string, keep: (name: string) => boolean, depth = 6, out: string[] = []) {
+interface Listings {
+  held: Map<string, SessionLogDirRow>;
+  seen: Set<string>;
+  fresh: SessionLogDirRow[];
+  reuse: boolean;
+}
+const RACY_MS = 2000;
+
+/** A folder's subfolders and the files in it `kind` keeps; undefined when it cannot be listed. */
+function readListing(dir: string, kind: Keep): { dirs: string[]; files: string[] } | undefined {
   let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
-    return out;
+    return undefined;
   }
+  const dirs: string[] = [];
+  const files: string[] = [];
   for (const e of entries) {
-    const path = join(dir, e.name);
-    if (e.isDirectory() && depth > 0) walk(path, keep, depth - 1, out);
-    else if (e.isFile() && keep(e.name)) out.push(path);
+    if (e.isDirectory()) dirs.push(e.name);
+    else if (e.isFile() && kind.keep(e.name)) files.push(e.name);
   }
+  return { dirs, files };
+}
+
+/**
+ * A folder's listing, from `cache` while the folder's time has not moved. The
+ * folder is `stat`ed before it is listed, so an entry added between the two
+ * moves the time past the one filed, and the next read lists it again.
+ */
+function listed(dir: string, kind: Keep, cache?: Listings) {
+  if (!cache) return readListing(dir, kind);
+  const st = statSync(dir, { throwIfNoEntry: false });
+  if (!st?.isDirectory()) return undefined;
+  const key = createHash('sha256').update(`${kind.tag}\0${dir}`).digest('hex').slice(0, 32);
+  cache.seen.add(key);
+  const held = cache.reuse ? cache.held.get(key) : undefined;
+  if (held && held.mtime_ms === st.mtimeMs && held.mtime_ms < held.listed_ms - RACY_MS) {
+    return { dirs: JSON.parse(held.dirs) as string[], files: JSON.parse(held.files) as string[] };
+  }
+  const listedMs = Date.now();
+  const read = readListing(dir, kind);
+  if (read) {
+    cache.fresh.push({
+      path: key,
+      mtime_ms: st.mtimeMs,
+      listed_ms: listedMs,
+      dirs: JSON.stringify(read.dirs),
+      files: JSON.stringify(read.files),
+    });
+  }
+  return read;
+}
+
+/** The listings this read made, filed, and the ones for folders it no longer found, dropped. */
+function fileListings(db: Db, cache: Listings) {
+  db.exec('BEGIN');
+  try {
+    const upsert = db.prepare(
+      `INSERT INTO session_log_dirs (path, mtime_ms, listed_ms, dirs, files) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(path) DO UPDATE SET mtime_ms = excluded.mtime_ms,
+         listed_ms = excluded.listed_ms, dirs = excluded.dirs, files = excluded.files`
+    );
+    for (const l of cache.fresh) upsert.run(l.path, l.mtime_ms, l.listed_ms, l.dirs, l.files);
+    const forget = db.prepare('DELETE FROM session_log_dirs WHERE path = ?');
+    for (const path of cache.held.keys()) if (!cache.seen.has(path)) forget.run(path);
+    db.exec('COMMIT');
+  } catch {
+    db.exec('ROLLBACK');
+  }
+}
+
+/**
+ * Every file under `dir` that `kind` keeps, never following a link: a
+ * symlinked directory is neither walked nor counted, so a cycle cannot recurse
+ * and a link cannot pull a file from elsewhere into the read.
+ */
+function walk(dir: string, kind: Keep, depth = 6, cache?: Listings, out: string[] = []) {
+  const listing = listed(dir, kind, cache);
+  if (!listing) return out;
+  if (depth > 0) for (const d of listing.dirs) walk(join(dir, d), kind, depth - 1, cache, out);
+  for (const f of listing.files) out.push(join(dir, f));
   return out;
 }
 
@@ -418,7 +506,7 @@ function claudeRoots(env: NodeJS.ProcessEnv): string[] {
  * A session found in two places is read from the one written to last, since a
  * copy is the same responses and adding both would count them twice.
  */
-function claudeFiles(env: NodeJS.ProcessEnv): LogFile[] {
+function claudeFiles(env: NodeJS.ProcessEnv, cache?: Listings): LogFile[] {
   const sessions = new Map<string, LogFile[]>();
   for (const root of claudeRoots(env)) {
     const projects = join(root, 'projects');
@@ -431,19 +519,19 @@ function claudeFiles(env: NodeJS.ProcessEnv): LogFile[] {
     for (const project of dirs) {
       if (!project.isDirectory()) continue;
       const folder = join(projects, project.name);
-      let entries: Dirent[];
-      try {
-        entries = readdirSync(folder, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-      for (const e of entries) {
-        if (!e.isFile() || !e.name.endsWith('.jsonl')) continue;
-        const session = e.name.slice(0, -'.jsonl'.length);
+      const listing = listed(folder, TRANSCRIPTS, cache);
+      if (!listing) continue;
+      // A session with no folder of its own has no subagents to walk, and
+      // asking for one that is not there is most of what an unchanged read cost.
+      const folders = new Set(listing.dirs);
+      for (const name of listing.files) {
+        const session = name.slice(0, -'.jsonl'.length);
         if (!UUID.test(session)) continue;
-        const [main] = statted('claude', join(folder, e.name), projects);
+        const [main] = statted('claude', join(folder, name), projects);
         if (!main) continue;
-        const nested = walk(join(folder, session), n => n.endsWith('.jsonl'), 4)
+        const nested = (
+          folders.has(session) ? walk(join(folder, session), TRANSCRIPTS, 4, cache) : []
+        )
           .sort()
           .flatMap(p => statted('claude', p, projects))
           .map(f => ({ ...f, session, nested: true }));
@@ -476,7 +564,7 @@ function transcriptTokens(path?: string): HourlyTokens {
   };
   const main = readClaude({ path, size: size(path), session }, undefined, undefined, true).state;
   const parent = new Set(main.ids);
-  const nested = walk(path.replace(/\.jsonl$/, ''), n => n.endsWith('.jsonl'), 4)
+  const nested = walk(path.replace(/\.jsonl$/, ''), TRANSCRIPTS, 4)
     .sort()
     .map(p => readClaude({ path: p, size: size(p), session }, undefined, parent, true).state.use);
   return hourly(sumUses(session, [main.use, ...nested]).hours);
@@ -721,7 +809,7 @@ function readCodex(file: LogFile, cursor?: SessionLogCursorRow, now = Date.now()
  * (rust/adapters/codex/src/paths.rs), and a rollout in both its plain and
  * compressed spelling is read from the plain one.
  */
-function codexFiles(env: NodeJS.ProcessEnv): LogFile[] {
+function codexFiles(env: NodeJS.ProcessEnv, cache?: Listings): LogFile[] {
   const homes = dirsFrom(env.CODEX_HOME, env.HOME ? join(env.HOME, '.codex') : undefined);
   const chosen = new Map<string, { path: string; rank: number; root: string }>();
   for (const home of homes) {
@@ -730,7 +818,7 @@ function codexFiles(env: NodeJS.ProcessEnv): LogFile[] {
       ['archived_sessions', 2],
     ] as const) {
       const root = join(home, sub);
-      for (const path of walk(root, n => n.endsWith('.jsonl') || n.endsWith('.jsonl.zst'))) {
+      for (const path of walk(root, ROLLOUTS, 6, cache)) {
         const rel = path.slice(root.length).replace(/\.zst$/, '');
         const rank = archived + (path.endsWith('.zst') ? 1 : 0);
         const key = `${home}\0${rel}`;
@@ -978,14 +1066,14 @@ function readAmp(file: LogFile): FileRead {
   return { sessions: [use], offset: 0, state: null };
 }
 
-function ampFiles(env: NodeJS.ProcessEnv): LogFile[] {
+function ampFiles(env: NodeJS.ProcessEnv, cache?: Listings): LogFile[] {
   const dirs = dirsFrom(
     env.AMP_DATA_DIR,
     env.HOME ? join(env.HOME, '.local', 'share', 'amp') : undefined
   );
   return dirs.flatMap(dir => {
     const root = join(dir, 'threads');
-    return walk(root, n => n.endsWith('.json')).flatMap(path => statted('amp', path, root));
+    return walk(root, THREADS, 6, cache).flatMap(path => statted('amp', path, root));
   });
 }
 
@@ -1013,7 +1101,7 @@ function cursorKey(f: Pick<LogFile, 'runtime' | 'path'>): string {
 }
 
 /** Where each runtime's files are. A Claude Code transcript is read apart (`readClaude`). */
-const FILES: Record<Runtime, (env: NodeJS.ProcessEnv) => LogFile[]> = {
+const FILES: Record<Runtime, (env: NodeJS.ProcessEnv, cache?: Listings) => LogFile[]> = {
   claude: claudeFiles,
   codex: codexFiles,
   opencode: openCodeFiles,
@@ -1127,8 +1215,22 @@ function readSessionLogs(
       .all<SessionLogCursorRow>()
       .map(c => [c.path, c] as const)
   );
+  const listings: Listings = {
+    held: new Map(
+      db
+        .prepare('SELECT * FROM session_log_dirs')
+        .all<SessionLogDirRow>()
+        .map(l => [l.path, l] as const)
+    ),
+    seen: new Set(),
+    fresh: [],
+    reuse: !opts.refresh,
+  };
   const found: LogFile[] = [];
-  for (const runtime of Object.keys(FILES) as Runtime[]) found.push(...FILES[runtime](env));
+  for (const runtime of Object.keys(FILES) as Runtime[]) {
+    found.push(...FILES[runtime](env, listings));
+  }
+  fileListings(db, listings);
 
   const home = env.HOME;
   const shown = (path: string) =>

@@ -231,6 +231,14 @@ export type SessionLogCursorRow = {
   read_at: string;
 };
 
+export type SessionLogDirRow = {
+  path: string;
+  mtime_ms: number;
+  listed_ms: number;
+  dirs: string;
+  files: string;
+};
+
 export type DecisionRecordRow = {
   id: string;
   kind: string;
